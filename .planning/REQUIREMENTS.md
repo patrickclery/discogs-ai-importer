@@ -89,13 +89,40 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by roadmap) | | |
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Pending |
+| INGEST-01 | Phase 2 | Pending |
+| INGEST-02 | Phase 2 | Pending |
+| INGEST-03 | Phase 2 | Pending |
+| INGEST-04 | Phase 2 | Pending |
+| INGEST-05 | Phase 2 | Pending |
+| VIS-01 | Phase 2 | Pending |
+| VIS-02 | Phase 2 | Pending |
+| VIS-03 | Phase 2 | Pending |
+| VIS-04 | Phase 2 | Pending |
+| REV-01 | Phase 2 | Pending |
+| REV-02 | Phase 2 | Pending |
+| REV-03 | Phase 4 | Pending |
+| REV-04 | Phase 4 | Pending |
+| REV-05 | Phase 4 | Pending |
+| DISC-01 | Phase 3 | Pending |
+| DISC-02 | Phase 3 | Pending |
+| DISC-03 | Phase 3 | Pending |
+| DISC-04 | Phase 3 | Pending |
+| DISC-05 | Phase 3 | Pending |
+| DISC-06 | Phase 3 | Pending |
+| IMP-01 | Phase 4 | Pending |
+| IMP-02 | Phase 4 | Pending |
+| IMP-03 | Phase 4 | Pending |
+| IMP-04 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 ⚠️
+- v1 requirements: 28 total
+- Mapped to phases: 28
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-10-18*
-*Last updated: 2026-10-18 after initial definition*
+*Last updated: 2026-10-18 after roadmap creation (traceability filled; v1 count corrected from 27 to 28)*
