@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
   4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -39,7 +39,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 01-05-PLAN.md — App shell on the tracer path: shadcn + UI-SPEC tokens, header nav and live status indicator, empty states, error page, Queue test job card (wave 2)
-- [ ] 01-06-PLAN.md — Host/Origin guard, Vitest harness with queue tests, mise/.nvmrc pins, README and .env.example (wave 2)
+- [x] 01-06-PLAN.md — Host/Origin guard, Vitest harness with queue tests, mise/.nvmrc pins, README and .env.example (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-02-PLAN.md — Restart-safe single worker and portable data folder: retry/backoff, crash recovery, worker lease, handler timeout, resolveData, kill -9 / HMR / copy-folder proofs (wave 3)
@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 2/6 | In Progress | - |
+| 1. Foundation | 3/6 | In Progress | - |
 | 2. Shelf Scan | 0/TBD | Not started | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
