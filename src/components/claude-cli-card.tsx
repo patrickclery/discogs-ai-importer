@@ -1,4 +1,5 @@
 import { TriangleAlert } from 'lucide-react';
+import { ModelSelect } from '@/components/model-select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,7 +10,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Field, FieldDescription, FieldTitle } from '@/components/ui/field';
+import { Separator } from '@/components/ui/separator';
 import type { ClaudeCliStatus } from '@/server/claude/cli';
+import { VISION_MODELS } from '@/server/settings';
 
 // Claude CLI card (D-10, D-18). Server component; receives only the
 // sanitized status (no email, org or env values).
@@ -107,7 +110,13 @@ function LoginRow({ auth }: { auth: ClaudeCliStatus['auth'] }) {
   }
 }
 
-export function ClaudeCliCard({ status }: { status: ClaudeCliStatus }) {
+export function ClaudeCliCard({
+  status,
+  model,
+}: {
+  status: ClaudeCliStatus;
+  model: string;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -132,6 +141,8 @@ export function ClaudeCliCard({ status }: { status: ClaudeCliStatus }) {
         ) : null}
         <CliRow status={status} />
         {status.installed ? <LoginRow auth={status.auth} /> : null}
+        <Separator />
+        <ModelSelect value={model} models={VISION_MODELS} />
       </CardContent>
     </Card>
   );

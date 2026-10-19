@@ -19,6 +19,7 @@ import {
   SecretsFileError,
   secretsFile,
 } from '@/server/secrets';
+import { getVisionModel } from '@/server/settings';
 import { dataRoot } from '@/server/storage/paths';
 
 function readStatuses():
@@ -59,7 +60,7 @@ export default async function SettingsPage() {
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-6">
-        <ClaudeCliCard status={claude} />
+        <ClaudeCliCard status={claude} model={getVisionModel()} />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Discogs app</CardTitle>

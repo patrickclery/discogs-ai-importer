@@ -8,6 +8,7 @@ import {
   type SecretKey,
   saveSecrets,
 } from '@/server/secrets';
+import { setVisionModel, VisionModelSchema } from '@/server/settings';
 
 // Server Actions for /settings (D-09). Return values carry only status and
 // copy; they never echo a submitted or stored value.
@@ -76,6 +77,29 @@ export async function clearSecretAction(
     clearSecret(parsed.data);
   } catch (err) {
     return { ok: false, formError: ioError(err) };
+  }
+  revalidatePath('/settings');
+  return { ok: true };
+}
+
+export async function saveVisionModel(
+  id: string,
+): Promise<{ ok: true } | { ok: false; formError: string }> {
+  const parsed = VisionModelSchema.safeParse(id);
+  if (!parsed.success) {
+    return { ok: false, formError: 'Choose one of the listed models.' };
+  }
+  try {
+    setVisionModel(parsed.data);
+  } catch (err) {
+    const reason = (err instanceof Error ? err.message : String(err)).slice(
+      0,
+      160,
+    );
+    return {
+      ok: false,
+      formError: `Couldn't save the vision model: ${reason}. Try again.`,
+    };
   }
   revalidatePath('/settings');
   return { ok: true };
