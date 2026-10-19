@@ -5,6 +5,7 @@ import { handlers as defaultHandlers } from './handlers';
 import {
   heartbeatLease,
   LEASE_HEARTBEAT_MS,
+  LEASE_STALE_MS,
   releaseLease,
   tryAcquireLease,
 } from './lease';
@@ -32,6 +33,26 @@ const ERROR_SLEEP_MS = 1000;
  */
 export const ABORT_GRACE_MS = 10_000;
 
+/** Tries for a job status write (complete/fail) before giving up (WR-05). */
+const STATUS_WRITE_TRIES = 5;
+const STATUS_WRITE_RETRY_MS = 250;
+
+/**
+ * A `running` job claimed longer ago than this cannot still be executing on
+ * a live, lease-holding worker: its handler timed out, had its abort grace
+ * and was given a full lease staleness window. The holder's reaper recovers
+ * such jobs (WR-05) instead of waiting for the next restart.
+ */
+export function strandedAfterMs(
+  handlers: Record<string, JobHandler> = defaultHandlers,
+): number {
+  const longest = Math.max(
+    0,
+    ...Object.values(handlers).map((h) => h.timeoutMs),
+  );
+  return longest + ABORT_GRACE_MS + LEASE_STALE_MS;
+}
+
 export type WorkerState = {
   bootId: string;
   startedAt: number;
@@ -51,7 +72,7 @@ type InternalWorker = WorkerState & {
 const g = globalThis as unknown as {
   __appWorker?: InternalWorker;
   __appWorkerStarts?: number;
-  __appWorkerInflight?: Set<AbortController>;
+  __appWorkerInflightJobs?: Map<AbortController, string>;
 };
 
 /** Abort reason used when the worker stops or loses its lease. */
@@ -86,10 +107,38 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** In-flight job controllers, so a stop can abort running handlers. */
-function inflight(): Set<AbortController> {
-  g.__appWorkerInflight ??= new Set();
-  return g.__appWorkerInflight;
+/** In-flight job controllers and their job ids (abort on stop, reaper skip). */
+function inflight(): Map<AbortController, string> {
+  g.__appWorkerInflightJobs ??= new Map();
+  return g.__appWorkerInflightJobs;
+}
+
+/**
+ * Runs a status write, retrying transient failures such as SQLITE_BUSY so a
+ * job is not stranded in `running` (WR-05). Rethrows the last error; the
+ * reaper then recovers the job.
+ */
+async function writeStatus<T>(write: () => T): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return write();
+    } catch (err) {
+      if (i >= STATUS_WRITE_TRIES) throw err;
+      console.warn(`[worker] status write failed (try ${i}), retrying:`, err);
+      await sleep(STATUS_WRITE_RETRY_MS * i);
+    }
+  }
+}
+
+/** Holder-only sweep for jobs stranded in `running` (WR-05). */
+export function reapStrandedJobs(now = Date.now()): {
+  requeued: number;
+  failed: number;
+} {
+  return recoverRunningJobs(now, {
+    lockedBefore: now - strandedAfterMs(),
+    excludeIds: inflight().values(),
+  });
 }
 
 export async function processNext(
@@ -104,11 +153,13 @@ export async function processNext(
   if (!job) return 'idle';
   const handler = (opts.handlers ?? defaultHandlers)[job.type];
   if (!handler) {
-    failJob(
-      job.id,
-      new Error(`unknown job type: ${job.type}`),
-      opts.now,
-      job.attempts,
+    await writeStatus(() =>
+      failJob(
+        job.id,
+        new Error(`unknown job type: ${job.type}`),
+        opts.now,
+        job.attempts,
+      ),
     );
     return 'failed';
   }
@@ -131,7 +182,7 @@ export async function processNext(
   });
   aborted.catch(() => {});
   const lanes = inflight();
-  lanes.add(controller);
+  lanes.set(controller, job.id);
   const run = Promise.resolve().then(() =>
     handler.run(JSON.parse(job.payload), {
       job,
@@ -140,38 +191,42 @@ export async function processNext(
   );
   run.catch(() => {});
   try {
-    await Promise.race([run, aborted]);
-    complete(job.id, opts.now, job.attempts);
-    return 'succeeded';
-  } catch (err) {
-    // Compare by name: HMR can leave two copies of the class alive.
-    const reason = controller.signal.reason as Error | undefined;
-    const stopped = reason?.name === 'WorkerStoppedError';
-    if (controller.signal.aborted) {
-      // Hold the lane until the handler really stops (WR-03). One that
-      // ignores its signal is failed for good rather than requeued, so the
-      // same job never runs twice at once.
-      const grace = opts.abortGraceMs ?? ABORT_GRACE_MS;
-      if (!(await settlesWithin(run, grace))) {
-        console.error(
-          `[worker] job ${job.id} (${job.type}) did not stop within ${grace} ms of its abort`,
-        );
-        if (!stopped) {
-          failJob(
-            job.id,
-            new Error(
-              `handler did not stop after abort (${errorMessage(err)})`,
-            ),
-            opts.now,
-            job.attempts,
+    try {
+      await Promise.race([run, aborted]);
+    } catch (err) {
+      // Compare by name: HMR can leave two copies of the class alive.
+      const reason = controller.signal.reason as Error | undefined;
+      const stopped = reason?.name === 'WorkerStoppedError';
+      if (controller.signal.aborted) {
+        // Hold the lane until the handler really stops (WR-03). One that
+        // ignores its signal is failed for good rather than requeued, so the
+        // same job never runs twice at once.
+        const grace = opts.abortGraceMs ?? ABORT_GRACE_MS;
+        if (!(await settlesWithin(run, grace))) {
+          console.error(
+            `[worker] job ${job.id} (${job.type}) did not stop within ${grace} ms of its abort`,
           );
+          if (!stopped) {
+            const error = new Error(
+              `handler did not stop after abort (${errorMessage(err)})`,
+            );
+            await writeStatus(() =>
+              failJob(job.id, error, opts.now, job.attempts),
+            );
+          }
+          return 'failed';
         }
-        return 'failed';
       }
+      // A stopped worker leaves the job running; lease recovery requeues it.
+      if (!stopped) {
+        await writeStatus(() =>
+          failOrRetry(job.id, err, opts.now, job.attempts),
+        );
+      }
+      return 'failed';
     }
-    // A stopped worker leaves the job running; lease recovery requeues it.
-    if (!stopped) failOrRetry(job.id, err, opts.now, job.attempts);
-    return 'failed';
+    await writeStatus(() => complete(job.id, opts.now, job.attempts));
+    return 'succeeded';
   } finally {
     clearTimeout(timer);
     lanes.delete(controller);
@@ -194,7 +249,7 @@ async function runLane(lane: Lane, isStopped: () => boolean): Promise<void> {
 }
 
 function abortInflight(reason: string): void {
-  for (const c of inflight()) c.abort(new WorkerStoppedError(reason));
+  for (const c of inflight().keys()) c.abort(new WorkerStoppedError(reason));
 }
 
 function startLanes(w: InternalWorker): void {
@@ -227,6 +282,13 @@ function tick(w: InternalWorker): void {
       w.state = 'waiting';
       w.laneGen++;
       abortInflight('worker lease lost');
+    } else {
+      const reaped = reapStrandedJobs();
+      if (reaped.requeued || reaped.failed) {
+        console.warn(
+          `[worker] reaped ${reaped.requeued} stranded job(s), failed ${reaped.failed} exhausted job(s)`,
+        );
+      }
     }
   } catch (err) {
     console.error('[worker] lease tick error:', err);

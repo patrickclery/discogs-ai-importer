@@ -191,29 +191,44 @@ export function failOrRetry(
 }
 
 /**
- * Boot recovery (D-14), run only by the process that just took the worker
- * lease. Interrupted jobs go back to queued; a job interrupted on its final
- * attempt fails instead, so a crash loop never exceeds max_attempts runs.
+ * Boot recovery (D-14), run only by the process that holds the worker lease.
+ * Interrupted jobs go back to queued; a job interrupted on its final attempt
+ * fails instead, so a crash loop never exceeds max_attempts runs.
+ *
+ * With `lockedBefore`, only jobs claimed before that time are touched, and
+ * `excludeIds` skips jobs this process is still executing. The holder's
+ * periodic reaper uses both to recover jobs stranded in `running` (WR-05).
  */
-export function recoverRunningJobs(now = Date.now()): {
+export function recoverRunningJobs(
+  now = Date.now(),
+  opts: { lockedBefore?: number; excludeIds?: Iterable<string> } = {},
+): {
   requeued: number;
   failed: number;
 } {
   const db = sql();
+  const params = {
+    now,
+    before: opts.lockedBefore ?? null,
+    exclude: JSON.stringify([...(opts.excludeIds ?? [])]),
+  };
+  const scope = `status = 'running'
+    AND (@before IS NULL OR locked_at IS NULL OR locked_at < @before)
+    AND id NOT IN (SELECT value FROM json_each(@exclude))`;
   const run = db.transaction(() => {
     const failed = db
       .prepare(
         `UPDATE jobs SET status = 'failed', last_error = 'interrupted after final attempt',
-           finished_at = ?, locked_at = NULL, updated_at = ?
-         WHERE status = 'running' AND attempts >= max_attempts`,
+           finished_at = @now, locked_at = NULL, updated_at = @now
+         WHERE ${scope} AND attempts >= max_attempts`,
       )
-      .run(now, now).changes;
+      .run(params).changes;
     const requeued = db
       .prepare(
-        `UPDATE jobs SET status = 'queued', locked_at = NULL, updated_at = ?
-         WHERE status = 'running'`,
+        `UPDATE jobs SET status = 'queued', locked_at = NULL, updated_at = @now
+         WHERE ${scope}`,
       )
-      .run(now).changes;
+      .run(params).changes;
     return { requeued, failed };
   });
   return run.immediate();
