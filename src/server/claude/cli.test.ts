@@ -1,12 +1,21 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
+
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+import { testClaudeAction } from '@/app/settings/actions';
 import { runProcess } from '../proc/run';
+import { setVisionModel } from '../settings';
 import {
   buildClaudeEnv,
+  buildTestArgs,
   clearClaudeCliStatusCache,
   getClaudeCliStatus,
+  TEST_PROMPT,
+  testClaude,
 } from './cli';
 
 const FAKE = path.resolve(
@@ -288,5 +297,165 @@ describe('getClaudeCliStatus', () => {
     const third = await getClaudeCliStatus({ maxAgeMs: 0 });
     expect(third).not.toBe(first);
     expect(fake.log().length).toBe(lines + 2);
+  });
+});
+
+const NOT_INSTALLED =
+  'Claude CLI not found. Install Claude Code, then try again.';
+const NOT_LOGGED_IN =
+  "The Claude CLI isn't logged in. Run claude auth login in a terminal, then try again.";
+const TIMEOUT =
+  "Claude didn't answer within 60 seconds. Try again in a moment.";
+const FAILED_PREFIX = 'Test failed: ';
+const FAILED_SUFFIX = '. Try again in a moment.';
+
+describe('buildTestArgs', () => {
+  it('builds the headless JSON call with the model and no minimal-mode flag', () => {
+    const args = buildTestArgs('claude-sonnet-5-5');
+    expect(args).toEqual([
+      '-p',
+      TEST_PROMPT,
+      '--output-format',
+      'json',
+      '--model',
+      'claude-sonnet-5-5',
+      '--no-session-persistence',
+      '--strict-mcp-config',
+    ]);
+    expect(TEST_PROMPT).toBe(
+      'Reply with exactly the word OK and nothing else.',
+    );
+    // Minimal mode authenticates only with an API key (prohibition, D-18).
+    expect(args).not.toContain('--bare');
+    expect(args.some((a) => a.startsWith('--bare'))).toBe(false);
+  });
+});
+
+describe('testClaude', () => {
+  const fake = useFakeClaude();
+  const promptCalls = () => fake.log().filter((e) => e.argv[0] === '-p');
+
+  it('mode ok: succeeds naming the model, runs from os.tmpdir() without ANTHROPIC_API_KEY', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-CANARY-0123456789zz';
+    process.env.DISCOGS_CONSUMER_SECRET = 'CANARY-SECRET';
+    const res = await testClaude({ model: 'claude-sonnet-5-5' });
+    expect(res).toEqual({
+      ok: true,
+      model: 'claude-sonnet-5-5',
+      message:
+        'Claude works. claude-sonnet-5-5 answered through your subscription.',
+    });
+    const calls = promptCalls();
+    expect(calls.length).toBe(1);
+    expect(calls[0].argv).toEqual(buildTestArgs('claude-sonnet-5-5'));
+    expect(calls[0].cwd).toBe(fs.realpathSync(os.tmpdir()));
+    expect(calls[0].env.ANTHROPIC_API_KEY).toBe(false);
+    expect(calls[0].env.DISCOGS_CONSUMER_SECRET).toBe(false);
+  });
+
+  it('CLAUDE_BIN missing returns not-installed', async () => {
+    process.env.CLAUDE_BIN = path.join(os.tmpdir(), 'dai-no-such-claude');
+    const res = await testClaude({ model: 'claude-opus-5-5' });
+    expect(res).toEqual({
+      ok: false,
+      kind: 'not-installed',
+      message: NOT_INSTALLED,
+    });
+  });
+
+  it('mode logged-out returns not-logged-in without a -p call', async () => {
+    fake.setMode('logged-out');
+    const res = await testClaude({ model: 'claude-opus-5-5' });
+    expect(res).toEqual({
+      ok: false,
+      kind: 'not-logged-in',
+      message: NOT_LOGGED_IN,
+    });
+    expect(fake.log().length).toBeGreaterThan(0);
+    expect(promptCalls().length).toBe(0);
+  });
+
+  it('mode login-error returns not-logged-in', async () => {
+    fake.setMode('login-error');
+    const res = await testClaude({ model: 'claude-opus-5-5' });
+    expect(res).toEqual({
+      ok: false,
+      kind: 'not-logged-in',
+      message: NOT_LOGGED_IN,
+    });
+  });
+
+  it('mode error returns failed with the result text', async () => {
+    fake.setMode('error');
+    const res = await testClaude({ model: 'claude-opus-5-5' });
+    expect(res).toEqual({
+      ok: false,
+      kind: 'failed',
+      message: 'Test failed: Overloaded. Try again in a moment.',
+    });
+  });
+
+  it('mode bad-json returns failed with unreadable CLI output', async () => {
+    fake.setMode('bad-json');
+    const res = await testClaude({ model: 'claude-opus-5-5' });
+    expect(res).toEqual({
+      ok: false,
+      kind: 'failed',
+      message: 'Test failed: unreadable CLI output. Try again in a moment.',
+    });
+  });
+
+  it('mode hang with timeoutMs 300 returns timeout and leaves no fake process running', async () => {
+    fake.setMode('hang');
+    const res = await testClaude({ model: 'claude-opus-5-5', timeoutMs: 300 });
+    expect(res).toEqual({ ok: false, kind: 'timeout', message: TIMEOUT });
+    const calls = promptCalls();
+    expect(calls.length).toBe(1);
+    expect(pidAlive(calls[0].pid)).toBe(false);
+  });
+
+  it('cuts every failure reason to at most 160 characters', async () => {
+    fake.setMode('error');
+    process.env.FAKE_CLAUDE_ERROR_TEXT = 'y'.repeat(500);
+    const res = await testClaude({ model: 'claude-opus-5-5' });
+    expect(res.ok).toBe(false);
+    expect(res.message.startsWith(FAILED_PREFIX)).toBe(true);
+    expect(res.message.endsWith(FAILED_SUFFIX)).toBe(true);
+    const reason = res.message.slice(
+      FAILED_PREFIX.length,
+      -FAILED_SUFFIX.length,
+    );
+    expect(reason.length).toBeLessThanOrEqual(160);
+    expect(reason.length).toBeGreaterThan(0);
+  });
+
+  it('rejects a model id that looks like a flag without spawning -p', async () => {
+    const res = await testClaude({ model: '--bare' });
+    expect(res.ok).toBe(false);
+    expect(promptCalls().length).toBe(0);
+  });
+});
+
+describe('testClaudeAction', () => {
+  useTempDataDir();
+  const fake = useFakeClaude();
+
+  it('uses getVisionModel() as --model, clears the status cache and returns no env value', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-CANARY-0123456789zz';
+    process.env.DISCOGS_CONSUMER_KEY = 'CANARY-KEY';
+    setVisionModel('claude-sonnet-5-5');
+    await getClaudeCliStatus({ maxAgeMs: 60_000 });
+
+    const res = await testClaudeAction();
+    expect(res.ok).toBe(true);
+    expect(JSON.stringify(res)).not.toContain('CANARY');
+    expect(JSON.stringify(res)).not.toContain(FAKE_EMAIL);
+    const prompt = fake.log().filter((e) => e.argv[0] === '-p');
+    expect(prompt.length).toBe(1);
+    expect(prompt[0].argv).toContain('claude-sonnet-5-5');
+
+    const before = fake.log().length;
+    await getClaudeCliStatus({ maxAgeMs: 60_000 });
+    expect(fake.log().length).toBe(before + 2);
   });
 });
