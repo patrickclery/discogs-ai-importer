@@ -1,7 +1,8 @@
 ---
 phase: "1"
 slug: "foundation"
-status: draft
+status: approved
+reviewed_at: "2026-10-18"
 shadcn_initialized: false
 preset: "none (greenfield; init values fixed in Design System below)"
 created: "2026-10-18"
@@ -85,6 +86,7 @@ Layout constants:
 Exceptions:
 - 1px borders (`border`) and the 2px active-nav underline (`h-0.5`) are allowed.
 - The status dot is 8px (`size-2`).
+- `px-3` (12px) horizontal padding is allowed for nav links, the status indicator and value wells.
 - 36px targets are used instead of 44px, because this is a desktop-only local tool. The minimum supported viewport is 360px wide. There is no touch-first layout.
 
 ---
@@ -130,6 +132,7 @@ Accent reserved for (exhaustive for Phase 1):
 3. The 2px underline under the active nav link.
 4. Focus rings (`--ring`) on every focusable element.
 5. Inline text links ("discogs.com/settings/developers", "console.anthropic.com").
+6. The "Try again" button on the global `error.tsx` page.
 
 Accent is NOT used for badges, the status dot, icons, card titles, the Test button, Replace or Cancel.
 
@@ -211,7 +214,7 @@ The field's frame is a `Field`. The label row is `flex justify-between`: the `Fi
 | Source | Badge | Value area | Actions |
 |--------|-------|-----------|---------|
 | unset | `outline` "Not set" | Password Input (empty, placeholder from the copy table) with a 36px ghost icon button inside the right edge toggling show/hide (`Eye` / `EyeOff`, `aria-label` "Show value" / "Hide value"). The toggle only reveals what the user has typed in this session. | Primary "Save key" (Anthropic) or "Save credentials" (Discogs, which saves both fields at once) |
-| file | `secondary` "Saved" | Muted mono well showing the mask, e.g. `sk-ant-…a1b2` (`••••` if ≤ 8 chars) | outline "Replace", ghost destructive "Clear" |
+| file | `secondary` "Saved" | Muted mono well showing the mask, e.g. `sk-ant-…a1b2` (`••••` if ≤ 8 chars) | outline "Replace value", ghost destructive "Clear value" |
 | env | `outline` with lucide `Terminal` icon, "From env" | Muted mono well with the env value's mask, and below it a FieldDescription with the env-override copy | outline "Replace", plus ghost destructive "Clear" only if a saved file value also exists |
 
 - **Replace:** swaps the well for an empty password Input. Focus moves to the input. Buttons become primary "Save key" or "Save credentials" plus outline "Cancel". Cancel or Escape restores the well, and focus returns to Replace.
@@ -229,7 +232,7 @@ The field's frame is a `Field`. The label row is `flex justify-between`: the `Fi
 
 ### Loading and errors
 - `src/app/settings/loading.tsx`: a title Skeleton (`h-8 w-40`), then three card Skeletons (`h-40 w-full rounded-xl`) with a 24px gap.
-- `src/app/error.tsx` (client): centered `Empty` with the lucide `TriangleAlert` icon, the error copy and a primary "Try again" button calling `reset()`. Accent here is allowed as the page's single primary action.
+- `src/app/error.tsx` (client): centered `Empty` with the lucide `TriangleAlert` icon, the error copy and a primary "Try again" button calling `reset()`. Accent here is allowed as the page's single primary action (accent use #6).
 - Save, Clear and Test failures are **inline and persistent** (an `Alert variant="destructive"` at the top of the affected card for I/O errors, or a `FieldError` for validation). Toasts are used for success only.
 
 ### Focus and keyboard
@@ -276,8 +279,8 @@ Motion is limited to shadcn defaults (dialog and tooltip fade/zoom, Sonner slide
 | Error state (global `error.tsx`) | Heading `This page didn't load`. Body `Something went wrong on the server. Try again, and if it keeps failing, check the terminal running the app for details.` Action `Try again`. |
 | Status indicator | See the Status indicator table (`Checking worker…`, `Worker idle`, `Working · {n} queued`, `· {f} failed`, `Worker stopped`, `Status unavailable`) |
 | Dev trigger | Button `Queue test job`. Toast `Test job queued`. Error `Couldn't queue the test job: {reason}.` |
-| Destructive confirmation | **Clear Anthropic key:** title `Clear saved Anthropic API key?`, body `The key is removed from secrets.json. Vision jobs can't run until you add a key again.`, buttons `Cancel` / `Clear key`. Toast `Anthropic API key cleared`. |
-| Destructive confirmation | **Clear Discogs value:** title `Clear saved Discogs {consumer key / consumer secret}?`, body `The value is removed from secrets.json. Discogs matching can't run until you add it again.`, buttons `Cancel` / `Clear`. Toast `Discogs {consumer key / consumer secret} cleared`. |
+| Destructive confirmation | **Clear Anthropic key:** title `Clear saved Anthropic API key?`, body `The key is removed from secrets.json. Vision jobs can't run until you add a key again.`, buttons `Keep key` / `Clear key`. Toast `Anthropic API key cleared`. |
+| Destructive confirmation | **Clear Discogs value:** title `Clear saved Discogs {consumer key / consumer secret}?`, body `The value is removed from secrets.json. Discogs matching can't run until you add it again.`, buttons `Keep value` / `Clear value`. Toast `Discogs {consumer key / consumer secret} cleared`. |
 
 Destructive actions in this phase: only the two Clear actions above. Both require AlertDialog confirmation. There are no other deletes.
 
@@ -285,7 +288,7 @@ Destructive actions in this phase: only the two Clear actions above. Both requir
 
 ## UI Considerations
 
-Applicable state considerations resolved: 14 covered, 2 backstop, 0 unresolved.
+Probe (ui-consideration-probe, 10 elements) raised 51 applicable considerations. 14 are resolved explicitly below; 2 are explicit backstops; the remaining 35 (mostly `populated` / `overflow` / `zero-one-many` / `partial` on placeholder and single-value surfaces) are auto-resolved as backstop under `--auto` (see the final row) and route to human review at verify time if no evidence is wired. 1 element (E9 dev trigger) was unclassified — manual review only.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
@@ -305,6 +308,8 @@ Applicable state considerations resolved: 14 covered, 2 backstop, 0 unresolved.
 | overflow | Header nav + status (nav) | ✅ covered | Below 640px, the wordmark collapses to its icon and the status text becomes `sr-only` (dot only), so the header fits on one 56px row down to 360px wide |
 | long-text | Masked secret well (static-content) | 🧪 backstop | Masks are bounded (prefix + "…" + last 4); a test asserts that `mask()` output is ≤ 16 chars for any input length and that the rendered HTML never contains the canary substring |
 | long-text | Test/save error messages with `{reason}` (interactive-control) | 🧪 backstop | `{reason}` is truncated server-side to 160 chars and wraps inside the card; the visual check is that a long OS error does not widen the card past `max-w-2xl` |
+| populated / overflow / zero-one-many / partial (auto) | Header, Upload & Spines placeholders, Settings cards, Data folder card, Vision model select | 🧪 backstop | Auto-resolved under `--auto`: a visual check at 360px and 1280px confirms each surface renders without overflow and with the documented copy in every state above |
+| unclassified | Developer "Queue test job" card | ⚠ unresolved — planner must treat as assumption | Dev-only surface; assume a button + toast/inline error is sufficient |
 
 ---
 
@@ -328,4 +333,4 @@ No third-party registries are declared. Do not add any in this phase.
 - [ ] Dimension 6 Registry Safety: PASS
 - [ ] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-10-18 (4 non-blocking FLAGs addressed: verb+noun labels, error.tsx accent use #6, px-3 exception; focal point = page title on each screen)
