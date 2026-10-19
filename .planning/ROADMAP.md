@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
   4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed
 
 Plans:
 **Wave 1**
@@ -46,7 +46,7 @@ Plans:
 - [x] 01-03-PLAN.md — Discogs credentials on the settings page: secrets.json outside DATA_DIR, masked SecretField, env override, Data folder card, canary leak proof (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 01-04-PLAN.md — Claude CLI card (D-18): install/login detection, ANTHROPIC_API_KEY warning, vision model, Test Claude, child-process runner, Upload readiness (wave 4)
+- [x] 01-04-PLAN.md — Claude CLI card (D-18): install/login detection, ANTHROPIC_API_KEY warning, vision model, Test Claude, child-process runner, Upload readiness (wave 4)
 
 **UI hint**: yes
 
@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 5/6 | In Progress | - |
+| 1. Foundation | 6/6 | In Progress | - |
 | 2. Shelf Scan | 0/TBD | Not started | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
