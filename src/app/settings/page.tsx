@@ -1,6 +1,7 @@
 import { connection } from 'next/server';
 import { DevJobTrigger } from '@/components/dev-job-trigger';
 import { DiscogsCredentials } from '@/components/secret-field';
+import { StoragePaths } from '@/components/storage-paths';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Card,
@@ -14,7 +15,9 @@ import {
   listSecretStatus,
   type SecretStatus,
   SecretsFileError,
+  secretsFile,
 } from '@/server/secrets';
+import { dataRoot } from '@/server/storage/paths';
 
 function readStatuses():
   | { ok: true; statuses: SecretStatus[] }
@@ -25,6 +28,15 @@ function readStatuses():
     if (err instanceof SecretsFileError) {
       return { ok: false, reason: err.message.slice(0, 160) };
     }
+    throw err;
+  }
+}
+
+function secretsPathOrNull(): string | null {
+  try {
+    return secretsFile();
+  } catch (err) {
+    if (err instanceof SecretsFileError) return null;
     throw err;
   }
 }
@@ -70,6 +82,22 @@ export default async function SettingsPage() {
                 </AlertDescription>
               </Alert>
             )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Data folder</CardTitle>
+            <CardDescription>
+              {
+                'Everything the app stores lives in this folder. Stop the app before copying it to another computer.'
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <StoragePaths
+              dataDir={dataRoot()}
+              secretsPath={secretsPathOrNull()}
+            />
           </CardContent>
         </Card>
         {showDeveloper ? (
