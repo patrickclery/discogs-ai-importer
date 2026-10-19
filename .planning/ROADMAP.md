@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Foundation
+
 **Goal**: The owner can launch the app locally with one command and save their credentials. All state lives in one portable data folder, and background work survives restarts and hot reloads.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
@@ -29,18 +30,28 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can enter and save their Discogs app credentials on the settings page and confirm the local Claude CLI works on their subscription (no API key); after a reload saved values show masked, an env var overrides the saved value, and no secret appears unmasked in any API response or in `git status`
   3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
   4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
+
 **Plans:** 6 plans
 
 Plans:
+**Wave 1**
 - [ ] 01-01-PLAN.md — Walking skeleton tracer: D-06 and package-legitimacy gates, then scaffold, 127.0.0.1 launch, boot migrations, jobs table, singleton worker, status and dev-job routes, verify-skeleton (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-05-PLAN.md — App shell on the tracer path: shadcn + UI-SPEC tokens, header nav and live status indicator, empty states, error page, Queue test job card (wave 2)
 - [ ] 01-06-PLAN.md — Host/Origin guard, Vitest harness with queue tests, mise/.nvmrc pins, README and .env.example (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-02-PLAN.md — Restart-safe single worker and portable data folder: retry/backoff, crash recovery, worker lease, handler timeout, resolveData, kill -9 / HMR / copy-folder proofs (wave 3)
 - [ ] 01-03-PLAN.md — Discogs credentials on the settings page: secrets.json outside DATA_DIR, masked SecretField, env override, Data folder card, canary leak proof (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 01-04-PLAN.md — Claude CLI card (D-18): install/login detection, ANTHROPIC_API_KEY warning, vision model, Test Claude, child-process runner, Upload readiness (wave 4)
+
 **UI hint**: yes
 
 ### Phase 2: Shelf Scan
+
 **Goal**: User drops shelf photos and sees every detected spine as a horizontal crop next to the AI-extracted fields, which they can correct. Each photo costs exactly one Claude call.
 **Mode:** mvp
 **Depends on**: Phase 1
@@ -51,10 +62,12 @@ Plans:
   3. Each analyzed photo has exactly one recorded Claude call with its raw response persisted, and re-uploading an identical photo makes zero calls and shows the existing spines
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 3: Discogs Match
+
 **Goal**: User connects their Discogs account and, for each music spine, sees candidate releases they can recognize. Manual search and paste-ID cover the cases auto-search misses, and every request respects the rate limit.
 **Mode:** mvp
 **Depends on**: Phase 2
@@ -65,10 +78,12 @@ Plans:
   3. Searching a large batch of spines never loses work to Discogs rate limiting; requests are paced, and after a 429 they back off and resume on their own
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 4: Import & Review Queue
+
 **Goal**: User confirms the right release for each spine and it lands in their Discogs collection exactly once. A status-driven list lets them work through the whole shelf to completion.
 **Mode:** mvp
 **Depends on**: Phase 3
@@ -79,6 +94,7 @@ Plans:
   3. Killing the app mid-import or retrying a failed import never creates a duplicate collection entry, and every imported spine records its Discogs instance ID
   4. User can filter the spine list by pending, matched, imported, not found, not on Discogs and failed, with a count for each status
   5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs". Film spines get this suggested by default, and the user can override it
+
 **Plans**: TBD
 **UI hint**: yes
 
