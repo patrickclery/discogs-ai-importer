@@ -1,4 +1,4 @@
-// Walking-skeleton tracer proof (Plan 01-01).
+// Walking-skeleton tracer proof (Plans 01-01, 01-05).
 // Run: node scripts/verify-skeleton.ts   (VERIFY_SKIP_BUILD=1 reuses .next)
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -163,11 +163,68 @@ export async function stepLoopbackOnly(port: number): Promise<void> {
   );
 }
 
-// (e) the App Router page layer is on the tracer path.
+// (e) the App Router page layer is on the tracer path: / redirects to /upload.
 export async function stepHomePage(port: number): Promise<void> {
-  step('(e) GET / returns 200');
+  step('(e) GET / redirects to /upload');
   const res = await httpRequest({ port, path: '/' });
-  assert(res.status === 200, `GET / returned ${res.status}`);
+  assert(
+    res.status === 307 || res.status === 308,
+    `GET / returned ${res.status}, expected 307 or 308`,
+  );
+  const location = String(res.headers.location ?? '');
+  assert(
+    location.endsWith('/upload'),
+    `GET / location is "${location}", expected it to end with /upload`,
+  );
+}
+
+function decodeEntities(html: string): string {
+  return html
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+async function getPage(port: number, pagePath: string): Promise<string> {
+  const res = await httpRequest({ port, path: pagePath });
+  assert(res.status === 200, `GET ${pagePath} returned ${res.status}`);
+  return decodeEntities(res.body);
+}
+
+function assertContains(html: string, text: string, where: string): void {
+  assert(html.includes(text), `${where} does not contain "${text}"`);
+}
+
+// (e2) the shell renders: nav order, empty states, status loading text, dev card.
+export async function stepShellPages(port: number): Promise<void> {
+  step('(e2) app shell, empty states and Developer card (hooks on)');
+  const upload = await getPage(port, '/upload');
+  assertContains(upload, "Upload isn't built yet", '/upload');
+  assertContains(upload, 'Open Settings', '/upload');
+  assertContains(upload, 'Checking worker…', '/upload');
+  const nav = upload.match(/<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/);
+  assert(nav, '/upload has no <nav aria-label="Main">');
+  const labels = [...nav[1].matchAll(/<a\b[^>]*>([^<]*)<\/a>/g)].map((m) =>
+    m[1].trim(),
+  );
+  assert(
+    labels.join(',') === 'Upload,Spines,Settings',
+    `Main nav labels are [${labels.join(', ')}], expected Upload, Spines, Settings`,
+  );
+
+  const spines = await getPage(port, '/spines');
+  assertContains(spines, 'No spines yet', '/spines');
+  const spinesLink = spines.match(/<a\b[^>]*href="\/spines"[^>]*>/);
+  assert(spinesLink, '/spines has no link to /spines');
+  assert(
+    spinesLink[0].includes('aria-current="page"'),
+    'Spines link on /spines lacks aria-current="page"',
+  );
+
+  const settings = await getPage(port, '/settings');
+  assertContains(settings, 'Queue test job', '/settings (hooks on)');
 }
 
 // (f) a test job round-trips route -> SQLite -> worker -> /api/status.
@@ -258,6 +315,17 @@ export async function stepHooksOff(port: number): Promise<void> {
   );
 }
 
+// (h2) the Developer card is hidden under next start without APP_TEST_HOOKS.
+export async function stepSettingsHooksOff(port: number): Promise<void> {
+  step('(h2) /settings hides the Developer card without APP_TEST_HOOKS');
+  const res = await httpRequest({ port, path: '/settings' });
+  assert(res.status === 200, `GET /settings returned ${res.status}`);
+  assert(
+    !res.body.includes('Queue test job'),
+    '/settings renders "Queue test job" without APP_TEST_HOOKS',
+  );
+}
+
 runMain('verify-skeleton', async (onCleanup) => {
   const tmp = await makeTempDir('verify-skeleton');
   onCleanup(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -273,12 +341,14 @@ runMain('verify-skeleton', async (onCleanup) => {
   stepDataFolder(dataDir);
   await stepLoopbackOnly(port);
   await stepHomePage(port);
+  await stepShellPages(port);
   await stepJobRoundTrip(port);
   await stepBadBody(port);
   await server.stop('SIGTERM');
 
   server = await stepStart(dataDir, port, false);
   await stepHooksOff(port);
+  await stepSettingsHooksOff(port);
 
   step('(i) stop');
   await server.stop('SIGTERM');
