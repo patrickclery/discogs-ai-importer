@@ -67,8 +67,13 @@ export async function stepHostForeign(port: number): Promise<void> {
 
 // (c) mutations from foreign or malformed Origins are refused.
 export async function stepOriginForeign(port: number): Promise<void> {
-  step('(c) foreign or malformed Origin on POST gets 403');
-  for (const origin of ['http://evil.test', 'not a url']) {
+  step('(c) foreign, other-port or malformed Origin on POST gets 403');
+  for (const origin of [
+    'http://evil.test',
+    'not a url',
+    `http://127.0.0.1:${port + 1}`,
+    `http://localhost:${port + 1}`,
+  ]) {
     await expectStatus(
       `POST Origin ${JSON.stringify(origin)}`,
       port,
@@ -81,18 +86,55 @@ export async function stepOriginForeign(port: number): Promise<void> {
       403,
     );
   }
+  await expectStatus(
+    'POST Sec-Fetch-Site same-site',
+    port,
+    {
+      method: 'POST',
+      path: '/api/dev/jobs',
+      headers: { 'sec-fetch-site': 'same-site' },
+      body: JOB_BODY,
+    },
+    403,
+  );
+  await expectStatus(
+    'POST text/plain without Origin',
+    port,
+    {
+      method: 'POST',
+      path: '/api/dev/jobs',
+      headers: { 'content-type': 'text/plain' },
+      body: JOB_BODY,
+    },
+    415,
+  );
 }
 
 // (d) same-origin and Origin-less mutations pass.
 export async function stepOriginAllowed(port: number): Promise<void> {
   step('(d) same-origin and Origin-less POSTs pass');
   await expectStatus(
-    'POST Origin localhost:PORT',
+    'POST Origin 127.0.0.1:PORT',
     port,
     {
       method: 'POST',
       path: '/api/dev/jobs',
-      headers: { origin: `http://localhost:${port}` },
+      headers: { origin: `http://127.0.0.1:${port}` },
+      body: JOB_BODY,
+    },
+    201,
+  );
+  await expectStatus(
+    'POST Host and Origin localhost:PORT',
+    port,
+    {
+      method: 'POST',
+      path: '/api/dev/jobs',
+      headers: {
+        host: `localhost:${port}`,
+        origin: `http://localhost:${port}`,
+        'sec-fetch-site': 'same-origin',
+      },
       body: JOB_BODY,
     },
     201,

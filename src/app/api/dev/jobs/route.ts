@@ -44,6 +44,15 @@ export async function GET() {
 export async function POST(req: Request) {
   await connection();
   if (!devHooksEnabled()) return notFound();
+  // A JSON content type forces a CORS preflight for cross-origin callers, so
+  // a no-preflight text/plain form POST cannot reach this handler (WR-01).
+  const contentType = req.headers.get('content-type') ?? '';
+  if (!/^application\/json\s*(;|$)/i.test(contentType)) {
+    return Response.json(
+      { error: 'content-type must be application/json' },
+      { status: 415 },
+    );
+  }
   let raw: unknown;
   try {
     raw = await req.json();
