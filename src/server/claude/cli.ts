@@ -1,5 +1,7 @@
 import 'server-only';
+import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { z } from 'zod';
 import { runProcess } from '../proc/run';
 import { SECRET_ENV_NAMES } from '../secrets';
@@ -9,7 +11,14 @@ import { SECRET_ENV_NAMES } from '../secrets';
 // no SDK. Every spawn here:
 //   - goes through runProcess (argv array, no shell, timeout, group kill)
 //   - uses buildClaudeEnv(), which drops ANTHROPIC_API_KEY and app secrets
-//   - runs from os.tmpdir(), so no project CLAUDE.md or settings are loaded
+//   - runs from claudeWorkDir(), a private empty 0700 dir this process
+//     created, never the shared world-writable os.tmpdir() (CR-01)
+//   - passes buildClaudeArgs()' hardening flags: --restricted ignores user,
+//     project and local settings files (so no planted or owner hooks or
+//     permission modes) and refuses bypassPermissions; --safe-mode disables
+//     CLAUDE.md (cwd and every parent), skills, plugins and hooks;
+//     --strict-mcp-config drops MCP servers; tools are off unless a caller
+//     asks for Read scoped to given directories
 //   - uses the CLI's normal auth path; the minimal mode (API-key-only auth)
 //     is never used
 
@@ -85,19 +94,56 @@ function parseJson(text: string): unknown {
   }
 }
 
+const g = globalThis as unknown as {
+  __claudeCliStatus?: Map<string, ClaudeCliStatus>;
+  __claudeWorkDir?: string;
+};
+
+/** True when dir is a real directory (not a link) we own with mode 0700. */
+function isPrivateDir(dir: string): boolean {
+  try {
+    const st = fs.lstatSync(dir);
+    if (!st.isDirectory() || st.isSymbolicLink()) return false;
+    const uid = process.getuid?.();
+    if (uid !== undefined && st.uid !== uid) return false;
+    return process.platform === 'win32' || (st.mode & 0o077) === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Private working directory for every `claude` spawn (CR-01): created once
+ * per process with mkdtemp (mode 0700, owned by us) and re-created if it was
+ * removed or tampered with. Nobody else can plant CLAUDE.md, .claude/ or
+ * .mcp.json in it.
+ */
+export function claudeWorkDir(): string {
+  const existing = g.__claudeWorkDir;
+  if (existing && isPrivateDir(existing)) return existing;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dai-claude-'));
+  fs.chmodSync(dir, 0o700);
+  g.__claudeWorkDir = dir;
+  process.once('exit', () => {
+    try {
+      fs.rmdirSync(dir); // only removes it while empty; never follows links
+    } catch {
+      // not empty or already gone
+    }
+  });
+  return dir;
+}
+
 function run(args: string[], timeoutMs: number) {
   return runProcess({
     command: claudeBin(),
     args,
     env: buildClaudeEnv(),
-    cwd: os.tmpdir(),
+    cwd: claudeWorkDir(),
     timeoutMs,
   });
 }
 
-const g = globalThis as unknown as {
-  __claudeCliStatus?: Map<string, ClaudeCliStatus>;
-};
 if (!g.__claudeCliStatus)
   g.__claudeCliStatus = new Map<string, ClaudeCliStatus>();
 const cache = g.__claudeCliStatus;
@@ -197,18 +243,54 @@ const TEST_TIMEOUT_MS = 60_000;
 const MODEL_ID = /^[a-z0-9][a-z0-9.-]*$/;
 const LOGIN_HINT = /log ?in|\/login|authenticat/i;
 
-/** argv for the test call. Never includes the minimal (API-key-only) mode. */
-export function buildTestArgs(model: string): string[] {
-  return [
+export type ClaudeCallArgs = {
+  prompt: string;
+  model: string;
+  /**
+   * Absolute directories the Read tool may open (Phase 2 vision: the photo's
+   * directory). Empty or omitted means no tools at all. --restricted confines
+   * file tools to the working dir plus these --add-dir entries.
+   */
+  readDirs?: string[];
+};
+
+/**
+ * argv for every headless call: JSON output, the model, and the hardening
+ * flags (CR-01). Never includes the minimal (API-key-only) mode.
+ */
+export function buildClaudeArgs(opts: ClaudeCallArgs): string[] {
+  const readDirs = opts.readDirs ?? [];
+  for (const dir of readDirs) {
+    if (!path.isAbsolute(dir) || dir.startsWith('-')) {
+      throw new Error('readDirs entries must be absolute paths');
+    }
+  }
+  const args = [
     '-p',
-    TEST_PROMPT,
+    opts.prompt,
     '--output-format',
     'json',
     '--model',
-    model,
+    opts.model,
     '--no-session-persistence',
     '--strict-mcp-config',
+    '--restricted',
+    '--safe-mode',
+    '--permission-mode',
+    'dontAsk',
   ];
+  if (readDirs.length === 0) {
+    args.push('--tools', '');
+  } else {
+    args.push('--tools', 'Read', '--allowedTools', 'Read');
+    for (const dir of readDirs) args.push('--add-dir', dir);
+  }
+  return args;
+}
+
+/** argv for the test call: no tools. */
+export function buildTestArgs(model: string): string[] {
+  return buildClaudeArgs({ prompt: TEST_PROMPT, model });
 }
 
 export type TestResult =

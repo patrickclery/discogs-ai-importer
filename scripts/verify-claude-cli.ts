@@ -157,10 +157,20 @@ runMain('verify-claude-cli', async (onCleanup) => {
     for (const [name, present] of Object.entries(e.env)) {
       assert(!present, `fake CLI received ${name} (argv ${e.argv.join(' ')})`);
     }
-    assert(e.cwd === tmp, `fake CLI ran in ${e.cwd}, expected ${tmp}`);
+    // CR-01: a private dir of our own, never the shared os.tmpdir().
+    assert(e.cwd !== tmp, `fake CLI ran in the shared ${tmp}`);
+    assert(
+      path.basename(e.cwd).startsWith('dai-claude-'),
+      `fake CLI ran in ${e.cwd}, expected a private dai-claude-* dir`,
+    );
     assert(!e.argv.includes('--bare'), 'fake CLI was started in minimal mode');
+    if (e.argv[0] === '-p') {
+      for (const f of ['--restricted', '--safe-mode', '--strict-mcp-config']) {
+        assert(e.argv.includes(f), `-p call lacks ${f}`);
+      }
+    }
   }
-  console.log(`   ${log.length} invocations, env scrubbed, cwd ${tmp}`);
+  console.log(`   ${log.length} invocations, env scrubbed, private cwd`);
 
   await withServer(
     '(e) mode logged-out: Not logged in, Upload offers Open Settings',

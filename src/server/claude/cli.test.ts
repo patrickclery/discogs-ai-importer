@@ -10,8 +10,10 @@ import { testClaudeAction } from '@/app/settings/actions';
 import { runProcess } from '../proc/run';
 import { setVisionModel } from '../settings';
 import {
+  buildClaudeArgs,
   buildClaudeEnv,
   buildTestArgs,
+  claudeWorkDir,
   clearClaudeCliStatusCache,
   getClaudeCliStatus,
   TEST_PROMPT,
@@ -279,7 +281,8 @@ describe('getClaudeCliStatus', () => {
         DISCOGS_CONSUMER_KEY: false,
         DISCOGS_CONSUMER_SECRET: false,
       });
-      expect(e.cwd).toBe(fs.realpathSync(os.tmpdir()));
+      expect(e.cwd).toBe(fs.realpathSync(claudeWorkDir()));
+      expect(e.cwd).not.toBe(fs.realpathSync(os.tmpdir()));
     }
   });
 
@@ -309,8 +312,64 @@ const TIMEOUT =
 const FAILED_PREFIX = 'Test failed: ';
 const FAILED_SUFFIX = '. Try again in a moment.';
 
+describe('claudeWorkDir', () => {
+  it('is a private 0700 dir we own, not os.tmpdir(), and stable across calls', () => {
+    const dir = claudeWorkDir();
+    expect(dir).not.toBe(os.tmpdir());
+    expect(fs.realpathSync(dir)).not.toBe(fs.realpathSync(os.tmpdir()));
+    const st = fs.lstatSync(dir);
+    expect(st.isDirectory()).toBe(true);
+    expect(st.mode & 0o777).toBe(0o700);
+    expect(st.uid).toBe(process.getuid?.());
+    expect(claudeWorkDir()).toBe(dir);
+  });
+
+  it('re-creates the dir when it was loosened or removed', () => {
+    const dir = claudeWorkDir();
+    fs.chmodSync(dir, 0o777);
+    const next = claudeWorkDir();
+    expect(next).not.toBe(dir);
+    expect(fs.lstatSync(next).mode & 0o777).toBe(0o700);
+    fs.rmdirSync(dir);
+    fs.rmdirSync(next);
+    const third = claudeWorkDir();
+    expect(third).not.toBe(next);
+    expect(fs.existsSync(third)).toBe(true);
+  });
+});
+
+describe('buildClaudeArgs', () => {
+  it('adds Read scoped to the given absolute dirs, keeping the hardening flags', () => {
+    const args = buildClaudeArgs({
+      prompt: 'read it',
+      model: 'claude-opus-5-5',
+      readDirs: ['/data/photos/abc'],
+    });
+    expect(args.slice(-6)).toEqual([
+      '--tools',
+      'Read',
+      '--allowedTools',
+      'Read',
+      '--add-dir',
+      '/data/photos/abc',
+    ]);
+    for (const f of ['--restricted', '--safe-mode', '--strict-mcp-config']) {
+      expect(args).toContain(f);
+    }
+    expect(args).not.toContain('--bare');
+  });
+
+  it('rejects relative or flag-like readDirs', () => {
+    for (const d of ['photos', '--help']) {
+      expect(() =>
+        buildClaudeArgs({ prompt: 'x', model: 'm', readDirs: [d] }),
+      ).toThrow(/absolute/);
+    }
+  });
+});
+
 describe('buildTestArgs', () => {
-  it('builds the headless JSON call with the model and no minimal-mode flag', () => {
+  it('builds the headless JSON call with the model, hardening flags, no tools and no minimal-mode flag', () => {
     const args = buildTestArgs('claude-sonnet-5-5');
     expect(args).toEqual([
       '-p',
@@ -321,7 +380,16 @@ describe('buildTestArgs', () => {
       'claude-sonnet-5-5',
       '--no-session-persistence',
       '--strict-mcp-config',
+      '--restricted',
+      '--safe-mode',
+      '--permission-mode',
+      'dontAsk',
+      '--tools',
+      '',
     ]);
+    // Never load project/local/user settings (planted hooks) or bypass mode.
+    expect(args).not.toContain('bypassPermissions');
+    expect(args).not.toContain('--setting-sources');
     expect(TEST_PROMPT).toBe(
       'Reply with exactly the word OK and nothing else.',
     );
@@ -335,7 +403,7 @@ describe('testClaude', () => {
   const fake = useFakeClaude();
   const promptCalls = () => fake.log().filter((e) => e.argv[0] === '-p');
 
-  it('mode ok: succeeds naming the model, runs from os.tmpdir() without ANTHROPIC_API_KEY', async () => {
+  it('mode ok: succeeds naming the model, runs from the private work dir without ANTHROPIC_API_KEY', async () => {
     process.env.ANTHROPIC_API_KEY = 'sk-ant-CANARY-0123456789zz';
     process.env.DISCOGS_CONSUMER_SECRET = 'CANARY-SECRET';
     const res = await testClaude({ model: 'claude-sonnet-5-5' });
@@ -348,7 +416,8 @@ describe('testClaude', () => {
     const calls = promptCalls();
     expect(calls.length).toBe(1);
     expect(calls[0].argv).toEqual(buildTestArgs('claude-sonnet-5-5'));
-    expect(calls[0].cwd).toBe(fs.realpathSync(os.tmpdir()));
+    expect(calls[0].cwd).toBe(fs.realpathSync(claudeWorkDir()));
+    expect(calls[0].cwd).not.toBe(fs.realpathSync(os.tmpdir()));
     expect(calls[0].env.ANTHROPIC_API_KEY).toBe(false);
     expect(calls[0].env.DISCOGS_CONSUMER_SECRET).toBe(false);
   });
