@@ -283,11 +283,32 @@ describe('noop handler (failTimes, writeFile)', () => {
     await expect(runNoop({ failTimes: 2 }, ctx(3))).resolves.toBeUndefined();
   });
 
-  it('writeFile writes the job id and a newline under DATA_DIR', async () => {
-    await runNoop({ writeFile: 'photos/probe.txt' }, ctx(1, 'JOBX'));
+  it('writeFile writes the job id and a newline under DATA_DIR/test-writes', async () => {
+    await runNoop({ writeFile: 'test-writes/probe.txt' }, ctx(1, 'JOBX'));
     expect(
-      fs.readFileSync(path.join(dataDir(), 'photos', 'probe.txt'), 'utf8'),
+      fs.readFileSync(path.join(dataDir(), 'test-writes', 'probe.txt'), 'utf8'),
     ).toBe('JOBX\n');
+  });
+
+  it('writeFile outside test-writes/ (app.db, -wal, photos) throws and leaves the file alone (WR-02)', async () => {
+    const db = path.join(dataDir(), 'app.db');
+    const before = fs.readFileSync(db);
+    for (const target of [
+      'app.db',
+      'app.db-wal',
+      'app.db-shm',
+      'photos/x.jpg',
+      'test-writes',
+      'test-writes/../app.db',
+      'test-writes-evil/x',
+    ]) {
+      await expect(
+        runNoop({ writeFile: target }, ctx(1)),
+        target,
+      ).rejects.toThrow('writeFile must be inside test-writes/');
+    }
+    expect(fs.readFileSync(db).equals(before)).toBe(true);
+    expect(fs.existsSync(path.join(dataDir(), 'photos', 'x.jpg'))).toBe(false);
   });
 
   it('writeFile "../escape.txt" throws and writes nothing outside DATA_DIR', async () => {

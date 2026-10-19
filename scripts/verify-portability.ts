@@ -22,7 +22,7 @@ import {
   startServer,
 } from './lib/server.ts';
 
-const PROBE = 'photos/portability-probe.txt';
+const PROBE = 'test-writes/portability-probe.txt';
 
 async function start(dataDir: string): Promise<ServerHandle> {
   return startServer({

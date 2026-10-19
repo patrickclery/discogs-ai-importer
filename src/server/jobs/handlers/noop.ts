@@ -2,7 +2,7 @@ import 'server-only';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
-import { resolveData } from '../../storage/paths';
+import { dataRoot, resolveData } from '../../storage/paths';
 import type { JobContext } from '../types';
 
 export const NoopPayload = z.object({
@@ -10,6 +10,19 @@ export const NoopPayload = z.object({
   failTimes: z.number().int().min(0).max(5).optional(),
   writeFile: z.string().min(1).max(200).optional(),
 });
+
+/** The only folder the test hook may write to, so it can never hit app.db (WR-02). */
+export const TEST_WRITES_DIR = 'test-writes';
+
+/** Absolute target of a writeFile payload; must stay inside DATA_DIR/test-writes. */
+export function resolveTestWrite(rel: string): string {
+  const abs = resolveData(rel); // throws 'path escapes DATA_DIR'
+  const dir = path.join(dataRoot(), TEST_WRITES_DIR);
+  if (!abs.startsWith(dir + path.sep)) {
+    throw new Error(`noop: writeFile must be inside ${TEST_WRITES_DIR}/`);
+  }
+  return abs;
+}
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -31,7 +44,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 
 /**
  * Test handler: planned failures, an abortable sleep, then an idempotent
- * file write inside DATA_DIR (overwrite, so a re-run is harmless).
+ * file write inside DATA_DIR/test-writes (overwrite, so a re-run is harmless).
  */
 export async function runNoop(
   payload: unknown,
@@ -46,7 +59,7 @@ export async function runNoop(
   }
   await sleep(ms, ctx.signal);
   if (writeFile !== undefined) {
-    const abs = resolveData(writeFile);
+    const abs = resolveTestWrite(writeFile);
     await fs.mkdir(path.dirname(abs), { recursive: true });
     await fs.writeFile(abs, `${ctx.job.id}\n`);
   }
