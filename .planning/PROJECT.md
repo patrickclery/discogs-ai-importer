@@ -29,7 +29,7 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 - [ ] Every item in the list shows its spine crop next to the extracted text
 - [ ] User can edit/correct the extracted fields and re-run the Discogs search for that spine
 - [ ] Items with no Discogs match can be flagged "not on Discogs"
-- [ ] User can configure their Anthropic API key and Discogs app credentials locally
+- [ ] User can configure their Discogs app credentials locally; Claude access uses their existing Claude subscription via the local Claude Code CLI (no API key)
 
 ### Out of Scope
 
@@ -53,6 +53,7 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 - **Cost**: Exactly one Claude vision call per uploaded photo; no per-spine AI calls; cache by image hash
 - **Rate limits**: Discogs 60 req/min authenticated — must queue
 - **Portability**: Whole app state (DB + images) lives in the project/data folder and can be copied elsewhere
+- **Billing**: Vision must run on the user's Claude subscription (Claude Code CLI), never API credits; usage counts against subscription limits
 - **Secrets**: API keys stored locally (.env or local settings), never committed
 
 ## Key Decisions
@@ -63,6 +64,7 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 | Claude vision, one call per photo returning all spines + bounding boxes | Avoid N calls per photo; cost control | — Pending |
 | Local cropping with sharp from AI bounding boxes | Spine images for review without extra AI calls | — Pending |
 | Human confirms Discogs match before adding to collection | OCR + search is fuzzy; avoid polluting collection | — Pending |
+| Use Claude subscription via headless `claude -p` CLI instead of API key | User doesn't want to pay for API credits | — Pending |
 | Image-hash dedup; re-scan only on explicit action | Prevent accidental repeat API spend | — Pending |
 
 ## Evolution

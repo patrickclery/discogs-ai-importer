@@ -29,9 +29,9 @@ All decisions below were auto-selected (`--auto`) using the recommended option; 
 - **D-07:** Copying is safe when the app is stopped; a hot backup uses `VACUUM INTO` (backup UI itself is v2/DATA-03).
 
 ### Secrets & settings
-- **D-08:** Secrets (Anthropic API key, Discogs consumer key/secret, later OAuth tokens) are stored in a gitignored `secrets.json` at the project root (path overridable), NOT inside `data/` — so copying or sharing the data folder never leaks keys. Non-secret settings (model id, folder id) live in the DB `settings` table. Env vars (`ANTHROPIC_API_KEY`, `DISCOGS_CONSUMER_KEY`, `DISCOGS_CONSUMER_SECRET`) override saved values.
+- **D-08:** Secrets (Discogs consumer key/secret, later OAuth tokens — NO Anthropic API key, see D-18) are stored in a gitignored `secrets.json` at the project root (path overridable), NOT inside `data/` — so copying or sharing the data folder never leaks keys. Non-secret settings (model id, folder id) live in the DB `settings` table. Env vars (`DISCOGS_CONSUMER_KEY`, `DISCOGS_CONSUMER_SECRET`) override saved values.
 - **D-09:** Settings page shows each secret masked (e.g. `sk-ant-…a1b2`), an "overridden by env" badge when applicable, and a replace/clear action. No API route ever returns an unmasked secret; secrets are only read in server-only modules (`import 'server-only'`).
-- **D-10:** Settings page includes a "Test" button for the Anthropic key (cheap models-list call, no vision tokens). Discogs test arrives with Phase 3.
+- **D-10:** Settings page has a "Claude CLI" card: detects `claude` on PATH, and a "Test Claude" button runs a tiny headless `claude -p` call and reports ok / not installed / not logged in. Discogs test arrives with Phase 3.
 - **D-11:** `.gitignore` committed in the first code commit covering `data/`, `secrets.json`, `.env*.local`.
 
 ### Job queue & worker
@@ -43,6 +43,9 @@ All decisions below were auto-selected (`--auto`) using the recommended option; 
 ### App shell
 - **D-16:** Minimal shell with top nav: Upload, Spines, Settings (Upload/Spines are placeholders until Phase 2). Light/dark follows system.
 - **D-17:** A small status indicator in the shell (worker running, queued job count) polled from `GET /api/status`.
+
+### Vision via Claude subscription (user decision 2026-10-18)
+- **D-18:** No Anthropic API key and no API billing. All Claude calls go through the user's Claude subscription by spawning the local Claude Code CLI headless (`claude -p --output-format json --json-schema <schema> --model <id> --allowedTools Read`, image passed by file path). The child process env must have `ANTHROPIC_API_KEY` removed so the CLI uses subscription login; Settings shows a warning if that var is set server-side. `@anthropic-ai/sdk` is not a dependency. — **Reversibility:** costly — vision call site, settings UI and cost assumptions depend on it.
 
 ### Claude's Discretion
 - Exact component layout and styling of settings page and shell.
