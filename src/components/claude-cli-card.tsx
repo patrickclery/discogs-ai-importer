@@ -1,17 +1,19 @@
 import { TriangleAlert } from 'lucide-react';
 import { ModelSelect } from '@/components/model-select';
+import { TestClaudeButton } from '@/components/test-claude-button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Field, FieldDescription, FieldTitle } from '@/components/ui/field';
 import { Separator } from '@/components/ui/separator';
-import type { ClaudeCliStatus } from '@/server/claude/cli';
+import { type ClaudeCliStatus, isClaudeReady } from '@/server/claude/cli';
 import { VISION_MODELS } from '@/server/settings';
 
 // Claude CLI card (D-10, D-18). Server component; receives only the
@@ -144,6 +146,9 @@ export function ClaudeCliCard({
         <Separator />
         <ModelSelect value={model} models={VISION_MODELS} />
       </CardContent>
+      <CardFooter>
+        <TestClaudeButton ready={isClaudeReady(status)} />
+      </CardFooter>
     </Card>
   );
 }

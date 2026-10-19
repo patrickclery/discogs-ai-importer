@@ -3,12 +3,21 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import {
+  clearClaudeCliStatusCache,
+  type TestResult,
+  testClaude,
+} from '@/server/claude/cli';
+import {
   clearSecret,
   SECRET_KEYS,
   type SecretKey,
   saveSecrets,
 } from '@/server/secrets';
-import { setVisionModel, VisionModelSchema } from '@/server/settings';
+import {
+  getVisionModel,
+  setVisionModel,
+  VisionModelSchema,
+} from '@/server/settings';
 
 // Server Actions for /settings (D-09). Return values carry only status and
 // copy; they never echo a submitted or stored value.
@@ -103,4 +112,12 @@ export async function saveVisionModel(
   }
   revalidatePath('/settings');
   return { ok: true };
+}
+
+/** One headless Claude call with the stored vision model (D-10, D-18). */
+export async function testClaudeAction(): Promise<TestResult> {
+  const result = await testClaude({ model: getVisionModel() });
+  // The next page view re-checks install and login instead of a stale cache.
+  clearClaudeCliStatusCache();
+  return result;
 }

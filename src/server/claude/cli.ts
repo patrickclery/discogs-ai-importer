@@ -188,3 +188,129 @@ export function isClaudeReady(s: ClaudeCliStatus): boolean {
     s.installed && (s.auth.state === 'subscription' || s.auth.state === 'other')
   );
 }
+
+// ---------------------------------------------------------------------------
+// Test Claude (D-10): one tiny headless call through the subscription.
+
+export const TEST_PROMPT = 'Reply with exactly the word OK and nothing else.';
+const TEST_TIMEOUT_MS = 60_000;
+const MODEL_ID = /^[a-z0-9][a-z0-9.-]*$/;
+const LOGIN_HINT = /log ?in|\/login|authenticat/i;
+
+/** argv for the test call. Never includes the minimal (API-key-only) mode. */
+export function buildTestArgs(model: string): string[] {
+  return [
+    '-p',
+    TEST_PROMPT,
+    '--output-format',
+    'json',
+    '--model',
+    model,
+    '--no-session-persistence',
+    '--strict-mcp-config',
+  ];
+}
+
+export type TestResult =
+  | { ok: true; model: string; message: string }
+  | {
+      ok: false;
+      kind: 'not-installed' | 'not-logged-in' | 'timeout' | 'failed';
+      message: string;
+    };
+
+const ResultSchema = z.object({
+  type: z.string().optional(),
+  subtype: z.string().optional(),
+  is_error: z.boolean(),
+  result: z.string().optional(),
+  modelUsage: z.record(z.string(), z.unknown()).optional(),
+});
+
+const NOT_INSTALLED: TestResult = {
+  ok: false,
+  kind: 'not-installed',
+  message: 'Claude CLI not found. Install Claude Code, then try again.',
+};
+const NOT_LOGGED_IN: TestResult = {
+  ok: false,
+  kind: 'not-logged-in',
+  message:
+    "The Claude CLI isn't logged in. Run claude auth login in a terminal, then try again.",
+};
+const TIMED_OUT: TestResult = {
+  ok: false,
+  kind: 'timeout',
+  message: "Claude didn't answer within 60 seconds. Try again in a moment.",
+};
+
+function failed(reason: string): TestResult {
+  const r = cut(reason).replace(/[.\s]+$/, '') || 'unknown error';
+  return {
+    ok: false,
+    kind: 'failed',
+    message: `Test failed: ${r}. Try again in a moment.`,
+  };
+}
+
+function answeringModel(
+  requested: string,
+  usage: Record<string, unknown> | undefined,
+): string {
+  const keys = Object.keys(usage ?? {});
+  return (
+    keys.find((k) => k.startsWith(requested)) ??
+    keys[0] ??
+    requested
+  ).slice(0, 80);
+}
+
+/** Runs one headless `claude -p` call and maps every outcome to copy. */
+export async function testClaude(opts: {
+  model: string;
+  timeoutMs?: number;
+}): Promise<TestResult> {
+  if (!MODEL_ID.test(opts.model)) return failed('invalid model id');
+
+  const status = await getClaudeCliStatus({ maxAgeMs: 0 });
+  if (!status.installed) return NOT_INSTALLED;
+  if (status.auth.state === 'logged-out') return NOT_LOGGED_IN;
+
+  const res = await run(
+    buildTestArgs(opts.model),
+    opts.timeoutMs ?? TEST_TIMEOUT_MS,
+  );
+  if (res.spawnError) {
+    return res.spawnError.code === 'ENOENT'
+      ? NOT_INSTALLED
+      : failed(`could not start the CLI (${res.spawnError.code})`);
+  }
+  if (res.timedOut) return TIMED_OUT;
+
+  const parsed = ResultSchema.safeParse(parseJson(res.stdout));
+  if (!parsed.success) {
+    if (res.exitCode !== 0) {
+      const line = firstLine(res.stderr);
+      if (LOGIN_HINT.test(line)) return NOT_LOGGED_IN;
+      return failed(line || `the CLI exited with code ${res.exitCode}`);
+    }
+    return failed('unreadable CLI output');
+  }
+  const out = parsed.data;
+  if (out.is_error) {
+    const text =
+      out.result?.trim() || out.subtype || 'the CLI reported an error';
+    return LOGIN_HINT.test(text) ? NOT_LOGGED_IN : failed(text);
+  }
+  if (res.exitCode !== 0) {
+    return failed(`the CLI exited with code ${res.exitCode}`);
+  }
+  if (!out.result?.trim()) return failed('empty answer');
+
+  const model = answeringModel(opts.model, out.modelUsage);
+  return {
+    ok: true,
+    model,
+    message: `Claude works. ${model} answered through your subscription.`,
+  };
+}

@@ -64,7 +64,12 @@ export async function stepStart(
   return startServer({
     mode: 'start',
     port,
-    env: { DATA_DIR: dataDir, APP_TEST_HOOKS: hooks ? '1' : '' },
+    env: {
+      DATA_DIR: dataDir,
+      APP_TEST_HOOKS: hooks ? '1' : '',
+      // No real CLI: /upload must deterministically show Open Settings.
+      CLAUDE_BIN: '/nonexistent/dai-claude-cli',
+    },
   });
 }
 

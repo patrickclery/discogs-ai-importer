@@ -213,6 +213,8 @@ runMain('verify-secrets', async (onCleanup) => {
     APP_TEST_HOOKS: '1',
     DISCOGS_CONSUMER_KEY: '',
     DISCOGS_CONSUMER_SECRET: '',
+    // Keep the Claude CLI card hermetic: never spawn the real CLI here.
+    CLAUDE_BIN: '/nonexistent/dai-claude-cli',
   };
 
   let server: ServerHandle | null = null;
