@@ -1,7 +1,8 @@
 ---
 phase: "2"
 slug: "shelf-scan"
-status: draft
+status: approved
+reviewed_at: "2026-10-19"
 shadcn_initialized: true
 preset: "none (style new-york, base color neutral, cssVariables; tokens overridden per 01-UI-SPEC.md)"
 created: "2026-10-19"
