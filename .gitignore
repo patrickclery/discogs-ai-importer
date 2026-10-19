@@ -47,3 +47,6 @@ next-env.d.ts
 *.db-wal
 *.db-shm
 !.env.example
+
+# Phase 2 spike photos (owner-provided, not committed)
+fixtures/spike/
