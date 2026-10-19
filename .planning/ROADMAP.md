@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04
 **Success Criteria** (what must be TRUE):
   1. User runs one command and the app opens at `http://127.0.0.1:<port>`; it is not reachable from another device on the LAN
-  2. User can enter and save their Anthropic API key and Discogs app credentials on the settings page; after a reload they show masked, an env var overrides the saved value, and no secret appears unmasked in any API response or in `git status`
+  2. User can enter and save their Discogs app credentials on the settings page and confirm the local Claude CLI works on their subscription (no API key); after a reload saved values show masked, an env var overrides the saved value, and no secret appears unmasked in any API response or in `git status`
   3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
   4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
 **Plans:** 4 plans
