@@ -122,14 +122,24 @@ function errorText(error: unknown): string {
   );
 }
 
-/** Terminal failure with no retry (e.g. unknown job type). */
-export function failJob(id: string, error: unknown, now = Date.now()): void {
-  sql()
+/**
+ * Terminal failure with no retry (e.g. unknown job type). When `attempt` is
+ * given, only the running claim that produced it may write; returns whether
+ * the row changed.
+ */
+export function failJob(
+  id: string,
+  error: unknown,
+  now = Date.now(),
+  attempt?: number,
+): boolean {
+  const info = sql()
     .prepare(
-      `UPDATE jobs SET status = 'failed', last_error = ?, finished_at = ?, locked_at = NULL, updated_at = ?
-       WHERE id = ?`,
+      `UPDATE jobs SET status = 'failed', last_error = @error, finished_at = @now, locked_at = NULL, updated_at = @now
+       WHERE id = @id AND (@attempt IS NULL OR (status = 'running' AND attempts = @attempt))`,
     )
-    .run(errorText(error), now, now, id);
+    .run({ error: errorText(error), now, id, attempt: attempt ?? null });
+  return info.changes === 1;
 }
 
 /** Delay before the next try after `attempts` runs: 2 s, 4 s, 8 s ... (D-14). */

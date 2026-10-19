@@ -231,24 +231,58 @@ describe('jobs queue (retry, recovery, dedupe, ordering)', () => {
 describe('processNext (timeouts and unknown types)', () => {
   useTempDataDir();
 
-  it('aborts a handler that runs past timeoutMs and records "timed out after"', async () => {
-    const { id } = enqueue({ lane: 'anthropic', type: 'hang', runAfter: T0 });
+  it('aborts a handler that runs past timeoutMs, waits for it to stop, then requeues with "timed out after"', async () => {
+    const { id } = enqueue({ lane: 'anthropic', type: 'slow', runAfter: T0 });
     let seen: AbortSignal | undefined;
-    const hang: JobHandler = {
+    let stoppedAt = 0;
+    const slow: JobHandler = {
       timeoutMs: 50,
       run: (_payload, ctx) => {
         seen = ctx.signal;
-        return new Promise(() => {});
+        // Honors the signal, but takes 100 ms to wind down (like a child kill).
+        return new Promise((_, reject) => {
+          ctx.signal.addEventListener('abort', () =>
+            setTimeout(() => {
+              stoppedAt = Date.now();
+              reject(ctx.signal.reason);
+            }, 100),
+          );
+        });
       },
     };
     const result = await processNext('anthropic', {
       now: T0,
-      handlers: { hang },
+      handlers: { slow },
+      abortGraceMs: 2000,
     });
+    // processNext only returns (freeing the lane) after the handler stopped.
+    expect(stoppedAt).toBeGreaterThan(0);
+    expect(Date.now()).toBeGreaterThanOrEqual(stoppedAt);
     expect(result).toBe('failed');
     expect(seen?.aborted).toBe(true);
     expect(rawJob(id).last_error).toContain('timed out after');
     expect(rawJob(id).status).toBe('queued');
+  });
+
+  it('fails (never requeues) a timed-out handler that ignores its signal past the grace period (WR-03)', async () => {
+    const { id } = enqueue({ lane: 'anthropic', type: 'hang', runAfter: T0 });
+    const hang: JobHandler = {
+      timeoutMs: 50,
+      run: () => new Promise(() => {}),
+    };
+    const started = Date.now();
+    const result = await processNext('anthropic', {
+      now: T0,
+      handlers: { hang },
+      abortGraceMs: 150,
+    });
+    expect(Date.now() - started).toBeGreaterThanOrEqual(190);
+    expect(result).toBe('failed');
+    expect(rawJob(id).status).toBe('failed');
+    expect(rawJob(id).last_error).toMatch(
+      /handler did not stop after abort \(job timed out after/,
+    );
+    expect(claimNext('anthropic', T0 + 1_000_000)).toBeUndefined();
   });
 
   it('fails a job of unknown type with "unknown job type: X" and no retry', async () => {

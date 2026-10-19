@@ -24,6 +24,13 @@ export const LANE_CONCURRENCY: Record<Lane, number> = {
 
 const IDLE_SLEEP_MS = 500;
 const ERROR_SLEEP_MS = 1000;
+/**
+ * How long an aborted handler gets to actually stop (WR-03). runProcess kills
+ * a child within 3 s of an abort, so a handler that passes ctx.signal on
+ * settles well inside this. The lane stays busy meanwhile, so lane
+ * concurrency holds and the job is never requeued while it still runs.
+ */
+export const ABORT_GRACE_MS = 10_000;
 
 export type WorkerState = {
   bootId: string;
@@ -57,6 +64,28 @@ export class WorkerStoppedError extends Error {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms).unref());
 
+/** Waits for p up to ms; true when it settled (either way) in time. */
+function settlesWithin(p: Promise<unknown>, ms: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), ms);
+    timer.unref();
+    p.then(
+      () => {
+        clearTimeout(timer);
+        resolve(true);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(true);
+      },
+    );
+  });
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** In-flight job controllers, so a stop can abort running handlers. */
 function inflight(): Set<AbortController> {
   g.__appWorkerInflight ??= new Set();
@@ -65,13 +94,22 @@ function inflight(): Set<AbortController> {
 
 export async function processNext(
   lane: Lane,
-  opts: { now?: number; handlers?: Record<string, JobHandler> } = {},
+  opts: {
+    now?: number;
+    handlers?: Record<string, JobHandler>;
+    abortGraceMs?: number;
+  } = {},
 ): Promise<'idle' | 'succeeded' | 'failed'> {
   const job = claimNext(lane, opts.now);
   if (!job) return 'idle';
   const handler = (opts.handlers ?? defaultHandlers)[job.type];
   if (!handler) {
-    failJob(job.id, new Error(`unknown job type: ${job.type}`), opts.now);
+    failJob(
+      job.id,
+      new Error(`unknown job type: ${job.type}`),
+      opts.now,
+      job.attempts,
+    );
     return 'failed';
   }
   const controller = new AbortController();
@@ -94,24 +132,45 @@ export async function processNext(
   aborted.catch(() => {});
   const lanes = inflight();
   lanes.add(controller);
+  const run = Promise.resolve().then(() =>
+    handler.run(JSON.parse(job.payload), {
+      job,
+      signal: controller.signal,
+    }),
+  );
+  run.catch(() => {});
   try {
-    const run = Promise.resolve().then(() =>
-      handler.run(JSON.parse(job.payload), {
-        job,
-        signal: controller.signal,
-      }),
-    );
-    run.catch(() => {});
     await Promise.race([run, aborted]);
     complete(job.id, opts.now, job.attempts);
     return 'succeeded';
   } catch (err) {
-    // A stopped worker leaves the job running; lease recovery requeues it.
     // Compare by name: HMR can leave two copies of the class alive.
     const reason = controller.signal.reason as Error | undefined;
-    if (reason?.name !== 'WorkerStoppedError') {
-      failOrRetry(job.id, err, opts.now, job.attempts);
+    const stopped = reason?.name === 'WorkerStoppedError';
+    if (controller.signal.aborted) {
+      // Hold the lane until the handler really stops (WR-03). One that
+      // ignores its signal is failed for good rather than requeued, so the
+      // same job never runs twice at once.
+      const grace = opts.abortGraceMs ?? ABORT_GRACE_MS;
+      if (!(await settlesWithin(run, grace))) {
+        console.error(
+          `[worker] job ${job.id} (${job.type}) did not stop within ${grace} ms of its abort`,
+        );
+        if (!stopped) {
+          failJob(
+            job.id,
+            new Error(
+              `handler did not stop after abort (${errorMessage(err)})`,
+            ),
+            opts.now,
+            job.attempts,
+          );
+        }
+        return 'failed';
+      }
     }
+    // A stopped worker leaves the job running; lease recovery requeues it.
+    if (!stopped) failOrRetry(job.id, err, opts.now, job.attempts);
     return 'failed';
   } finally {
     clearTimeout(timer);
