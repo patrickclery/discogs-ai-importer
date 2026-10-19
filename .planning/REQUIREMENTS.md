@@ -7,10 +7,10 @@
 
 ### Foundation
 
-- [ ] **FOUND-01**: User can run the app locally with one command; it binds to 127.0.0.1 only
-- [ ] **FOUND-02**: All app state (SQLite DB + photos + crops + cached thumbnails) lives under a single relative data folder that can be copied to another machine and still works
+- [x] **FOUND-01**: User can run the app locally with one command; it binds to 127.0.0.1 only
+- [x] **FOUND-02**: All app state (SQLite DB + photos + crops + cached thumbnails) lives under a single relative data folder that can be copied to another machine and still works
 - [ ] **FOUND-03**: User can enter and save their Discogs app credentials in a settings page and verify the local Claude CLI (subscription login) works (env vars override; secrets masked in UI/API, never committed)
-- [ ] **FOUND-04**: Background work (vision calls, Discogs requests) runs in a durable job queue that survives app restarts and dev hot-reloads without duplicating workers
+- [x] **FOUND-04**: Background work (vision calls, Discogs requests) runs in a durable job queue that survives app restarts and dev hot-reloads without duplicating workers
 
 ### Ingest
 
@@ -89,10 +89,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 | Pending |
-| FOUND-02 | Phase 1 | Pending |
+| FOUND-01 | Phase 1 | Complete |
+| FOUND-02 | Phase 1 | Complete |
 | FOUND-03 | Phase 1 | Pending |
-| FOUND-04 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Complete |
 | INGEST-01 | Phase 2 | Pending |
 | INGEST-02 | Phase 2 | Pending |
 | INGEST-03 | Phase 2 | Pending |
