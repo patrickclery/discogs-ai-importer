@@ -21,6 +21,9 @@ if (process.env.FAKE_CLAUDE_LOG) {
       ANTHROPIC_AUTH_TOKEN: 'ANTHROPIC_AUTH_TOKEN' in process.env,
       DISCOGS_CONSUMER_KEY: 'DISCOGS_CONSUMER_KEY' in process.env,
       DISCOGS_CONSUMER_SECRET: 'DISCOGS_CONSUMER_SECRET' in process.env,
+      ANTHROPIC_BASE_URL: 'ANTHROPIC_BASE_URL' in process.env,
+      CLAUDE_CODE_USE_BEDROCK: 'CLAUDE_CODE_USE_BEDROCK' in process.env,
+      CLAUDE_CODE_USE_VERTEX: 'CLAUDE_CODE_USE_VERTEX' in process.env,
     },
   };
   fs.appendFileSync(process.env.FAKE_CLAUDE_LOG, `${JSON.stringify(entry)}\n`);

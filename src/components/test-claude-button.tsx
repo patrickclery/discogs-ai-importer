@@ -67,7 +67,8 @@ export function TestClaudeButton({ ready }: { ready: boolean }) {
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              Install and log in to the Claude CLI first
+              Install the Claude CLI and log in with your Claude subscription
+              first
             </TooltipContent>
           </Tooltip>
         )}

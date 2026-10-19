@@ -25,8 +25,22 @@ import { SECRET_ENV_NAMES } from '../secrets';
 const STATUS_TIMEOUT_MS = 10_000;
 const REASON_MAX = 160;
 
-/** Variables that would make the CLI bill an API account instead of the plan. */
-const API_BILLING_ENV = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'] as const;
+/**
+ * Variables that would make the CLI bill an API or cloud account instead of
+ * the plan, or send the OAuth credential to another endpoint (WR-06).
+ */
+export const API_BILLING_ENV = [
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'ANTHROPIC_BASE_URL',
+  'CLAUDE_CODE_USE_BEDROCK',
+  'CLAUDE_CODE_USE_VERTEX',
+] as const;
+
+/** Names (never values) of API-billing variables set in this server's env. */
+function apiBillingEnvSet(base: NodeJS.ProcessEnv = process.env): string[] {
+  return API_BILLING_ENV.filter((name) => Boolean(base[name]?.trim()));
+}
 
 export function claudeBin(): string {
   return process.env.CLAUDE_BIN || 'claude';
@@ -57,7 +71,10 @@ export type ClaudeCliStatus = {
     subscriptionType: string | null;
     reason: string | null;
   };
+  /** True when any API_BILLING_ENV variable is set server-side. */
   apiKeyInEnv: boolean;
+  /** Which of them (names only). */
+  apiBillingEnv: string[];
   checkedAt: number;
 };
 
@@ -168,7 +185,8 @@ export async function getClaudeCliStatus(
     run(['--version'], timeoutMs),
     run(['auth', 'status', '--json'], timeoutMs),
   ]);
-  const apiKeyInEnv = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const apiBillingEnv = apiBillingEnvSet();
+  const apiKeyInEnv = apiBillingEnv.length > 0;
 
   let status: ClaudeCliStatus;
   if (ver.spawnError) {
@@ -182,6 +200,7 @@ export async function getClaudeCliStatus(
         reason: cut(`the CLI could not be started (${ver.spawnError.code})`),
       },
       apiKeyInEnv,
+      apiBillingEnv,
       checkedAt: Date.now(),
     };
   } else {
@@ -191,6 +210,7 @@ export async function getClaudeCliStatus(
       version: token ? cut(token) : null,
       auth: readAuth(auth, timeoutMs),
       apiKeyInEnv,
+      apiBillingEnv,
       checkedAt: Date.now(),
     };
   }
@@ -228,11 +248,12 @@ function readAuth(
   return { state: 'other', ...base };
 }
 
-/** Installed and logged in by any method (API billing shows its own warning). */
+/**
+ * Installed and logged in with a Claude subscription. Any other login (API
+ * key, console) would bill the API, which D-18 rules out (WR-06).
+ */
 export function isClaudeReady(s: ClaudeCliStatus): boolean {
-  return (
-    s.installed && (s.auth.state === 'subscription' || s.auth.state === 'other')
-  );
+  return s.installed && s.auth.state === 'subscription';
 }
 
 // ---------------------------------------------------------------------------
@@ -297,7 +318,12 @@ export type TestResult =
   | { ok: true; model: string; message: string }
   | {
       ok: false;
-      kind: 'not-installed' | 'not-logged-in' | 'timeout' | 'failed';
+      kind:
+        | 'not-installed'
+        | 'not-logged-in'
+        | 'not-subscription'
+        | 'timeout'
+        | 'failed';
       message: string;
     };
 
@@ -319,6 +345,12 @@ const NOT_LOGGED_IN: TestResult = {
   kind: 'not-logged-in',
   message:
     "The Claude CLI isn't logged in. Run claude auth login in a terminal, then try again.",
+};
+const NOT_SUBSCRIPTION: TestResult = {
+  ok: false,
+  kind: 'not-subscription',
+  message:
+    'The Claude CLI is signed in for API billing, not your subscription. Run claude auth login, choose your Claude account, then try again.',
 };
 const TIMED_OUT: TestResult = {
   ok: false,
@@ -357,6 +389,7 @@ export async function testClaude(opts: {
   const status = await getClaudeCliStatus({ maxAgeMs: 0 });
   if (!status.installed) return NOT_INSTALLED;
   if (status.auth.state === 'logged-out') return NOT_LOGGED_IN;
+  if (status.auth.state === 'other') return NOT_SUBSCRIPTION;
 
   const res = await run(
     buildTestArgs(opts.model),

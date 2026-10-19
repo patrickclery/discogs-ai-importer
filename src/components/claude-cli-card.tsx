@@ -133,10 +133,12 @@ export function ClaudeCliCard({
         {status.apiKeyInEnv ? (
           <Alert className="border-warning/50 text-warning">
             <TriangleAlert aria-hidden="true" />
-            <AlertTitle>ANTHROPIC_API_KEY is set</AlertTitle>
+            <AlertTitle>
+              {`${status.apiBillingEnv.join(', ')} ${status.apiBillingEnv.length > 1 ? 'are' : 'is'} set`}
+            </AlertTitle>
             <AlertDescription>
               {
-                'This variable is set where the app runs. The app removes it before starting claude so vision uses your subscription, but other tools on this computer may still bill the API.'
+                'Set where the app runs. The app removes these before starting claude so vision uses your subscription, but other tools on this computer may still bill the API.'
               }
             </AlertDescription>
           </Alert>

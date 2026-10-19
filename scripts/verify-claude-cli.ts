@@ -194,6 +194,11 @@ runMain('verify-claude-cli', async (onCleanup) => {
       const settings = await getPage(port, '/settings');
       pages.push(settings);
       contains('/settings', settings, ['API billing', 'api_key']);
+      // WR-06: an API-billed login is not ready; Upload sends to Settings.
+      const upload = await getPage(port, '/upload');
+      pages.push(upload);
+      contains('/upload', upload, ['Open Settings']);
+      lacks('/upload', upload, [ALREADY_SET_UP]);
     },
   );
 

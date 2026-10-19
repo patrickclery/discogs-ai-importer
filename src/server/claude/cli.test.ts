@@ -16,6 +16,7 @@ import {
   claudeWorkDir,
   clearClaudeCliStatusCache,
   getClaudeCliStatus,
+  isClaudeReady,
   TEST_PROMPT,
   testClaude,
 } from './cli';
@@ -35,6 +36,9 @@ const ENV_KEYS = [
   'ANTHROPIC_AUTH_TOKEN',
   'DISCOGS_CONSUMER_KEY',
   'DISCOGS_CONSUMER_SECRET',
+  'ANTHROPIC_BASE_URL',
+  'CLAUDE_CODE_USE_BEDROCK',
+  'CLAUDE_CODE_USE_VERTEX',
 ] as const;
 
 type LogEntry = {
@@ -204,6 +208,16 @@ describe('buildClaudeEnv', () => {
     expect(env).toEqual({ PATH: '/usr/bin', HOME: '/home/owner' });
   });
 
+  it('removes Bedrock, Vertex and base-URL overrides that bypass the subscription (WR-06)', () => {
+    const env = buildClaudeEnv({
+      PATH: '/usr/bin',
+      ANTHROPIC_BASE_URL: 'https://proxy.invalid',
+      CLAUDE_CODE_USE_BEDROCK: '1',
+      CLAUDE_CODE_USE_VERTEX: '1',
+    } as Record<string, string> as NodeJS.ProcessEnv);
+    expect(env).toEqual({ PATH: '/usr/bin' });
+  });
+
   it('does not mutate the env it was given', () => {
     const base = {
       ANTHROPIC_API_KEY: 'sk-ant-CANARY',
@@ -280,6 +294,9 @@ describe('getClaudeCliStatus', () => {
         ANTHROPIC_AUTH_TOKEN: false,
         DISCOGS_CONSUMER_KEY: false,
         DISCOGS_CONSUMER_SECRET: false,
+        ANTHROPIC_BASE_URL: false,
+        CLAUDE_CODE_USE_BEDROCK: false,
+        CLAUDE_CODE_USE_VERTEX: false,
       });
       expect(e.cwd).toBe(fs.realpathSync(claudeWorkDir()));
       expect(e.cwd).not.toBe(fs.realpathSync(os.tmpdir()));
@@ -289,6 +306,34 @@ describe('getClaudeCliStatus', () => {
   it('apiKeyInEnv is false when ANTHROPIC_API_KEY is unset', async () => {
     const s = await getClaudeCliStatus();
     expect(s.apiKeyInEnv).toBe(false);
+    expect(s.apiBillingEnv).toEqual([]);
+  });
+
+  it('apiKeyInEnv covers every API-billing variable and names them without values (WR-06)', async () => {
+    process.env.ANTHROPIC_AUTH_TOKEN = 'CANARY-TOKEN';
+    process.env.CLAUDE_CODE_USE_BEDROCK = '1';
+    process.env.ANTHROPIC_BASE_URL = 'https://canary.invalid';
+    const s = await getClaudeCliStatus();
+    expect(s.apiKeyInEnv).toBe(true);
+    expect(s.apiBillingEnv).toEqual([
+      'ANTHROPIC_AUTH_TOKEN',
+      'ANTHROPIC_BASE_URL',
+      'CLAUDE_CODE_USE_BEDROCK',
+    ]);
+    expect(JSON.stringify(s)).not.toMatch(/CANARY|canary/);
+    for (const e of fake.log()) {
+      expect(e.env.ANTHROPIC_AUTH_TOKEN).toBe(false);
+      expect(e.env.ANTHROPIC_BASE_URL).toBe(false);
+      expect(e.env.CLAUDE_CODE_USE_BEDROCK).toBe(false);
+    }
+  });
+
+  it('isClaudeReady only for a subscription login, never API billing (WR-06)', async () => {
+    expect(isClaudeReady(await getClaudeCliStatus())).toBe(true);
+    fake.setMode('api-key');
+    expect(isClaudeReady(await getClaudeCliStatus())).toBe(false);
+    fake.setMode('logged-out');
+    expect(isClaudeReady(await getClaudeCliStatus())).toBe(false);
   });
 
   it('returns the cached object within maxAgeMs without spawning; maxAgeMs 0 always spawns', async () => {
@@ -441,6 +486,13 @@ describe('testClaude', () => {
       message: NOT_LOGGED_IN,
     });
     expect(fake.log().length).toBeGreaterThan(0);
+    expect(promptCalls().length).toBe(0);
+  });
+
+  it('mode api-key returns not-subscription without a -p call (WR-06)', async () => {
+    fake.setMode('api-key');
+    const res = await testClaude({ model: 'claude-opus-5-5' });
+    expect(res).toMatchObject({ ok: false, kind: 'not-subscription' });
     expect(promptCalls().length).toBe(0);
   });
 
