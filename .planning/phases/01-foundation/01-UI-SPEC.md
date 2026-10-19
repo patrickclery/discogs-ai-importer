@@ -187,6 +187,8 @@ The same `Empty` layout, with the lucide `Rows3` icon and no action.
 - Page title block: Display "Settings", then a Body muted description with an 8px gap. There is 32px from this block to the first card.
 - The cards are stacked vertically with a 24px gap, in this order:
 
+> **Superseded by D-18 (2026-10-18):** there is no Anthropic API key. Card 1 is the "Claude CLI" card (CLI detection, login status, `ANTHROPIC_API_KEY` warning, Vision model select, "Test Claude"). Its layout and copy are defined in `01-04-PLAN.md` and take precedence over the API-key description below; the rest of this spec (tokens, SecretField for Discogs, shell, states) is unchanged.
+
 **1. Card "Anthropic"**
 - Description: the copy below.
 - `SecretField` for "API key" (env name `ANTHROPIC_API_KEY`).
