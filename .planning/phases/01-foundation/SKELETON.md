@@ -5,7 +5,7 @@
 
 ## Capability Proven End-to-End
 
-The owner runs `pnpm dev`, opens http://127.0.0.1:3000/settings, clicks **Queue test job**, and the header status shows the job run to completion by the single background worker, with the job stored in `data/app.db` (Plan 01-01 tracer, proven by `node scripts/verify-skeleton.ts`).
+The owner runs `pnpm dev`, opens http://127.0.0.1:3000/settings, clicks **Queue test job**, and the header status shows the job run to completion by the single background worker, with the job stored in `data/app.db`. Plan 01-01 (tracer) proves the path from the dev-job route through SQLite and the worker to `GET /api/status`; Plan 01-05 puts the button and the header indicator on that same path. Both are asserted by `node scripts/verify-skeleton.ts`.
 
 ## Architectural Decisions
 
@@ -33,10 +33,10 @@ The owner runs `pnpm dev`, opens http://127.0.0.1:3000/settings, clicks **Queue 
 
 ## Stack Touched in Phase 1
 
-- [x] Project scaffold (framework, build, lint, test runner) — Plan 01-01
-- [x] Routing — /, /upload, /spines, /settings, GET /api/status, GET/POST /api/dev/jobs — Plan 01-01
+- [x] Project scaffold (framework, build, lint, test runner) — Plan 01-01 (scaffold, build, lint), Plan 01-06 (Vitest harness, toolchain pins)
+- [x] Routing — /, GET /api/status, GET/POST /api/dev/jobs — Plan 01-01; /upload, /spines, /settings and the / redirect — Plan 01-05; Host/Origin guard on every route — Plan 01-06
 - [x] Database — a real write (enqueue, claim, complete, settings and secrets saves) and a real read (status counts, job list, settings) — Plans 01-01, 01-03, 01-04
-- [x] UI — Queue test job button wired to the API, live status indicator, settings forms — Plans 01-01, 01-03, 01-04
+- [x] UI — Queue test job button wired to the API and live status indicator (Plan 01-05), settings forms (Plans 01-03, 01-04)
 - [x] Deployment — documented local full-stack run: `pnpm start` (build + serve on 127.0.0.1) or `pnpm dev`
 
 ## Out of Scope (Deferred to Later Slices)

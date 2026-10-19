@@ -29,13 +29,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can enter and save their Discogs app credentials on the settings page and confirm the local Claude CLI works on their subscription (no API key); after a reload saved values show masked, an env var overrides the saved value, and no secret appears unmasked in any API response or in `git status`
   3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
   4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
-**Plans:** 4 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Walking skeleton: D-06 and package-legitimacy gates, then scaffold, 127.0.0.1 launch, proxy guard, boot migrations, jobs table, singleton worker, status indicator and Queue test job (wave 1)
-- [ ] 01-02-PLAN.md — Restart-safe single worker and portable data folder: retry/backoff, crash recovery, worker lease, handler timeout, resolveData, kill -9 / HMR / copy-folder proofs (wave 2)
-- [ ] 01-03-PLAN.md — Discogs credentials on the settings page: secrets.json outside DATA_DIR, masked SecretField, env override, Data folder card, canary leak proof (wave 2)
-- [ ] 01-04-PLAN.md — Claude CLI card (D-18): install/login detection, ANTHROPIC_API_KEY warning, vision model, Test Claude, child-process runner, Upload readiness (wave 3)
+- [ ] 01-01-PLAN.md — Walking skeleton tracer: D-06 and package-legitimacy gates, then scaffold, 127.0.0.1 launch, boot migrations, jobs table, singleton worker, status and dev-job routes, verify-skeleton (wave 1)
+- [ ] 01-05-PLAN.md — App shell on the tracer path: shadcn + UI-SPEC tokens, header nav and live status indicator, empty states, error page, Queue test job card (wave 2)
+- [ ] 01-06-PLAN.md — Host/Origin guard, Vitest harness with queue tests, mise/.nvmrc pins, README and .env.example (wave 2)
+- [ ] 01-02-PLAN.md — Restart-safe single worker and portable data folder: retry/backoff, crash recovery, worker lease, handler timeout, resolveData, kill -9 / HMR / copy-folder proofs (wave 3)
+- [ ] 01-03-PLAN.md — Discogs credentials on the settings page: secrets.json outside DATA_DIR, masked SecretField, env override, Data folder card, canary leak proof (wave 3)
+- [ ] 01-04-PLAN.md — Claude CLI card (D-18): install/login detection, ANTHROPIC_API_KEY warning, vision model, Test Claude, child-process runner, Upload readiness (wave 4)
 **UI hint**: yes
 
 ### Phase 2: Shelf Scan

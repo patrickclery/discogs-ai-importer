@@ -517,17 +517,17 @@ export async function GET() {
 | A4 | Browsers fall back from `::1` to IPv4 for `localhost` | Pitfall 7 | Low. Docs say to use 127.0.0.1 anyway |
 | A5 | `models.list({ limit: 1 })` incurs no token cost | Pattern 5 | Low. It is a metadata endpoint |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does "one command opens the app" mean auto-launching a browser?**
    - Known: `next dev/start` print the URL and do not open a browser.
-   - Recommendation: Print the URL only. Treat auto-open as out of scope unless the user objects.
+   - RESOLVED: Print the URL only; no browser auto-open. Plan 01-01 scripts and the Plan 01-06 README state it.
 2. **Should `pnpm start` rebuild every time (D-01 says "build + start")?**
-   - Recommendation: Yes, `next build && next start -H 127.0.0.1`. Turbopack builds in seconds, which guarantees fresh code. Optionally add `"serve": "next start -H 127.0.0.1"` for no-rebuild launches.
+   - RESOLVED: Yes. `pnpm start` = `next build && next start -H 127.0.0.1`, plus `pnpm serve` = `next start -H 127.0.0.1` for no-rebuild launches (Plan 01-01 package.json scripts).
 3. **Is `GET /api/files/[...path]` in Phase 1?** SUMMARY.md lists it in Phase 1. CONTEXT.md does not.
-   - Recommendation: Ship `resolveData()` with the traversal guard plus unit tests now. Add the streaming route in Phase 2, its first consumer. Criterion 3 can be shown with any file under `data/` (e.g. one the noop job writes).
+   - RESOLVED: The streaming files route is deferred to Phase 2, its first consumer. Phase 1 ships the `resolveData()` traversal guard with unit tests (Plan 01-02); criterion 3 is shown with a file the noop job writes under `data/`.
 4. **Node 24 vs the machine's Node 22.22.1.** D-02 says Node 24. The machine runs 22 globally via mise.
-   - Recommendation: Commit `mise.toml` (`node = "24"`, `pnpm = "12.14.0"`) and `.nvmrc` (`24`). A setup task runs `mise install`. Everything was verified on 22.22.1, which satisfies `engines >=22`, so this is not blocking.
+   - RESOLVED: Commit `mise.toml` (`node = "24"`, `pnpm = "12.14.0"`) and `.nvmrc` (`24`) with a best-effort `mise install` (Plan 01-06). Node 24 is preferred; Node 22 is acceptable because `engines` is `>=22` (Plan 01-01) and everything was verified on 22.22.1.
 
 ## Environment Availability
 
