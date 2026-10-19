@@ -1,4 +1,5 @@
 import { connection } from 'next/server';
+import { ClaudeCliCard } from '@/components/claude-cli-card';
 import { DevJobTrigger } from '@/components/dev-job-trigger';
 import { DiscogsCredentials } from '@/components/secret-field';
 import { StoragePaths } from '@/components/storage-paths';
@@ -10,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { getClaudeCliStatus } from '@/server/claude/cli';
 import { devHooksEnabled } from '@/server/config';
 import {
   listSecretStatus,
@@ -45,6 +47,7 @@ export default async function SettingsPage() {
   await connection();
   const showDeveloper = devHooksEnabled();
   const secrets = readStatuses();
+  const claude = await getClaudeCliStatus({ maxAgeMs: 0 });
 
   return (
     <div className="max-w-2xl">
@@ -56,6 +59,7 @@ export default async function SettingsPage() {
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-6">
+        <ClaudeCliCard status={claude} />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Discogs app</CardTitle>

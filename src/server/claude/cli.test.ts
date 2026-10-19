@@ -173,7 +173,7 @@ describe('runProcess', () => {
     const res = await runProcess({
       command: process.execPath,
       args: ['-e', 'process.stdout.write(JSON.stringify(process.env))'],
-      env: { DAI_ONLY: 'yes' },
+      env: { DAI_ONLY: 'yes' } as Record<string, string> as NodeJS.ProcessEnv,
       timeoutMs: 5000,
     });
     expect(JSON.parse(res.stdout)).toEqual({ DAI_ONLY: 'yes' });
@@ -189,12 +189,15 @@ describe('buildClaudeEnv', () => {
       ANTHROPIC_AUTH_TOKEN: 'CANARY-TOKEN',
       DISCOGS_CONSUMER_KEY: 'CANARY-KEY',
       DISCOGS_CONSUMER_SECRET: 'CANARY-SECRET',
-    });
+    } as Record<string, string> as NodeJS.ProcessEnv);
     expect(env).toEqual({ PATH: '/usr/bin', HOME: '/home/owner' });
   });
 
   it('does not mutate the env it was given', () => {
-    const base = { ANTHROPIC_API_KEY: 'sk-ant-CANARY', PATH: '/bin' };
+    const base = {
+      ANTHROPIC_API_KEY: 'sk-ant-CANARY',
+      PATH: '/bin',
+    } as Record<string, string> as NodeJS.ProcessEnv;
     buildClaudeEnv(base);
     expect(base.ANTHROPIC_API_KEY).toBe('sk-ant-CANARY');
   });
