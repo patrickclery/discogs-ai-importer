@@ -23,7 +23,7 @@
 ### Vision
 
 - [ ] **VIS-01**: Each photo is analyzed with exactly ONE Claude vision call that returns every detected spine as structured JSON
-- [ ] **VIS-02**: Each spine result includes artist, title, format, label, catalog number, raw text as printed, bounding box, kind (music / film / other), per-field confidence, and text orientation
+- [ ] **VIS-02**: Each spine result includes artist, title, format, label, catalog number, raw text as printed, bounding box, per-field confidence, and text orientation
 - [ ] **VIS-03**: The raw Claude response is persisted before parsing; truncated or refused responses are surfaced as errors, not silently dropped
 - [ ] **VIS-04**: Each detected spine is cropped locally from its bounding box (with padding) and shown rotated to horizontal — no extra AI calls
 
@@ -33,7 +33,7 @@
 - [ ] **REV-02**: User can edit any extracted field; edits are stored separately from the original AI output
 - [ ] **REV-03**: User can filter the list by status: pending, matched, imported, not found, not on Discogs, failed — with counts per status
 - [ ] **REV-04**: User can retry a failed item without re-uploading the photo
-- [ ] **REV-05**: User can mark a spine "not on Discogs" (auto-suggested for kind = film, but overridable)
+- [ ] **REV-05**: User can mark a spine "not on Discogs" (e.g. obscure or self-released CDs)
 
 ### Discogs
 
@@ -75,7 +75,7 @@
 | Feature | Reason |
 |---------|--------|
 | Creating new releases on Discogs | Discogs API does not support release submission |
-| Cataloguing movie DVDs on Discogs | Discogs only lists music releases; films become "not on Discogs" |
+| DVDs / Blu-rays / non-CD media | User's collection to import is CDs only; non-CD spines in a photo are ignored |
 | Auto-add high-confidence matches | Wrong versions pollute the collection; always confirm |
 | Per-spine second vision call | Explicitly rejected for cost — one call per photo |
 | Live camera / mobile scanning | Different product; phone photos + desktop drop covers it |

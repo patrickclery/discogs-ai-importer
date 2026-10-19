@@ -58,7 +58,7 @@ Plans:
 **Requirements**: INGEST-01, INGEST-02, INGEST-03, INGEST-04, INGEST-05, VIS-01, VIS-02, VIS-03, VIS-04, REV-01, REV-02
 **Success Criteria** (what must be TRUE):
   1. User drags several shelf photos onto the upload page and watches each one move through queued, analyzing and done. A failure, including a truncated or refused Claude response, shows as an error with a reason and is never silently dropped
-  2. Every spine row shows its crop, rotated to horizontal and aligned with the real spine (portrait and EXIF-rotated phone photos included), next to artist, title, format, label, catalog number, raw text, kind and per-field confidence
+  2. Every spine row shows its crop, rotated to horizontal and aligned with the real spine (portrait and EXIF-rotated phone photos included), next to artist, title, format, label, catalog number, raw text and per-field confidence
   3. Each analyzed photo has exactly one recorded Claude call with its raw response persisted, and re-uploading an identical photo makes zero calls and shows the existing spines
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
@@ -93,7 +93,7 @@ Plans:
   2. Before confirming, user is warned if the release is already in their Discogs collection or was already imported from another photo
   3. Killing the app mid-import or retrying a failed import never creates a duplicate collection entry, and every imported spine records its Discogs instance ID
   4. User can filter the spine list by pending, matched, imported, not found, not on Discogs and failed, with a count for each status
-  5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs". Film spines get this suggested by default, and the user can override it
+  5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs"
 
 **Plans**: TBD
 **UI hint**: yes

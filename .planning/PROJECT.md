@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A local, portable web app that turns photos of DVD/CD shelves into Discogs collection entries. The user drags and drops photos of disc spines; Claude's vision API reads every spine in a photo in a single call; each detected spine is cropped, stored locally (SQLite), matched against the Discogs database, reviewed/corrected by the user, and added to their Discogs collection. Built for a single user (the owner) cataloguing their own physical media.
+A local, portable web app that turns photos of CD shelves into Discogs collection entries. The user drags and drops photos of disc spines; Claude's vision API reads every spine in a photo in a single call; each detected spine is cropped, stored locally (SQLite), matched against the Discogs database, reviewed/corrected by the user, and added to their Discogs collection. Built for a single user (the owner) cataloguing their own physical media.
 
 ## Core Value
 
@@ -34,14 +34,14 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 ### Out of Scope
 
 - Creating new releases on Discogs — the Discogs API does not support release submission; only existing releases can be added to a collection
-- Non-music movie DVDs on Discogs — Discogs only catalogs music-related releases; these will end up as "not on Discogs"
+- DVDs, Blu-rays and any non-CD media — the collection being imported is CDs only; non-CD spines in a photo are ignored
 - Multi-user / hosted deployment — this is a personal local tool
 - Marketplace listing / selling — collection only
 - One Claude call per spine — explicitly rejected for cost; one call per photo
 
 ## Context
 
-- Physical collection of DVDs and CDs, photographed as spines on shelves (many spines per photo).
+- Physical CD collection, photographed as spines on shelves (many spines per photo).
 - Discogs API: search (`/database/search`) requires authentication; adding to collection is `POST /users/{username}/collection/folders/{folder_id}/releases/{release_id}`. Rate limit 60/min authenticated.
 - Claude vision with structured output (tool use / JSON schema) can return an array of spines with bounding boxes from one image.
 - Spine text is often vertical, small, stylized — expect OCR errors, hence the correction UI is central, not optional.
@@ -66,6 +66,7 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 | Human confirms Discogs match before adding to collection | OCR + search is fuzzy; avoid polluting collection | — Pending |
 | Use Claude subscription via headless `claude -p` CLI instead of API key | User doesn't want to pay for API credits | — Pending |
 | Image-hash dedup; re-scan only on explicit action | Prevent accidental repeat API spend | — Pending |
+| CDs only — no DVD/film handling, no music/film `kind` field; Discogs search uses `format=CD` (supersedes research notes on DVDs) | User has no music DVDs; movie DVDs aren't on Discogs (2026-10-19) | — Pending |
 
 ## Evolution
 
