@@ -12,7 +12,7 @@ The build starts with a local, portable app shell: settings, a SQLite data folde
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Local one-command app with settings, a portable data folder and a restart-safe job queue
+- [x] **Phase 1: Foundation** - Local one-command app with settings, a portable data folder and a restart-safe job queue (completed 2026-10-19)
 - [ ] **Phase 2: Shelf Scan** - Drop photos, one Claude call each, review horizontal spine crops next to editable AI-read fields
 - [ ] **Phase 3: Discogs Match** - Connect Discogs via OAuth and get throttled candidate releases per spine, with manual search and paste-ID
 - [ ] **Phase 4: Import & Review Queue** - Confirm a candidate to add it to the collection exactly once; filter, retry and resolve every spine
@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
   4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
 
-**Plans:** 6/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**
@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 6/6 | In Progress | - |
+| 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 0/TBD | Not started | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
