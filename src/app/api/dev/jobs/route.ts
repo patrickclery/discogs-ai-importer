@@ -1,6 +1,8 @@
 import { connection } from 'next/server';
 import { z } from 'zod';
 import { devHooksEnabled } from '@/server/config';
+// The noop handler's own payload rules, checked at the edge so bad input is a 400.
+import { NoopPayload } from '@/server/jobs/handlers/noop';
 import { enqueue, listJobs } from '@/server/jobs/queue';
 
 const MAX_PAYLOAD_BYTES = 4096;
@@ -16,11 +18,6 @@ const Body = z.object({
     )
     .optional(),
   dedupeKey: z.string().min(1).max(200).optional(),
-});
-
-// The noop handler's own payload rules, checked at the edge so bad input is a 400.
-const NoopPayload = z.object({
-  ms: z.number().int().min(0).max(120000).optional(),
 });
 
 const notFound = () => Response.json({ error: 'not found' }, { status: 404 });

@@ -35,3 +35,18 @@ export function ensureDataDirs(): void {
     });
   }
 }
+
+/**
+ * The only way to turn a stored relative path into an absolute one (D-05).
+ * Rejects absolute input, `..` escapes and sibling folders that merely share
+ * the root's name prefix (e.g. ../data-evil when the root is .../data).
+ */
+export function resolveData(rel: string): string {
+  if (path.isAbsolute(rel)) throw new Error('path escapes DATA_DIR');
+  const root = dataRoot();
+  const abs = path.resolve(/* turbopackIgnore: true */ root, rel);
+  if (abs !== root && !abs.startsWith(root + path.sep)) {
+    throw new Error('path escapes DATA_DIR');
+  }
+  return abs;
+}

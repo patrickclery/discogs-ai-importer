@@ -97,28 +97,116 @@ export function claimNext(lane: Lane, now = Date.now()): JobRow | undefined {
   return row ? toRow(row) : undefined;
 }
 
-/** True only on the running -> succeeded transition (exactly-once completion). */
-export function complete(id: string, now = Date.now()): boolean {
+/**
+ * True only on the running -> succeeded transition (exactly-once completion).
+ * When `attempt` is given, only the claim that produced it may complete.
+ */
+export function complete(
+  id: string,
+  now = Date.now(),
+  attempt?: number,
+): boolean {
   const info = sql()
     .prepare(
-      `UPDATE jobs SET status = 'succeeded', locked_at = NULL, finished_at = ?, updated_at = ?
-       WHERE id = ? AND status = 'running'`,
+      `UPDATE jobs SET status = 'succeeded', locked_at = NULL, finished_at = @now, updated_at = @now
+       WHERE id = @id AND status = 'running' AND (@attempt IS NULL OR attempts = @attempt)`,
     )
-    .run(now, now, id);
+    .run({ now, id, attempt: attempt ?? null });
   return info.changes === 1;
 }
 
-/** Terminal failure. Plan 01-02 adds retry with backoff. */
+function errorText(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).slice(
+    0,
+    1000,
+  );
+}
+
+/** Terminal failure with no retry (e.g. unknown job type). */
 export function failJob(id: string, error: unknown, now = Date.now()): void {
-  const message = (
-    error instanceof Error ? error.message : String(error)
-  ).slice(0, 1000);
   sql()
     .prepare(
       `UPDATE jobs SET status = 'failed', last_error = ?, finished_at = ?, locked_at = NULL, updated_at = ?
        WHERE id = ?`,
     )
-    .run(message, now, now, id);
+    .run(errorText(error), now, now, id);
+}
+
+/** Delay before the next try after `attempts` runs: 2 s, 4 s, 8 s ... (D-14). */
+export function backoffMs(attempts: number): number {
+  return 1000 * 2 ** attempts;
+}
+
+/**
+ * Record a failed run of a running job: back to queued with exponential
+ * backoff, or failed once attempts reached max_attempts (D-14).
+ *
+ * When `attempt` is given, only the claim that produced that attempt number
+ * may write; a job recovered and re-claimed elsewhere returns 'stale'.
+ */
+export function failOrRetry(
+  id: string,
+  error: unknown,
+  now = Date.now(),
+  attempt?: number,
+): 'queued' | 'failed' | 'stale' {
+  const db = sql();
+  const run = db.transaction((): 'queued' | 'failed' | 'stale' => {
+    const row = db
+      .prepare(
+        `SELECT attempts, max_attempts FROM jobs WHERE id = ? AND status = 'running'`,
+      )
+      .get(id) as { attempts: number; max_attempts: number } | undefined;
+    if (!row || (attempt !== undefined && row.attempts !== attempt)) {
+      return 'stale';
+    }
+    const failed = row.attempts >= row.max_attempts;
+    db.prepare(
+      `UPDATE jobs SET
+         status = CASE WHEN @failed = 1 THEN 'failed' ELSE 'queued' END,
+         run_after = CASE WHEN @failed = 1 THEN run_after ELSE @runAfter END,
+         finished_at = CASE WHEN @failed = 1 THEN @now ELSE NULL END,
+         last_error = @error, locked_at = NULL, updated_at = @now
+       WHERE id = @id`,
+    ).run({
+      failed: failed ? 1 : 0,
+      runAfter: now + backoffMs(row.attempts),
+      now,
+      error: errorText(error),
+      id,
+    });
+    return failed ? 'failed' : 'queued';
+  });
+  return run.immediate();
+}
+
+/**
+ * Boot recovery (D-14), run only by the process that just took the worker
+ * lease. Interrupted jobs go back to queued; a job interrupted on its final
+ * attempt fails instead, so a crash loop never exceeds max_attempts runs.
+ */
+export function recoverRunningJobs(now = Date.now()): {
+  requeued: number;
+  failed: number;
+} {
+  const db = sql();
+  const run = db.transaction(() => {
+    const failed = db
+      .prepare(
+        `UPDATE jobs SET status = 'failed', last_error = 'interrupted after final attempt',
+           finished_at = ?, locked_at = NULL, updated_at = ?
+         WHERE status = 'running' AND attempts >= max_attempts`,
+      )
+      .run(now, now).changes;
+    const requeued = db
+      .prepare(
+        `UPDATE jobs SET status = 'queued', locked_at = NULL, updated_at = ?
+         WHERE status = 'running'`,
+      )
+      .run(now).changes;
+    return { requeued, failed };
+  });
+  return run.immediate();
 }
 
 export function countsByLaneStatus(): StatusResponse['jobs'] {

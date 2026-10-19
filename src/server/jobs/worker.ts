@@ -2,7 +2,7 @@ import 'server-only';
 import type { StatusResponse } from '@/lib/status-types';
 import { newId } from '../ids';
 import { handlers as defaultHandlers } from './handlers';
-import { claimNext, complete, failJob } from './queue';
+import { claimNext, complete, failJob, failOrRetry } from './queue';
 import { type JobHandler, LANES, type Lane } from './types';
 
 export const LANE_CONCURRENCY: Record<Lane, number> = {
@@ -25,9 +25,24 @@ export type WorkerState = {
 const g = globalThis as unknown as {
   __appWorker?: WorkerState;
   __appWorkerStarts?: number;
+  __appWorkerInflight?: Set<AbortController>;
 };
 
+/** Abort reason used when the worker stops or loses its lease. */
+export class WorkerStoppedError extends Error {
+  constructor(reason = 'worker stopped') {
+    super(reason);
+    this.name = 'WorkerStoppedError';
+  }
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** In-flight job controllers, so a stop can abort running handlers. */
+function inflight(): Set<AbortController> {
+  g.__appWorkerInflight ??= new Set();
+  return g.__appWorkerInflight;
+}
 
 export async function processNext(
   lane: Lane,
@@ -37,29 +52,48 @@ export async function processNext(
   if (!job) return 'idle';
   const handler = (opts.handlers ?? defaultHandlers)[job.type];
   if (!handler) {
-    failJob(job.id, new Error(`unknown job type: ${job.type}`));
+    failJob(job.id, new Error(`unknown job type: ${job.type}`), opts.now);
     return 'failed';
   }
   const controller = new AbortController();
   const timer = setTimeout(
     () =>
       controller.abort(
-        new Error(`job timed out after ${handler.timeoutMs} ms`),
+        new Error(`job timed out after ${handler.timeoutMs / 1000} s`),
       ),
     handler.timeoutMs,
   );
+  // A handler that ignores its signal must still release the lane.
+  const aborted = new Promise<never>((_, reject) => {
+    controller.signal.addEventListener(
+      'abort',
+      () => reject(controller.signal.reason),
+      { once: true },
+    );
+  });
+  aborted.catch(() => {});
+  const lanes = inflight();
+  lanes.add(controller);
   try {
-    await handler.run(JSON.parse(job.payload), {
-      job,
-      signal: controller.signal,
-    });
-    complete(job.id);
+    const run = Promise.resolve().then(() =>
+      handler.run(JSON.parse(job.payload), {
+        job,
+        signal: controller.signal,
+      }),
+    );
+    run.catch(() => {});
+    await Promise.race([run, aborted]);
+    complete(job.id, opts.now, job.attempts);
     return 'succeeded';
   } catch (err) {
-    failJob(job.id, err);
+    // A stopped worker leaves the job running; lease recovery requeues it.
+    if (!(controller.signal.reason instanceof WorkerStoppedError)) {
+      failOrRetry(job.id, err, opts.now, job.attempts);
+    }
     return 'failed';
   } finally {
     clearTimeout(timer);
+    lanes.delete(controller);
   }
 }
 
