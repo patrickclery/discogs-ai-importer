@@ -15,4 +15,6 @@ export type StatusResponse = {
     pid: number;
   } | null;
   jobs: Record<StatusLane, Record<StatusJobStatus, number>>;
+  /** Current worker_lease holder (any process on this DATA_DIR), or null. */
+  lease: { bootId: string; pid: number; heartbeatAt: number } | null;
 };
