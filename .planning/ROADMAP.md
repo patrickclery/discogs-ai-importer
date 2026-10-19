@@ -29,7 +29,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can enter and save their Anthropic API key and Discogs app credentials on the settings page; after a reload they show masked, an env var overrides the saved value, and no secret appears unmasked in any API response or in `git status`
   3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
   4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Walking skeleton: D-06 and package-legitimacy gates, then scaffold, 127.0.0.1 launch, proxy guard, boot migrations, jobs table, singleton worker, status indicator and Queue test job (wave 1)
+- [ ] 01-02-PLAN.md — Restart-safe single worker and portable data folder: retry/backoff, crash recovery, worker lease, handler timeout, resolveData, kill -9 / HMR / copy-folder proofs (wave 2)
+- [ ] 01-03-PLAN.md — Discogs credentials on the settings page: secrets.json outside DATA_DIR, masked SecretField, env override, Data folder card, canary leak proof (wave 2)
+- [ ] 01-04-PLAN.md — Claude CLI card (D-18): install/login detection, ANTHROPIC_API_KEY warning, vision model, Test Claude, child-process runner, Upload readiness (wave 3)
 **UI hint**: yes
 
 ### Phase 2: Shelf Scan
@@ -81,7 +87,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/4 | Planned | - |
 | 2. Shelf Scan | 0/TBD | Not started | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
