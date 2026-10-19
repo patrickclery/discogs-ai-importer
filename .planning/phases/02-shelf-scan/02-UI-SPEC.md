@@ -43,7 +43,7 @@ This table is a **non-exhaustive** list of known-good components, not a closed a
 
 | Component | Import path | Phase 2 use |
 |-----------|-------------|-------------|
-| button | `@/components/ui/button` | `default` (accent): "Choose photos", "Upload photos" empty-state action, dialog confirms "Re-scan photo" and "Re-attach spine". `outline`: Re-scan trigger, "View spines", "Retry upload", "Re-attach…", "Show all spines". `ghost`: field revert icon button, "Remove" on failed upload rows, "Dismiss spine" trigger (`text-destructive`). `destructive`: Dismiss confirm only. |
+| button | `@/components/ui/button` | `default` (accent): "Choose photos", "Upload photos" empty-state action, dialog confirms "Re-scan photo" and "Re-attach spine". `outline`: Re-scan trigger, "View spines", "Retry upload", "Re-attach spine…", "Show all spines". `ghost`: field revert icon button, "Remove from list" on failed upload rows, the "Keep current scan" and "Leave unattached" dialog dismiss buttons, "Dismiss spine" trigger (`text-destructive`). `destructive`: Dismiss confirm only. |
 | input | `@/components/ui/input` | Artist, Title, Format, Label, Catalog number fields (`h-9`, Body). |
 | field / label | `@/components/ui/field`, `@/components/ui/label` | One `Field` per spine field (`FieldLabel`, `FieldError`). |
 | card | `@/components/ui/card` | Spine card, dropzone frame, Upload "Photos" list container. |
@@ -170,6 +170,12 @@ Contrast: every text pair meets WCAG AA (4.5:1). Accent `#4f46e5` on `#ffffff` i
 
 ## Layout & Interaction Contract
 
+### Focal points (one per surface)
+- **`/upload`:** the dropzone. It is the largest element (full column width, min 192px tall) and holds the page's only accent button, "Choose photos". The page title and the Photos list are secondary. When the Claude CLI isn't ready, the focal point moves to the Alert and its "Open Settings" button, and the dropzone is dimmed.
+- **`/spines` (page):** the stack of spine cards. The title and filter bar stay quiet (no accent), and section headers are thin sticky strips.
+- **Each spine card:** the horizontal crop. It spans the full card width at the top, sits on the muted well, and comes before the fields, so the eye lands on the spine first and then compares the fields below it (core value: crop always beside the AI read). Within the fields, the low-confidence warning borders are the only secondary emphasis.
+- **Dialogs:** the confirm button (accent, or destructive for Dismiss) is the single emphasized control. The dismiss button is ghost.
+
 ### Shared: data loading and polling
 - `src/app/providers.tsx` (`'use client'`) wraps the app in `QueryClientProvider` and nuqs's `NuqsAdapter` (`nuqs/adapters/next/app`), inside the existing `ThemeProvider` / `TooltipProvider`.
 - `useQuery(['photos'])` → `GET /api/photos`. `useQuery(['spines', {photo, review}])` → `GET /api/spines`.
@@ -204,7 +210,7 @@ Order, top to bottom, in a `max-w-3xl` column:
    - **Row** (`px-4 py-3`, `flex items-center gap-4`): 48px thumbnail (server `thumbs/` once `preparing` has produced it; before that a `bg-muted` square with a 16px `Image` icon. HEIC cannot be previewed client-side, so no object-URL preview), then a `min-w-0 flex-1` text column (filename Body 500 `truncate` with full name in `title`; sub-line per the status table), then the status badge, then the row action:
      - `done` with ≥1 spine: outline Button-link "View spines" → `/spines?photo={id}`.
      - `done` with 0 spines, or `error`: outline `RescanButton` "Re-scan photo".
-     - client upload failure: outline "Retry upload" (re-sends the same `File`) plus ghost icon button `X` "Remove" (`aria-label="Remove {filename} from the list"`; client-side only, nothing on the server).
+     - client upload failure: outline "Retry upload" (re-sends the same `File`) plus a ghost button with `X` icon and visible label "Remove from list" (`aria-label="Remove {filename} from the list"`; client-side only, nothing on the server).
      - queued / analyzing: no action.
    - Density and truncation badges (see `/spines` header) also appear on `done` rows, between the sub-line and the status badge, wrapping under the filename below 640px.
    - **Duplicate upload** (server returns `duplicate: true`): the client row is removed, the existing photo's row gets a session-only `secondary` badge "Already uploaded" (with `Copy` icon), and a toast shows the duplicate copy. Zero calls are made (INGEST-03).
@@ -242,7 +248,7 @@ Order, top to bottom, in a `max-w-3xl` column:
    - Right (`ml-auto`), the **status-badge slot** (D-11): Phase 2 fills it with `Edited · {n}` (secondary badge) when ≥1 field is edited, and with "No longer detected" (outline, warning icon) for orphaned spines. Phase 3 adds its match status here without moving anything.
 2. **Crop** (`SpineCrop`, VIS-04): the muted well with the horizontal crop (layout constants above). The image is a link to the full-size crop (`target="_blank"`). `alt="Spine {index}: {raw_text}"`, or `alt="Spine {index}"` when raw text is empty. Error fallback (file missing, `onError`): the well shows a 16px `ImageOff` icon and Caption muted "Crop unavailable".
 3. **Field grid** (`SpineField` ×6, grid constants above), in this order: Artist, Title, Format, Label, Catalog number, Raw text.
-4. **Footer slot** (D-11): a `footer?: ReactNode` prop rendered after a `Separator` at the bottom of the card. Phase 2 passes nothing, and nothing (not even the separator) renders. For orphaned cards Phase 2 uses this slot for the action row: outline "Re-attach…" and ghost destructive "Dismiss spine", right-aligned, 8px gap, plus the Caption muted orphan explanation on the left.
+4. **Footer slot** (D-11): a `footer?: ReactNode` prop rendered after a `Separator` at the bottom of the card. Phase 2 passes nothing, and nothing (not even the separator) renders. For orphaned cards Phase 2 uses this slot for the action row: outline "Re-attach spine…" and ghost destructive "Dismiss spine", right-aligned, 8px gap, plus the Caption muted orphan explanation on the left.
 
 Orphaned cards (D-16) also show the old crop and their stored field values; fields stay editable.
 
@@ -254,14 +260,14 @@ Structure (`Field`, 4px internal gap):
   - Edited: secondary badge "Edited", then the 24px ghost revert icon button (`Undo2`), tooltip and `aria-label` per Copywriting.
 - **Control:** `Input` (Artist, Title, Format, Label, Catalog number) or `Textarea` (Raw text, 2 rows minimum). Value = `value ?? ''`. Placeholder `Not read` when the AI value is null and the user has not typed anything. `spellCheck={false}` `autoComplete="off"`.
 - **Low-confidence styling** applies only when: AI value is non-empty, `confidence < threshold` (the `confidence_threshold` setting; default 0.6 until the spike tunes it), and the field is not edited. It adds `border-warning` and `aria-describedby` → a visually hidden span "Low confidence, {pct} percent. Check it against the crop." Editing the field (any saved change) removes the warning; reverting restores it.
-- **Re-scan hint (D-15):** when the field is edited and the latest run's AI read differs from both `value` and the read the user originally edited, a Caption muted line appears under the control: `Sparkles` icon (warning), `Latest scan reads “{new}”`, then an underlined text button `Use it` (Caption, foreground, `hover:text-foreground/80`) that sets `value` to that read (one PATCH). The line disappears once `value === ai_value`.
+- **Re-scan hint (D-15):** when the field is edited and the latest run's AI read differs from both `value` and the read the user originally edited, a Caption muted line appears under the control: `Sparkles` icon (warning), `Latest scan reads “{new}”`, then an underlined text button `Use new read` (Caption, foreground, `hover:text-foreground/80`) that sets `value` to that read (one PATCH). The line disappears once `value === ai_value`.
 - **Editing and autosave** (02-RESEARCH Pattern 7, adapted to the Phase 1 "errors are inline" rule):
   - The field keeps a local `draft` and `isEditing`. While focused or while `draft !== saved value`, incoming poll data never overwrites the input. Inputs are never re-keyed on refetch.
   - Commit on blur. Enter commits (blurs) in Inputs; in the Raw text Textarea, Enter inserts a newline and Ctrl/Cmd+Enter commits. Escape restores the last saved value and blurs without saving.
   - On commit: trim; empty string becomes `null`; if equal to the saved value, no request. Otherwise PATCH `{ field, value }` with an optimistic `setQueryData` after `cancelQueries`.
   - On success: no toast and no "Saved" text (quiet; the "Edited" badge appearing is the confirmation).
   - On failure: **keep the draft in the input (no rollback, the user's typing is never lost)**, set `aria-invalid`, show `FieldError` (Caption, destructive) with the save-error copy, and leave the field dirty so the next blur retries. No toast.
-- **Revert:** PATCH `{ field, revert: true }`. The input shows the AI value, the "Edited" badge disappears, and a toast offers Undo (which PATCHes the previous user value back). No confirm dialog.
+- **Revert:** PATCH `{ field, revert: true }`. The input shows the AI value, the "Edited" badge disappears, and a toast offers `Undo revert` (which PATCHes the previous user value back). No confirm dialog.
 
 ### Re-scan (D-17, INGEST-04)
 - Trigger: `RescanButton` (outline, `RotateCw`), on the `/spines` section header and on `/upload` rows that are `error` or done-with-0-spines.
@@ -269,7 +275,7 @@ Structure (`Field`, 4px internal gap):
 - Pending: confirm shows `Spinner` + "Starting…", both buttons disabled. Success: the dialog closes, a toast shows, queries invalidate, and the header switches to "Analyzing". Failure (for example the server's "a run is already active" guard): the dialog stays open and shows the error copy as Body `text-destructive` above the buttons (`role="alert"`). Focus returns to the trigger on close.
 
 ### Re-attach and dismiss orphaned spines (D-16)
-- **Re-attach…** opens a `Dialog` (`max-w-2xl`): title, description, then a `RadioGroup` list (`max-h-[60vh] overflow-y-auto`, 8px gap) of the photo's spines that were newly created by the latest run (unmatched new detections). Each option is a full-width bordered row (`p-4 rounded-lg border`): radio indicator, crop (`max-h-12`, `object-contain`), and the raw text (Caption muted, `line-clamp-1`). The selected row gets `ring-2 ring-primary border-primary`. Footer: outline "Cancel" and primary "Re-attach spine" (disabled until a choice is made; `Spinner` + "Re-attaching…" while pending). On success: toast, the orphan card disappears, and the target card now shows the carried-over edits.
+- **Re-attach spine…** opens a `Dialog` (`max-w-2xl`): title, description, then a `RadioGroup` list (`max-h-[60vh] overflow-y-auto`, 8px gap) of the photo's spines that were newly created by the latest run (unmatched new detections). Each option is a full-width bordered row (`p-4 rounded-lg border`): radio indicator, crop (`max-h-12`, `object-contain`), and the raw text (Caption muted, `line-clamp-1`). The selected row gets `ring-2 ring-primary border-primary`. Footer: ghost "Leave unattached" and primary "Re-attach spine" (disabled until a choice is made; `Spinner` + "Re-attaching…" while pending). On success: toast, the orphan card disappears, and the target card now shows the carried-over edits.
   - No candidates: the list area shows Caption muted copy (below) and the confirm button stays disabled.
 - **Dismiss spine** (ghost, `text-destructive`) opens an `AlertDialog` with the destructive confirm. On success: toast, the card disappears (state `dismissed`). Focus moves to the next card's first field, or to the section header's Re-scan button if none remain.
 
@@ -305,7 +311,7 @@ Placeholders in `{braces}` are interpolated. Model labels come from `settings.ts
 | Claude CLI not ready (Alert) | Title `The Claude CLI isn't ready`. Body `Photos are read by the Claude CLI on this computer. Install it and log in from Settings, then come back to upload.` Action `Open Settings` |
 | Photos list heading | `Photos {n}` |
 | Photos list empty | `No photos yet. Photos you drop appear here with their progress.` |
-| Row actions | `View spines` / `Re-scan photo` / `Retry upload` / `Remove` (aria-label `Remove {filename} from the list`) |
+| Row actions | `View spines` / `Re-scan photo` / `Retry upload` / `Remove from list` (aria-label `Remove {filename} from the list`) |
 | Status sub-lines | See the status mapping table (`Waiting to upload`, `Uploading…`, `Waiting for the worker`, `Preparing image…`, `Claude is reading the spines… {m:ss}`, `Cropping spines…`, `{n} spines · {model label}`, `No CDs found`) |
 | Duplicate upload toast | `{filename} was already uploaded. Showing the existing scan; no new Claude call was made.` |
 | Duplicate row badge | `Already uploaded` |
@@ -322,8 +328,8 @@ Placeholders in `{braces}` are interpolated. Model labels come from `settings.ts
 | Low-confidence tooltip | `Claude is {pct}% sure of this. Check it against the crop.` |
 | Edited badge (field / card) | `Edited` / `Edited · {n}` |
 | Revert button tooltip + aria-label | Tooltip `Revert to Claude's read: “{ai_value}”` (or `Revert to Claude's read (empty)`). aria-label `Revert {field} to Claude's read` |
-| Revert toast | `{Field} reverted to Claude's read` with action `Undo` |
-| Re-scan hint (D-15) | `Latest scan reads “{new}”` + button `Use it` |
+| Revert toast | `{Field} reverted to Claude's read` with action `Undo revert` |
+| Re-scan hint (D-15) | `Latest scan reads “{new}”` + button `Use new read` |
 | Field save pending | `Saving…` |
 | Field save error | `Not saved: {reason}. Leave the field again to retry.` |
 | Crop missing | `Crop unavailable` |
@@ -349,14 +355,14 @@ Placeholders in `{braces}` are interpolated. Model labels come from `settings.ts
 | Upload error: cut off | `The upload was cut off before it finished. Retry the upload.` |
 | Upload error: network | `Couldn't reach the app. Check that it's still running, then retry the upload.` |
 | Poll error (page Alert) | Title `Couldn't refresh`. Body `The latest status didn't load. Showing what was last loaded; retrying every few seconds.` |
-| Re-scan dialog | Title `Re-scan {filename}?`. Body `Claude reads this photo again, which uses your subscription quota. Edits are kept on every spine that's found again.` Buttons `Cancel` / `Re-scan photo` (pending `Starting…`). Toast `Re-scan queued for {filename}`. Error `Couldn't start the re-scan: {reason}.` |
+| Re-scan dialog | Title `Re-scan {filename}?`. Body `Claude reads this photo again, which uses your subscription quota. Edits are kept on every spine that's found again.` Buttons `Keep current scan` (ghost) / `Re-scan photo` (pending `Starting…`). Toast `Re-scan queued for {filename}`. Error `Couldn't start the re-scan: {reason}.` |
 | Re-scan disabled tooltip | `This photo is already being analyzed.` |
-| Re-attach dialog | Title `Re-attach spine #{index}`. Body `Pick the spine from the latest scan that this one is. Your edits move to it.` Buttons `Cancel` / `Re-attach spine` (pending `Re-attaching…`). No candidates: `Every spine in the latest scan is already matched. Dismiss this spine, or leave it for later.` Toast `Edits moved to spine #{target}`. Error (inline, destructive) `Couldn't re-attach: {reason}.` |
+| Re-attach dialog | Title `Re-attach spine #{index}`. Body `Pick the spine from the latest scan that this one is. Your edits move to it.` Buttons `Leave unattached` (ghost) / `Re-attach spine` (pending `Re-attaching…`). No candidates: `Every spine in the latest scan is already matched. Dismiss this spine, or leave it for later.` Toast `Edits moved to spine #{target}`. Error (inline, destructive) `Couldn't re-attach: {reason}.` |
 | Destructive confirmation | **Dismiss orphaned spine:** title `Dismiss spine #{index}?`, body `It's removed from the list. Its edits stay in the database but are no longer used.`, buttons `Keep spine` / `Dismiss spine` (pending `Dismissing…`). Toast `Spine #{index} dismissed`. Error (inline, destructive) `Couldn't dismiss: {reason}.` |
 
 Destructive actions in this phase: only **Dismiss spine** (AlertDialog with destructive confirm). Re-scan is confirmed but not destructive (nothing is deleted, D-13/D-15). Revert is undoable from its toast, so it has no confirm. Removing a failed upload row is client-only and has no confirm.
 
-Toasts are used for success and confirmations only (duplicate, re-scan queued, revert with Undo, re-attach, dismiss). Every error is inline and persistent, as in Phase 1.
+Toasts are used for success and confirmations only (duplicate, re-scan queued, revert with Undo revert, re-attach, dismiss). Every error is inline and persistent, as in Phase 1.
 
 ---
 
@@ -380,7 +386,7 @@ Applicable state considerations resolved: 31 covered, 6 backstop, 1 unresolved (
 | loading | E10/E11 Dialog confirms (interactive-control) | ✅ covered | Confirms show a spinner with `Starting…`, `Re-attaching…` or `Dismissing…` and both buttons are disabled |
 | loading | E8 Spine crop (media) | ✅ covered | The crop well is a fixed `bg-muted` box sized by the image's width/height attributes, so lazy loading never shifts layout |
 | error | E1 Dropzone (form) | ✅ covered | An invalid drag turns the border destructive with the reject heading; files rejected by type or size become failed rows with the documented copy and are never sent |
-| error | E3 Upload row (interactive-control) | ✅ covered | Upload failures show the documented reason with "Retry upload" and "Remove"; scan failures show the mapped reason in destructive text with "Re-scan photo" |
+| error | E3 Upload row (interactive-control) | ✅ covered | Upload failures show the documented reason with "Retry upload" and "Remove from list"; scan failures show the mapped reason in destructive text with "Re-scan photo" |
 | error | E5 Photo section (list-collection) | ✅ covered | A failed run shows a destructive Alert with the reason; on a failed re-scan the previous cards stay visible under the "Re-scan failed. Showing the previous scan." title |
 | error | E9 Spine field save (form) | ✅ covered | A failed PATCH keeps the draft, sets `aria-invalid` and shows `Not saved: {reason}…` inline; the next blur retries; no rollback and no toast |
 | error | E8 Spine crop (media) | ✅ covered | A crop that fails to load shows the `ImageOff` icon and "Crop unavailable" in the same well |
@@ -392,7 +398,7 @@ Applicable state considerations resolved: 31 covered, 6 backstop, 1 unresolved (
 | partial | E9 Spine fields with mixed confidence (form) | ✅ covered | Only non-empty, unedited fields below the threshold get the warning border and icon; edited fields show "Edited" and a revert button instead |
 | partial | E5 Truncated run (list-collection) | ✅ covered | When fewer spines return than Claude estimated, every returned spine is shown and the header carries the `May be incomplete` badge with the estimate in its tooltip |
 | partial | E7 Orphaned spines after re-scan (list-collection) | ✅ covered | Orphaned spines render after active ones under `No longer detected ({n})` with the old crop, kept edits, and Re-attach / Dismiss actions |
-| partial | E9 Edited field after re-scan (form) | ✅ covered | When the new read differs from the user's value, the field keeps the user's value and shows `Latest scan reads "{new}"` with `Use it` |
+| partial | E9 Edited field after re-scan (form) | ✅ covered | When the new read differs from the user's value, the field keeps the user's value and shows `Latest scan reads "{new}"` with `Use new read` |
 | zero-one-many | E2/E5/E6 Counts (list-collection) | ✅ covered | Every count pluralizes (`1 spine` / `2 spines`, `1 photo` / `2 photos`); 0 spines renders `No CDs found` rather than `0 spines` |
 | overflow | E6 Spines list with many photos (list-collection) | ✅ covered | Sections scroll under the sticky 56px app header; each photo header sticks at `top-14` until the next section pushes it out |
 | overflow | E5 Section header at 360px (nav) | ✅ covered | Badges wrap under the filename, the filename truncates with a `title`, and Re-scan becomes a 36px icon button with an aria-label |
