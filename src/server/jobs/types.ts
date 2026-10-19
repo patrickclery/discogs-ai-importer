@@ -13,7 +13,16 @@ export const JOB_STATUSES = [
 ] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
-export type JobContext = { job: JobRow; signal: AbortSignal };
+export type JobContext = {
+  job: JobRow;
+  signal: AbortSignal;
+  /**
+   * True while this run still owns the job: the claim is current and this
+   * worker still holds the lease. Handlers MUST check it right before any
+   * paid or external side effect (WR-04); on false, throw or return early.
+   */
+  isCurrent(): boolean;
+};
 
 /**
  * Job handler contract.

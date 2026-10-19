@@ -3,17 +3,19 @@ import type { StatusResponse } from '@/lib/status-types';
 import { newId } from '../ids';
 import { handlers as defaultHandlers } from './handlers';
 import {
+  acquireLease,
   heartbeatLease,
+  holdsLease,
   LEASE_HEARTBEAT_MS,
   LEASE_STALE_MS,
   releaseLease,
-  tryAcquireLease,
 } from './lease';
 import {
   claimNext,
   complete,
   failJob,
   failOrRetry,
+  isClaimCurrent,
   recoverRunningJobs,
 } from './queue';
 import { type JobHandler, LANES, type Lane } from './types';
@@ -147,6 +149,8 @@ export async function processNext(
     now?: number;
     handlers?: Record<string, JobHandler>;
     abortGraceMs?: number;
+    /** The running worker's boot id; isCurrent() also checks the lease. */
+    bootId?: string;
   } = {},
 ): Promise<'idle' | 'succeeded' | 'failed'> {
   const job = claimNext(lane, opts.now);
@@ -187,6 +191,10 @@ export async function processNext(
     handler.run(JSON.parse(job.payload), {
       job,
       signal: controller.signal,
+      isCurrent: () =>
+        !controller.signal.aborted &&
+        isClaimCurrent(job.id, job.attempts) &&
+        (opts.bootId === undefined || holdsLease(opts.bootId)),
     }),
   );
   run.catch(() => {});
@@ -233,11 +241,15 @@ export async function processNext(
   }
 }
 
-async function runLane(lane: Lane, isStopped: () => boolean): Promise<void> {
+async function runLane(
+  lane: Lane,
+  bootId: string,
+  isStopped: () => boolean,
+): Promise<void> {
   while (!isStopped()) {
     let result: Awaited<ReturnType<typeof processNext>>;
     try {
-      result = await processNext(lane);
+      result = await processNext(lane, { bootId });
     } catch (err) {
       // SQLITE_BUSY and friends must never end the loop.
       console.error(`[worker] ${lane} lane error:`, err);
@@ -257,7 +269,7 @@ function startLanes(w: InternalWorker): void {
   const isStopped = () => w.stopped || w.laneGen !== gen;
   for (const lane of LANES) {
     for (let i = 0; i < LANE_CONCURRENCY[lane]; i++) {
-      void runLane(lane, isStopped);
+      void runLane(lane, w.bootId, isStopped);
     }
   }
 }
@@ -267,9 +279,15 @@ function tick(w: InternalWorker): void {
   if (w.stopped) return;
   try {
     if (w.state === 'waiting') {
-      if (!tryAcquireLease({ bootId: w.bootId, pid: w.pid })) return;
+      const lease = acquireLease({ bootId: w.bootId, pid: w.pid });
+      if (!lease.acquired) return;
       // D-14: only the process that just took the lease resets running jobs.
-      const recovered = recoverRunningJobs();
+      // Taken from a holder that is still alive (WR-04)? It may be mid-job
+      // and only notices the loss on its next tick, so requeue only jobs it
+      // cannot still be running; the per-tick reaper picks up the rest.
+      const recovered = lease.fromLiveHolder
+        ? reapStrandedJobs()
+        : recoverRunningJobs();
       if (recovered.requeued || recovered.failed) {
         console.log(
           `[worker] recovered ${recovered.requeued} job(s), failed ${recovered.failed} exhausted job(s)`,

@@ -115,6 +115,20 @@ export function complete(
   return info.changes === 1;
 }
 
+/**
+ * True while the claim that produced `attempt` still owns the job: it is
+ * running and nobody recovered and re-claimed it since (WR-04 fence).
+ */
+export function isClaimCurrent(id: string, attempt: number): boolean {
+  return (
+    sql()
+      .prepare(
+        `SELECT 1 FROM jobs WHERE id = ? AND status = 'running' AND attempts = ?`,
+      )
+      .get(id, attempt) !== undefined
+  );
+}
+
 function errorText(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).slice(
     0,

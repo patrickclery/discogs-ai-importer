@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
 import {
+  acquireLease,
   heartbeatLease,
+  holdsLease,
   isPidAlive,
   LEASE_HEARTBEAT_MS,
   LEASE_STALE_MS,
@@ -12,7 +14,12 @@ import {
   tryAcquireLease,
 } from './lease';
 import { claimNext, enqueue, listJobs } from './queue';
-import { getWorkerInfo, startWorker, stopWorker } from './worker';
+import {
+  getWorkerInfo,
+  startWorker,
+  stopWorker,
+  strandedAfterMs,
+} from './worker';
 
 const T0 = 1_700_000_000_000;
 const ALIVE_OTHER = process.ppid;
@@ -68,6 +75,26 @@ describe('worker lease', () => {
       tryAcquireLease({ bootId: 'b', pid: process.pid, now: T0 + 1 }),
     ).toBe(true);
     expect(readLease()?.bootId).toBe('b');
+  });
+
+  it('acquireLease reports fromLiveHolder only for a stale lease whose pid is alive (WR-04)', () => {
+    expect(acquireLease({ bootId: 'a', pid: ALIVE_OTHER, now: T0 })).toEqual({
+      acquired: true,
+      fromLiveHolder: false,
+    });
+    expect(
+      acquireLease({ bootId: 'a', pid: ALIVE_OTHER, now: T0 + 1 }),
+    ).toEqual({ acquired: true, fromLiveHolder: false });
+    expect(
+      acquireLease({ bootId: 'b', pid: process.pid, now: T0 + 16_000 }),
+    ).toEqual({ acquired: true, fromLiveHolder: true });
+    expect(holdsLease('b')).toBe(true);
+    expect(holdsLease('a')).toBe(false);
+
+    tryAcquireLease({ bootId: 'dead', pid: deadPid(), now: T0 + 40_000 });
+    expect(
+      acquireLease({ bootId: 'c', pid: process.pid, now: T0 + 40_001 }),
+    ).toEqual({ acquired: true, fromLiveHolder: false });
   });
 
   it('releaseLease only deletes the row for the current holder', () => {
@@ -168,6 +195,47 @@ describe('lease-gated worker', () => {
     expect(claimNext('discogs')?.id).toBe(again);
     expect(startWorker()).toBe(w);
     expect(listJobs().find((j) => j.id === again)?.status).toBe('running');
+  });
+
+  it('taking the lease from a live holder requeues only jobs it cannot still be running (WR-04)', () => {
+    const db = getDb().$client;
+    const now = Date.now();
+    const oldId = enqueue({ lane: 'anthropic', type: 'noop', runAfter: 0 }).id;
+    const recentId = enqueue({ lane: 'discogs', type: 'noop', runAfter: 0 }).id;
+    const oldLock = now - strandedAfterMs() - 1000;
+    const recentLock = now - 1000;
+    db.prepare(
+      "UPDATE jobs SET status = 'running', attempts = 1, locked_at = ? WHERE id = ?",
+    ).run(oldLock, oldId);
+    db.prepare(
+      "UPDATE jobs SET status = 'running', attempts = 1, locked_at = ? WHERE id = ?",
+    ).run(recentLock, recentId);
+    // A live process (our parent) whose heartbeat went stale.
+    tryAcquireLease({ bootId: 'stalled', pid: ALIVE_OTHER, now: now - 20_000 });
+
+    const w = startWorker();
+    expect(w.state).toBe('running');
+    const byId = (id: string) => listJobs().find((j) => j.id === id);
+    // The stalled holder may still be running this one: left alone.
+    expect(byId(recentId)).toMatchObject({
+      status: 'running',
+      attempts: 1,
+      lockedAt: recentLock,
+    });
+    // Claimed long before any handler could still run: recovered.
+    expect(byId(oldId)?.lockedAt).not.toBe(oldLock);
+  });
+
+  it('taking the lease from a dead holder recovers every running job at once', () => {
+    const db = getDb().$client;
+    const id = enqueue({ lane: 'discogs', type: 'mystery', runAfter: 0 }).id;
+    const lock = Date.now() - 1000;
+    db.prepare(
+      "UPDATE jobs SET status = 'running', attempts = 1, locked_at = ? WHERE id = ?",
+    ).run(lock, id);
+    tryAcquireLease({ bootId: 'dead', pid: deadPid(), now: Date.now() });
+    startWorker();
+    expect(listJobs().find((j) => j.id === id)?.lockedAt).not.toBe(lock);
   });
 
   it('stopWorker releases the lease and leaves nothing running', () => {

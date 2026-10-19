@@ -35,6 +35,44 @@ function status(id: string): string {
   ).status;
 }
 
+describe('ctx.isCurrent fence (WR-04)', () => {
+  useTempDataDir();
+
+  it('is true for the live claim and false once the job was recovered and re-claimed', async () => {
+    enqueue({ lane: 'anthropic', type: 'probe', runAfter: T0 });
+    const seen: boolean[] = [];
+    const probe: JobHandler = {
+      timeoutMs: 1000,
+      run: async (_p, ctx) => {
+        seen.push(ctx.isCurrent());
+        // Another process takes over: recovery requeues, then it re-claims.
+        recoverRunningJobs(T0);
+        expect(claimNext('anthropic', T0)?.attempts).toBe(2);
+        seen.push(ctx.isCurrent());
+      },
+    };
+    await processNext('anthropic', { now: T0, handlers: { probe } });
+    expect(seen).toEqual([true, false]);
+  });
+
+  it('is false when the worker no longer holds the lease', async () => {
+    enqueue({ lane: 'anthropic', type: 'probe', runAfter: T0 });
+    let current: boolean | undefined;
+    const probe: JobHandler = {
+      timeoutMs: 1000,
+      run: async (_p, ctx) => {
+        current = ctx.isCurrent();
+      },
+    };
+    await processNext('anthropic', {
+      now: T0,
+      handlers: { probe },
+      bootId: 'not-the-holder',
+    });
+    expect(current).toBe(false);
+  });
+});
+
 describe('status writes and stranded jobs (WR-05)', () => {
   useTempDataDir();
 

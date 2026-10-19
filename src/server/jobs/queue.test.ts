@@ -304,6 +304,7 @@ describe('noop handler (failTimes, writeFile)', () => {
     return {
       job: { id, attempts } as JobContext['job'],
       signal: new AbortController().signal,
+      isCurrent: () => true,
     };
   }
 
