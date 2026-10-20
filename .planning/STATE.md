@@ -20,10 +20,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-18)
+See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 02 — Shelf Scan
+**Current focus:** Phase 3 — Discogs Match
 
 ## Current Position
 
@@ -146,7 +146,6 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 2]: Needs research. Start with a spike on 3-5 real shelf photos to decide Opus vs Sonnet, effort level, dense-shelf handling and tiling. Also decide on iPhone HEIC support
 - [Phase 3]: Needs research. Discogs docs returned 403, so verify OAuth callback, `in_collection` flags, thumbnail hotlinking and 429 `Retry-After` on a real account
 - [Phase 4]: Light research. Verify folder-0 POST behaviour and duplicate-instance creation on a real account
 
@@ -160,6 +159,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T08:31:59.489Z
+Last session: 2026-10-20T18:45:00.000Z
 Stopped at: Phase 02 complete, ready to plan Phase 3
 Resume file: None
