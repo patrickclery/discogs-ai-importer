@@ -490,9 +490,9 @@ Placeholders in `{braces}` are interpolated. Pluralize every count (`1 candidate
 | Dialog not found | `Discogs has no release {id}. Check the number, or paste the full link from the release page.` |
 | Dialog search failed | `Search failed: {reason}. Search again to retry.` |
 | Dialog add failed | `Couldn't add it: {reason}.` |
-| Dialog buttons | `Cancel` / `Add to candidates` |
+| Dialog buttons | `Close search` / `Add to candidates` |
 | Add success toast | `Added {title} to spine #{n}` |
-| Destructive confirmation | **Disconnect Discogs:** title `Disconnect Discogs?`. Body `The app forgets your Discogs sign-in on this computer. Matches already found stay, and new lookups wait until you connect again. To remove the app's access on Discogs as well, go to discogs.com/settings/applications.` (domain is an accent link). Buttons `Stay connected` / `Disconnect` (pending `Disconnecting…`). Toast `Discogs disconnected`. Error (inline, destructive) `Couldn't disconnect: {reason}.` |
+| Destructive confirmation | **Disconnect Discogs:** title `Disconnect Discogs?`. Body `The app forgets your Discogs sign-in on this computer. Matches already found stay, and new lookups wait until you connect again. To remove the app's access on Discogs as well, go to discogs.com/settings/applications.` (domain is an accent link). Buttons `Stay connected` / `Disconnect Discogs` (pending `Disconnecting…`). Toast `Discogs disconnected`. Error (inline, destructive) `Couldn't disconnect: {reason}.` |
 | Destructive confirmation (amended) | **Clear Discogs value** (Phase 1 dialog) gains one sentence when connected: ` This also disconnects your Discogs account.` |
 
 Destructive actions in this phase:
