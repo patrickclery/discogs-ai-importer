@@ -30,8 +30,13 @@ export const GEO_WEIGHT = 0.8;
 export const TEXT_WEIGHT = 1 - GEO_WEIGHT;
 /** Centre distance, in mean short sides, at which the distance score is 0. */
 export const DISTANCE_REACH = 3;
-/** Pairs scoring below this stay unmatched. */
-export const MATCH_CUTOFF = 0.5;
+/**
+ * Pairs scoring below this stay unmatched. Tuned on the spike fixtures: 0.5
+ * accepted a cross-model pair of two different spines one short side apart
+ * (text similarity 0.23, score 0.54); 0.6 rejects it while every photo and
+ * configuration pair still pairs at least 95% of its spines.
+ */
+export const MATCH_CUTOFF = 0.6;
 
 type Unit = { x1: number; y1: number; x2: number; y2: number };
 
