@@ -3,6 +3,7 @@
 import { Copy, ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useState } from 'react';
+import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
 import { PhotoStatusBadge } from '@/components/photo-status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,7 +81,15 @@ export function PhotoStatusRow({
       </p>
     );
   } else if (photo.status === 'error') {
-    subline = <p className="text-sm text-destructive">{view.subline}</p>;
+    // Untrusted server text: rendered as a text child and a title only.
+    subline = (
+      <p
+        className="line-clamp-3 text-sm break-words text-destructive"
+        title={view.subline}
+      >
+        {view.subline}
+      </p>
+    );
   } else {
     subline = <p className="text-xs text-muted-foreground">{view.subline}</p>;
   }
@@ -98,6 +107,12 @@ export function PhotoStatusRow({
             <Copy aria-hidden="true" />
             Already uploaded
           </Badge>
+        ) : null}
+        {photo.status === 'done' && photo.densityFlags.length > 0 ? (
+          <DensityBadge />
+        ) : null}
+        {photo.status === 'done' && photo.truncated ? (
+          <IncompleteBadge photo={photo} />
         ) : null}
         <PhotoStatusBadge status={photo.status} />
         {photo.status === 'done' && photo.spineCount >= 1 ? (

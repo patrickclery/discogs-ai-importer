@@ -99,7 +99,9 @@ export function photosRefetchInterval(
 
 /** Tooltip for the "May be incomplete" badge (UI-SPEC truncation copy). */
 export function incompleteTooltip(
-  _photo: Pick<PhotoDto, 'spineCountEstimate' | 'detectedCount' | 'spineCount'>,
+  photo: Pick<PhotoDto, 'spineCountEstimate' | 'detectedCount' | 'spineCount'>,
 ): string {
-  return '';
+  const returned = photo.detectedCount ?? photo.spineCount;
+  const estimate = photo.spineCountEstimate ?? returned;
+  return `Claude estimated ${estimate} spines but returned ${returned}. Re-scan, or photograph a narrower section.`;
 }
