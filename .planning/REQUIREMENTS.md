@@ -24,12 +24,12 @@
 
 - [x] **VIS-01**: Each photo is analyzed with exactly ONE Claude vision call that returns every detected spine as structured JSON
 - [x] **VIS-02**: Each spine result includes artist, title, format, label, catalog number, raw text as printed, bounding box, per-field confidence, and text orientation
-- [ ] **VIS-03**: The raw Claude response is persisted before parsing; truncated or refused responses are surfaced as errors, not silently dropped
+- [x] **VIS-03**: The raw Claude response is persisted before parsing; truncated or refused responses are surfaced as errors, not silently dropped
 - [x] **VIS-04**: Each detected spine is cropped locally from its bounding box (with padding) and shown rotated to horizontal — no extra AI calls
 
 ### Review
 
-- [ ] **REV-01**: User sees a list of all spines with the spine crop next to the extracted fields on every row
+- [x] **REV-01**: User sees a list of all spines with the spine crop next to the extracted fields on every row
 - [ ] **REV-02**: User can edit any extracted field; edits are stored separately from the original AI output
 - [ ] **REV-03**: User can filter the list by status: pending, matched, imported, not found, not on Discogs, failed — with counts per status
 - [ ] **REV-04**: User can retry a failed item without re-uploading the photo
@@ -100,9 +100,9 @@
 | INGEST-05 | Phase 2 | Complete |
 | VIS-01 | Phase 2 | Complete |
 | VIS-02 | Phase 2 | Complete |
-| VIS-03 | Phase 2 | Pending |
+| VIS-03 | Phase 2 | Complete |
 | VIS-04 | Phase 2 | Complete |
-| REV-01 | Phase 2 | Pending |
+| REV-01 | Phase 2 | Complete |
 | REV-02 | Phase 2 | Pending |
 | REV-03 | Phase 4 | Pending |
 | REV-04 | Phase 4 | Pending |

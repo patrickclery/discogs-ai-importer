@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-10-20T03:40:56.250Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-10-20T03:54:36.847Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 91e1c81b20a6db29103e4b05d33770311b2a045b
+state_head: eecdf2182b100d3f788bc037cebb91c8176e40cf
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 9
+  completed_plans: 10
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -65,6 +65,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P01 | 12min | 2 tasks | 15 files |
 | Phase 02 P02 | 34min | 3 tasks | 58 files |
 | Phase 02 P03 | 7min | 2 tasks | 16 files |
+| Phase 02 P04 | 7min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-02: parseVisionResult keeps non-empty values exactly; non-number confidence becomes 0
 - [Phase 02]: Plan 02-03: scan_photo jobs are enqueued with maxAttempts 1 and dedupe scan:<photoId>:<runNo> in the same transaction as the photo and run
 - [Phase 02]: Plan 02-03: photos.latest_run_id and spines.current_detection_id carry no FK (circular); hasEarlierScan means an earlier run is done
+- [Phase 02]: 02-04 freeze-master: effort high, max output tokens 32000, confidence 0.6, density N 90 / W 33 px, MAX_EDGE 2576 / MAX_TOKENS 4784, crops from full-res master, no tiling
+- [Phase 02]: Vision calls run via claude -p on the owner's Claude Max subscription; per-photo $ figures are API-equivalent reporting only (real cost is Max quota)
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:40:56.182Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-10-20T03:54:36.780Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
