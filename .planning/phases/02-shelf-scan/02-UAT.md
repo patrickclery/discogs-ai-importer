@@ -3,7 +3,7 @@ status: complete
 phase: 02-shelf-scan
 source: [02-VERIFICATION.md]
 started: 2026-10-20T08:41:15.000Z
-updated: 2026-10-20T18:25:41.639Z
+updated: 2026-10-20T23:25:40.395Z
 ---
 
 ## Current Test
@@ -14,9 +14,8 @@ updated: 2026-10-20T18:25:41.639Z
 
 ### 1. UAT 3 re-run (G-02-3). Prod build (corepack pnpm build && corepack pnpm start). Open /upload with every photo Done, stop the server, refocus the tab so 'Couldn't refresh' appears with the last data kept. Start the server and keep the tab focused. Repeat on /spines.
 expected: The alert clears by itself within roughly 3-10 s of the server coming back (the default retry: 3 backoff can delay the first error, then polls run every 3 s). No page interaction needed.
-result: issue
-reported: "it's still not changing" (screenshots: after restart the header flips to 'Worker idle' but the 'Couldn't refresh' alert stays on /upload)
-severity: major
+result: pass
+note: "Re-run after server restart on current build + hard reload: alert cleared on its own. First run (issue) used a tab loaded with pre-02-13 JS; see debug session."
 
 ### 2. UAT 5 re-run (G-02-5) on /spines, prod build. First paste in the DevTools console: window.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.activeElement?.blur(); }, { capture: true }). On an unedited field type extra characters and press Escape; repeat on the same field; then type, click away and reload. Reload without the snippet and repeat. Also check Enter (Input), Ctrl/Cmd+Enter (Raw text), Revert and Undo revert.
 expected: Escape brings the saved value back with no Edited badge and no PATCH in the Network tab, both times. The click-away value persists after reload with Edited. Same results without the snippet. Enter, Ctrl/Cmd+Enter, Revert and Undo revert still work.
@@ -40,8 +39,8 @@ reason: "No failed photo to re-scan from /upload; owner skipped the narrow-icon 
 ## Summary
 
 total: 5
-passed: 2
-issues: 1
+passed: 3
+issues: 0
 pending: 0
 skipped: 2
 blocked: 0
@@ -50,7 +49,7 @@ blocked: 0
 
 - gap_id: G-02-1
   truth: "After the server comes back, the 'Couldn't refresh' alert on /upload (and /spines) clears by itself within ~3-10 s with no page interaction"
-  status: failed
+  status: invalid
   reason: "User reported: it's still not changing — header status recovers to 'Worker idle' but the 'Couldn't refresh' alert stays"
   severity: major
   test: 1
