@@ -489,6 +489,58 @@ export async function stepSpinesPage(ctx: Ctx): Promise<void> {
   check(
     'Re-scan photo, its icon-only aria-label and the orphan section are rendered',
   );
+  // Plan 02-12 (D-15): X's edited title shows the new read with one click.
+  assert(
+    html.includes(`Latest scan reads \u201c${X_NEW_TITLE}\u201d`) &&
+      html.includes('Use new read'),
+    '/spines lacks the "Latest scan reads" hint on the edited X title',
+  );
+  check('the edited X title shows "Latest scan reads" and "Use new read"');
+}
+
+// Plan 02-12 (D-07): ?review=1 lists only what needs review, orphan included.
+export async function stepReviewFilter(
+  ctx: Ctx,
+  photoId: string,
+): Promise<void> {
+  step('(g2) GET /api/spines?review=1 lists only the spines that need review');
+  const get = async (qs: string) => {
+    const res = await fetch(`${ctx.baseUrl}/api/spines?photo=${photoId}${qs}`);
+    assert(res.status === 200, `GET /api/spines${qs} returned ${res.status}`);
+    return (await res.json()) as {
+      spines: SpineApi[];
+      counts: { all: number; needsReview: number };
+    };
+  };
+  const all = await get('');
+  const review = await get('&review=1');
+  const off = await get('&review=true');
+  assert(
+    review.spines.some((s) => s.state === 'orphaned'),
+    'the orphaned spine is not in Needs review',
+  );
+  assert(
+    review.counts.needsReview === review.spines.length &&
+      review.counts.all === all.spines.length &&
+      review.spines.length < all.spines.length,
+    `counts ${JSON.stringify(review.counts)}, ${review.spines.length} of ${all.spines.length} listed`,
+  );
+  assert(
+    off.spines.length === all.spines.length,
+    '?review=true filtered the list (only exactly 1 may)',
+  );
+  const page = await fetch(`${ctx.baseUrl}/spines?review=1`);
+  const html = await page.text();
+  // The Select's value text renders only after hydration (Radix), so the
+  // server HTML is checked for the toggle and the Select trigger.
+  assert(html.includes('Needs review'), '/spines?review=1 lacks the toggle');
+  assert(
+    html.includes('aria-label="Filter by photo"'),
+    '/spines?review=1 lacks the photo Select',
+  );
+  check(
+    `Needs review lists ${review.spines.length} of ${all.spines.length}, orphan included; only ?review=1 filters`,
+  );
 }
 
 export async function postJson(
@@ -708,6 +760,7 @@ runMain('verify-rescan', async (onCleanup) => {
   const v = await stepMerged(ctx, photoId, spines);
   stepStatesAndHistory(ctx, photoId, spines, snapshot);
   await stepSpinesPage(ctx);
+  await stepReviewFilter(ctx, photoId);
   await stepReattach(ctx, photoId, spines, v);
   await stepDismiss(ctx, photoId, spines);
   stepCalls(ctx, 3);

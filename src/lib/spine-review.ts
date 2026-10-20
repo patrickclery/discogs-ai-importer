@@ -113,9 +113,11 @@ export function needsReview(
  * latest read is empty).
  */
 export function rescanHint(
-  _f: Pick<SpineFieldDto, 'value' | 'aiValue' | 'editBaseAiValue'>,
+  f: Pick<SpineFieldDto, 'value' | 'aiValue' | 'editBaseAiValue'>,
 ): string | null {
-  return null; // RED stub
+  const latest = normalizeFieldInput(f.aiValue);
+  if (latest === null || !isEdited(f)) return null;
+  return latest === normalizeFieldInput(f.editBaseAiValue) ? null : latest;
 }
 
 /**

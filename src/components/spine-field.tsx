@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { TriangleAlert, Undo2 } from 'lucide-react';
+import { Sparkles, TriangleAlert, Undo2 } from 'lucide-react';
 import {
   type ChangeEvent,
   type KeyboardEvent,
@@ -30,6 +30,7 @@ import {
   lowConfidenceTooltip,
   MAX_FIELD_CHARS,
   normalizeFieldInput,
+  rescanHint,
   resolveDisplayedValue,
   revertTooltip,
   withSpineField,
@@ -92,7 +93,9 @@ function saveError(err: unknown): string {
  * it (RESEARCH Pitfall 6). Leaving the field saves through PATCH
  * /api/spines/{id}/fields with an optimistic cache update. Low-confidence
  * reads get the warning border and icon (D-09); edited fields get the
- * "Edited" badge and a revert button with an undo toast.
+ * "Edited" badge and a revert button with an undo toast. After a re-scan, an
+ * edited field whose new read differs shows that read under the control with
+ * a one-click button to take it (D-15, rescanHint).
  */
 export function SpineField({
   spineId,
@@ -144,6 +147,7 @@ export function SpineField({
 
   const edited = isEdited(f);
   const low = isLowConfidence(f, threshold);
+  const latestRead = rescanHint(f);
   const pct = confidencePct(f.confidence);
   const shown = resolveDisplayedValue({
     serverValue: f.value,
@@ -208,6 +212,12 @@ export function SpineField({
         onError: (err) => setError(saveError(err)),
       },
     );
+  }
+
+  function takeNewRead(read: string) {
+    setDraftValue(read);
+    setDirty(false);
+    save(read);
   }
 
   function onFocus() {
@@ -331,6 +341,24 @@ export function SpineField({
       ) : (
         <Input {...controlProps} />
       )}
+      {latestRead !== null ? (
+        <p className="flex min-w-0 items-start gap-1 text-xs text-muted-foreground">
+          <Sparkles
+            aria-hidden="true"
+            className="mt-px size-3.5 shrink-0 text-warning"
+          />
+          <span className="min-w-0 break-words">
+            {`Latest scan reads \u201c${latestRead}\u201d`}{' '}
+            <button
+              type="button"
+              className="rounded-sm text-foreground underline underline-offset-2 outline-none hover:text-foreground/80 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              onClick={() => takeNewRead(latestRead)}
+            >
+              Use new read
+            </button>
+          </span>
+        </p>
+      ) : null}
       {low ? (
         <span id={hintId} className="sr-only">
           {`Low confidence, ${pct} percent. Check it against the crop.`}
