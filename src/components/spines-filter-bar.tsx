@@ -11,7 +11,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { PhotoOption, SpinesResponse } from '@/lib/scan-types';
 
-/** Select value for "All photos" (Radix Select items cannot be empty). */
+/** Select value meaning every photo (Radix Select items cannot be empty). */
 const ALL_PHOTOS = '__all__';
 
 /** `?review=1` is Needs review; anything else is All (T-02-28). */

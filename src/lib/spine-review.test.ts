@@ -258,3 +258,40 @@ describe('withSpineField (02-09)', () => {
     expect(withSpineField(undefined, 's1', spine.fields[0])).toBeUndefined();
   });
 });
+
+describe('needsReview (02-12, D-07)', () => {
+  const low = field({
+    field: 'title',
+    aiValue: 'T',
+    value: 'T',
+    confidence: 0.3,
+  });
+  it('is true for an orphaned spine even when every field is fine', () => {
+    expect(needsReview({ state: 'orphaned', fields: [field()] }, 0.6)).toBe(
+      true,
+    );
+  });
+  it('is true for an active spine with a non-empty unedited field below the threshold', () => {
+    expect(needsReview({ state: 'active', fields: [field(), low] }, 0.6)).toBe(
+      true,
+    );
+  });
+  it('is false when the low field is edited', () => {
+    const edited = { ...low, value: 'Owner title', editBaseAiValue: 'T' };
+    expect(needsReview({ state: 'active', fields: [edited] }, 0.6)).toBe(false);
+  });
+  it('is false when the low field was not read', () => {
+    const empty = { ...low, aiValue: null, value: null };
+    expect(needsReview({ state: 'active', fields: [empty] }, 0.6)).toBe(false);
+  });
+  it('is false exactly at the threshold', () => {
+    const at = { ...low, confidence: 0.6 };
+    expect(needsReview({ state: 'active', fields: [at] }, 0.6)).toBe(false);
+  });
+  it('is false for superseded and dismissed spines', () => {
+    expect(needsReview({ state: 'superseded', fields: [low] }, 0.6)).toBe(
+      false,
+    );
+    expect(needsReview({ state: 'dismissed', fields: [low] }, 0.6)).toBe(false);
+  });
+});
