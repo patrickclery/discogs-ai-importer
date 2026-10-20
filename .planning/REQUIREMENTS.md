@@ -18,14 +18,14 @@
 - [ ] **INGEST-02**: User sees per-photo processing status (queued / analyzing / done / error)
 - [ ] **INGEST-03**: Re-uploading an identical photo (same SHA-256 hash) makes zero Claude calls and links to the existing result
 - [ ] **INGEST-04**: User can explicitly re-scan a photo; re-scan is the only way a photo is sent to Claude again, and user edits are preserved where spines still match
-- [ ] **INGEST-05**: Photos are EXIF-rotated and resized locally before analysis so the image sent to Claude is the same image crops are cut from
+- [x] **INGEST-05**: Photos are EXIF-rotated and resized locally before analysis so the image sent to Claude is the same image crops are cut from
 
 ### Vision
 
-- [ ] **VIS-01**: Each photo is analyzed with exactly ONE Claude vision call that returns every detected spine as structured JSON
-- [ ] **VIS-02**: Each spine result includes artist, title, format, label, catalog number, raw text as printed, bounding box, per-field confidence, and text orientation
+- [x] **VIS-01**: Each photo is analyzed with exactly ONE Claude vision call that returns every detected spine as structured JSON
+- [x] **VIS-02**: Each spine result includes artist, title, format, label, catalog number, raw text as printed, bounding box, per-field confidence, and text orientation
 - [ ] **VIS-03**: The raw Claude response is persisted before parsing; truncated or refused responses are surfaced as errors, not silently dropped
-- [ ] **VIS-04**: Each detected spine is cropped locally from its bounding box (with padding) and shown rotated to horizontal — no extra AI calls
+- [x] **VIS-04**: Each detected spine is cropped locally from its bounding box (with padding) and shown rotated to horizontal — no extra AI calls
 
 ### Review
 
@@ -97,11 +97,11 @@
 | INGEST-02 | Phase 2 | Pending |
 | INGEST-03 | Phase 2 | Pending |
 | INGEST-04 | Phase 2 | Pending |
-| INGEST-05 | Phase 2 | Pending |
-| VIS-01 | Phase 2 | Pending |
-| VIS-02 | Phase 2 | Pending |
+| INGEST-05 | Phase 2 | Complete |
+| VIS-01 | Phase 2 | Complete |
+| VIS-02 | Phase 2 | Complete |
 | VIS-03 | Phase 2 | Pending |
-| VIS-04 | Phase 2 | Pending |
+| VIS-04 | Phase 2 | Complete |
 | REV-01 | Phase 2 | Pending |
 | REV-02 | Phase 2 | Pending |
 | REV-03 | Phase 4 | Pending |

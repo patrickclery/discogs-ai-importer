@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-10-20T00:13:52.623Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-10-20T02:54:02.245Z"
 last_activity: 2026-10-19
-last_activity_desc: Phase 1 complete, transitioned to Phase 2
-state_head: 1e354c60a776c025e7459d8b418e3d6358f6fb53
+last_activity_desc: Phase 2 execution started
+state_head: 0dbe7902d1fa046006ccdea19e9fc1ac0851fff7
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 6
+  completed_plans: 7
   percent: 25
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 1 — Foundation
+**Current focus:** Phase 2 — Shelf Scan
 
 ## Current Position
 
-Phase: 2 (Shelf Scan) — READY TO EXECUTE
-Plan: Not started
+Phase: 2 (Shelf Scan) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
-Last activity: 2026-10-19 — Phase 1 complete, transitioned to Phase 2
+Last activity: 2026-10-19 — Phase 2 execution started
 
 Progress: [███░░░░░░░] 25%
 
@@ -62,6 +62,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01 P02 | 7min | 3 tasks | 16 files |
 | Phase 01 P03 | 5min | 2 tasks | 9 files |
 | Phase 01 P04 | 7min | 3 tasks | 15 files |
+| Phase 02 P01 | 12min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-03: SecretsFileError never carries file content (JSON.parse messages suppressed)
 - [Phase 01]: 01-04: buildClaudeEnv strips ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN and SECRET_ENV_NAMES; every claude spawn runs from os.tmpdir() via runProcess (process-group kill)
 - [Phase 01]: 01-04: Vision model stored in settings table key vision_model (Opus 5.5 default, Sonnet 5.5 allowed)
+- [Phase 02]: Plan 02-01: VISION_MAX_TURNS stays 6 (CLI 2.1.289 accepts --max-turns)
+- [Phase 02]: Plan 02-01: buildClaudeEnv strips inherited Claude Code session vars (CLAUDECODE, CLAUDE_EFFORT, CLAUDE_PID, CLAUDE_CODE_* except CLAUDE_CODE_OAUTH_TOKEN)
+- [Phase 02]: Plan 02-01: git.allow_default_branch_commits true (owner chose to commit on master)
 
 ### Pending Todos
 
@@ -108,6 +112,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T07:36:38.782Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-shelf-scan/02-UI-SPEC.md
+Last session: 2026-10-20T02:54:02.184Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None

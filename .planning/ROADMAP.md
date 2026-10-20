@@ -63,11 +63,11 @@ Plans:
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
 
-**Plans:** 12 plans
+**Plans:** 1/12 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 02-01-PLAN.md — D-01 spike tracer: package-legitimacy gate, production vision modules, one live call on a real HEIC with horizontal crops (wave 1)
+- [x] 02-01-PLAN.md — D-01 spike tracer: package-legitimacy gate, production vision modules, one live call on a real HEIC with horizontal crops (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 02-02-PLAN.md — D-01 spike measurement: calibration grid, Opus/Sonnet x effort matrix, report.json, fixture-only geometry and parsing tests (wave 2)
@@ -138,6 +138,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
-| 2. Shelf Scan | 0/12 | Planned | - |
+| 2. Shelf Scan | 1/12 | In Progress | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
