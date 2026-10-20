@@ -444,13 +444,13 @@ Keep `cd` and `unsure` as spines. Store the other media kinds only as detections
 | A7 | GitHub issue #58233 (byte-based downsampling) is fixed in the installed CLI 2.1.289 | Pitfall 2 | The calibration includes a >500 KB variant to detect it |
 | A8 | Tests over owner photos in gitignored `fixtures/spike/` must `skipIf` the files are absent. Recorded CLI JSON plus synthetic images are committed (under `test/fixtures/vision/`) | Validation | Without this, a fresh clone or CI fails |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Crop source (A5).** Recommendation: master crops. Confirm with the owner at the plan checkpoint.
-2. **Default effort.** `medium` versus `high`. The spike measures the misread rate against the quota and latency per photo.
-3. **Should scan jobs ever auto-retry before the spawn** (for example a transient sharp error)? Recommendation: no (`maxAttempts=1`). The user re-scans. This keeps one rule: no automatic re-sends.
-4. **Event-loop blocking.** HEIC decode blocks about 2 s per photo (measured). It is acceptable for a single user. If polling stutters noticeably, move the decode to `worker_threads` later.
-5. **Colour profile.** Raw RGBA from heic-decode loses the Display-P3 ICC profile, so colours shift slightly. This does not affect reading. Ignore it in v1.
+1. **Crop source (A5).** Recommendation: master crops. **RESOLVED:** deferred to the owner at the Plan 02-04 freeze checkpoint (options freeze-master / freeze-vision); `crop.ts` supports both sources and the Plan 02-01/02-02 spike writes crops from both for comparison.
+2. **Default effort.** `medium` versus `high`. **RESOLVED:** measured by the Plan 02-02 spike matrix (both models at medium and high) and chosen at the Plan 02-04 freeze; stored as the `vision_effort` setting.
+3. **Should scan jobs ever auto-retry before the spawn** (for example a transient sharp error)? **RESOLVED:** no. Scan jobs are enqueued with `maxAttempts: 1` (Plan 02-03); the explicit re-scan (Plan 02-10) is the only retry, and recovery never spawns a call (Plan 02-05).
+4. **Event-loop blocking.** HEIC decode blocks about 2 s per photo (measured). **RESOLVED:** accepted for a single local user (Plan 02-05 assumption A-10); `worker_threads` is not part of Phase 2.
+5. **Colour profile.** Raw RGBA from heic-decode loses the Display-P3 ICC profile, so colours shift slightly. **RESOLVED:** ignored; it does not affect reading spine text and no plan converts colour profiles.
 
 ## Environment Availability
 
