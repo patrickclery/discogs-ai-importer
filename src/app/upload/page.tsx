@@ -1,11 +1,12 @@
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
-import { PhotoStatusList } from '@/components/photo-status-list';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { UploadView } from '@/components/upload-view';
 import { getClaudeCliStatus, isClaudeReady } from '@/server/claude/cli';
 import { listPhotos } from '@/server/scan/queries';
+import { getDensityThresholds } from '@/server/settings';
 
 export default async function UploadPage() {
   await connection();
@@ -13,6 +14,7 @@ export default async function UploadPage() {
     await getClaudeCliStatus({ maxAgeMs: 60_000 }),
   );
   const photos = listPhotos();
+  const { maxSpines } = getDensityThresholds();
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
@@ -39,7 +41,11 @@ export default async function UploadPage() {
             </AlertDescription>
           </Alert>
         )}
-        <PhotoStatusList initialPhotos={photos} />
+        <UploadView
+          initialPhotos={photos}
+          cliReady={cliReady}
+          densityMaxSpines={maxSpines}
+        />
       </div>
     </div>
   );

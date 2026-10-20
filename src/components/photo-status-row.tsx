@@ -57,6 +57,33 @@ export function RowFilename({ name }: { name: string }) {
   );
 }
 
+/**
+ * A dropped file the server has no row for yet (Plan 02-07): "Waiting to
+ * upload" while queued behind the concurrency cap, then "Uploading…".
+ */
+export function ClientUploadRow({
+  filename,
+  status,
+}: {
+  filename: string;
+  status: 'waiting' | 'uploading';
+}) {
+  return (
+    <li className="flex flex-wrap items-center gap-4 px-4 py-3 sm:flex-nowrap">
+      <RowThumb url={null} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <RowFilename name={filename} />
+        <p className="text-xs text-muted-foreground">
+          {status === 'waiting' ? 'Waiting to upload' : 'Uploading…'}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <PhotoStatusBadge status={status} />
+      </div>
+    </li>
+  );
+}
+
 /** One server photo on /upload (UI-SPEC /upload item 5). */
 export function PhotoStatusRow({
   photo,
