@@ -54,5 +54,8 @@ blocked: 0
   reason: "User reported: it's still not changing — header status recovers to 'Worker idle' but the 'Couldn't refresh' alert stays"
   severity: major
   test: 1
+  root_cause: "Not a code defect: the /upload tab ran pre-02-13 client JS (loaded 01:44 from a server on the 01:44 build); the server was only restarted mid-test and the tab never reloaded. HEAD build clears the alert in 0.5-2.6 s in Chrome and Firefox."
   artifacts: []
-  missing: []
+  missing:
+    - "Re-run test 1 after a server restart on the current build and a hard reload of /upload and /spines"
+  debug_session: .planning/debug/refresh-alert-never-clears.md
