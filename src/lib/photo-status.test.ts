@@ -125,13 +125,13 @@ describe('isActiveStatus', () => {
 
 describe('photosRefetchInterval', () => {
   it('polls every 1.5 s while any photo is active and stops otherwise', () => {
-    expect(photosRefetchInterval([photo(), photo({ status: 'calling' })])).toBe(
-      1500,
-    );
-    expect(photosRefetchInterval([photo(), photo({ status: 'error' })])).toBe(
-      false,
-    );
-    expect(photosRefetchInterval(undefined)).toBe(false);
+    expect(
+      photosRefetchInterval([photo(), photo({ status: 'calling' })], 'success'),
+    ).toBe(1500);
+    expect(
+      photosRefetchInterval([photo(), photo({ status: 'error' })], 'success'),
+    ).toBe(false);
+    expect(photosRefetchInterval(undefined, 'success')).toBe(false);
   });
 });
 

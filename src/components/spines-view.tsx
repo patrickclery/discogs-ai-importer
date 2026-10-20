@@ -157,7 +157,8 @@ export function SpinesView({
     placeholderData: keepPreviousData,
     // Every photo's status, so a scan finishing on a photo the filters hide
     // still refreshes the counts.
-    refetchInterval: (q) => photosRefetchInterval(q.state.data?.photoOptions),
+    refetchInterval: (q) =>
+      photosRefetchInterval(q.state.data?.photoOptions, q.state.status),
   });
   const data = query.data;
   const byPhoto = useMemo(() => groupByPhoto(data?.spines ?? []), [data]);

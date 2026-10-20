@@ -7,13 +7,13 @@ vi.hoisted(() => {
 
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { photosRefetchInterval } from './photo-status';
+import { POLL_RETRY_MS, photosRefetchInterval } from './photo-status';
 import type { PhotoDto } from './scan-types';
 
 type PhotoLike = Pick<PhotoDto, 'status'>;
 
-// POLL_RETRY_MS (3000) plus slack for the fetch to settle.
-const RETRY_WAIT_MS = 3000 + 500;
+// One retry interval plus slack for the fetch to settle.
+const RETRY_WAIT_MS = POLL_RETRY_MS + 500;
 
 const allDone: PhotoLike[] = [{ status: 'done' }, { status: 'done' }];
 

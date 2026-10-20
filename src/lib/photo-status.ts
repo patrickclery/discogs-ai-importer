@@ -43,6 +43,15 @@ const ACTIVE: ReadonlySet<PhotoStatus> = new Set([
 /** Polling interval while any photo is still being worked on (D-12). */
 export const ACTIVE_POLL_MS = 1500;
 
+/**
+ * Polling interval after a failed poll with no photo active: the retry behind
+ * the "Couldn't refresh" alert copy "retrying every few seconds" (G-02-3).
+ */
+export const POLL_RETRY_MS = 3000;
+
+/** The query status TanStack Query reports (kept local: no TanStack import). */
+export type PollQueryStatus = 'pending' | 'error' | 'success';
+
 export function isActiveStatus(status: PhotoStatus): boolean {
   return ACTIVE.has(status);
 }
@@ -90,11 +99,18 @@ export function statusView(photo: StatusInput, now: number): StatusView {
   return { ...badgeFor(photo.status), subline: sublineFor(photo, now) };
 }
 
-/** refetchInterval for the photos query: 1.5 s while any photo is active. */
+/**
+ * refetchInterval for the photos query: 1.5 s while any photo is active.
+ * Otherwise it retries every POLL_RETRY_MS while the last poll failed: the
+ * failed poll keeps the last data, so without this branch an idle page never
+ * fetches again and the "Couldn't refresh" alert never clears (G-02-3).
+ */
 export function photosRefetchInterval(
   photos: readonly Pick<PhotoDto, 'status'>[] | undefined,
+  status: PollQueryStatus,
 ): number | false {
-  return photos?.some((p) => isActiveStatus(p.status)) ? ACTIVE_POLL_MS : false;
+  if (photos?.some((p) => isActiveStatus(p.status))) return ACTIVE_POLL_MS;
+  return status === 'error' ? POLL_RETRY_MS : false;
 }
 
 /** Tooltip for the "May be incomplete" badge (UI-SPEC truncation copy). */

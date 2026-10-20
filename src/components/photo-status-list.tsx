@@ -37,7 +37,8 @@ export function PhotoStatusList({
     queryKey: PHOTOS_QUERY_KEY,
     queryFn: fetchPhotos,
     initialData: { photos: initialPhotos },
-    refetchInterval: (q) => photosRefetchInterval(q.state.data?.photos),
+    refetchInterval: (q) =>
+      photosRefetchInterval(q.state.data?.photos, q.state.status),
   });
 
   const photos = query.data?.photos;
