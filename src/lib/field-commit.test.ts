@@ -188,3 +188,53 @@ describe('createFieldCommit: saving on blur (D-08)', () => {
     expect(saved(b)).toBe('');
   });
 });
+
+describe('createFieldCommit: flush on unmount (D-08)', () => {
+  it('flush after a blur saves once, synchronously, and leaves nothing pending', () => {
+    const f = field();
+    f.focus();
+    f.type('Z');
+    f.clickAway();
+    f.ctl.flush();
+    expect(saved(f)).toBe('Brave And CrazyZ');
+    expect(f.ctl.isPending()).toBe(false);
+    vi.runAllTimers();
+    expect(saved(f)).toBe('Brave And CrazyZ');
+  });
+
+  it('flush with nothing pending does nothing', () => {
+    const f = field();
+    f.ctl.flush();
+    f.focus();
+    f.type('Z');
+    f.ctl.flush();
+    vi.runAllTimers();
+    expect(saved(f)).toBe('');
+  });
+
+  it('two blurs before timers run save once, with the draft current when it fires', () => {
+    const f = field();
+    f.focus();
+    f.type('1');
+    f.clickAway();
+    f.state.focused = true;
+    f.type('2');
+    f.clickAway();
+    vi.runAllTimers();
+    expect(saved(f)).toBe('Brave And Crazy12');
+  });
+
+  it('escape after flush still resets and saves nothing more', () => {
+    const f = field();
+    f.focus();
+    f.type('Z');
+    f.clickAway();
+    f.ctl.flush();
+    f.focus();
+    f.type('Q');
+    f.escape();
+    vi.runAllTimers();
+    expect(saved(f)).toBe('Brave And CrazyZ');
+    expect(f.state.draft).toBe(f.state.saved);
+  });
+});

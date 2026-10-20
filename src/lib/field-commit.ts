@@ -47,5 +47,7 @@ export function createFieldCommit() {
     isPending() {
       return timer !== null;
     },
+    /** RED stub (02-14 Task 2): does not send the pending commit yet. */
+    flush() {},
   };
 }
