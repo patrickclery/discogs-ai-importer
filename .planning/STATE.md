@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-10-20T04:26:31.162Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-10-20T04:35:34.238Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 95c209e4b6eb482a8fa236f5660c9fb5075174e3
+state_head: 2f06a928ebc09593ba75f3358ece431358d5537b
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 13
+  completed_plans: 14
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -69,6 +69,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P05 | 12 min | 3 tasks | 16 files |
 | Phase 02 P06 | 6 min | 2 tasks | 15 files |
 | Phase 02 P07 | 6min | 3 tasks | 10 files |
+| Phase 02 P08 | 7 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-07: unknown non-2xx upload responses map to the network copy (retry is the only useful action)
 - [Phase 02]: Plan 02-07: Retry upload only for files actually sent; dropzone-refused files get Remove from list only
 - [Phase 02]: Plan 02-07: dropzone root uses role=group with aria-label (react-dropzone default role=presentation drops the label)
+- [Phase 02]: 02-08: /spines shows #(index+1); Claude's index is 0-based, use spineNumber() for all #n copy
+- [Phase 02]: 02-08: counts.all and the /spines description count the returned (photo-filtered) spines; Needs review = low-confidence spines only until 02-12
 
 ### Pending Todos
 
@@ -132,6 +135,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T04:26:31.084Z
-Stopped at: Completed 02-07-PLAN.md
+Last session: 2026-10-20T04:35:34.161Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
