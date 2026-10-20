@@ -10,6 +10,7 @@ import {
   VISION_MAX_EDGE,
   VISION_MAX_TOKENS,
 } from '@/lib/vision-contract';
+import { getClaudeCliStatus, isClaudeReady } from '../../claude/cli';
 import { getDb } from '../../db/client';
 import { newId } from '../../ids';
 import { cropSpine, normalizeBox, padBox, scaleBox } from '../../images/crop';
@@ -378,6 +379,26 @@ export async function runScanPhoto(
     prepared = await prepare(photo, run, runDirRel);
   } catch (err) {
     recordFailure(runId, err);
+    return;
+  }
+
+  // D-18 (CR-02): vision runs only on the owner's Claude subscription. A CLI
+  // that is missing, logged out or signed in for API billing fails the run
+  // without a call. Checked fresh (no cache) right before the spawn, so the
+  // /upload gate's 60 s cache cannot let a switched login through.
+  const cli = await getClaudeCliStatus({ maxAgeMs: 0 });
+  if (!isClaudeReady(cli)) {
+    console.warn(
+      `scan_photo: run ${runId} not sent, the Claude CLI is not ready ` +
+        `(installed: ${cli.installed}, auth: ${cli.auth.state})`,
+    );
+    markRunError(
+      runId,
+      'cli_unavailable',
+      cli.auth.state === 'other'
+        ? 'the CLI is signed in for API billing'
+        : undefined,
+    );
     return;
   }
 

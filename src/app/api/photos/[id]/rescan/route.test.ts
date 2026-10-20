@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearClaudeCliStatusCache } from '@/server/claude/cli';
 import { getDb } from '@/server/db/client';
 import { ingestUpload } from '@/server/scan/ingest';
 import { useTempDataDir } from '../../../../../../test/helpers/temp-data-dir';
@@ -13,6 +15,13 @@ import { POST } from './route';
 // Explicit re-scan (D-17, T-02-22, T-02-23): JSON only, 404 for an unknown
 // photo, 409 while any run is active, and one queued one-shot run per
 // accepted request.
+
+const FAKE = path.resolve(
+  import.meta.dirname,
+  '../../../../../../test/fixtures/fake-claude.mjs',
+);
+const ENV_KEYS = ['CLAUDE_BIN', 'FAKE_CLAUDE_MODE'] as const;
+const saved: Partial<Record<(typeof ENV_KEYS)[number], string>> = {};
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
@@ -51,6 +60,23 @@ function setRun1(photoId: string, status: string): void {
 
 describe('POST /api/photos/{id}/rescan', () => {
   useTempDataDir();
+
+  // The fake CLI, never the live one; logged in with the subscription unless
+  // a test says otherwise.
+  beforeEach(() => {
+    for (const k of ENV_KEYS) saved[k] = process.env[k];
+    process.env.CLAUDE_BIN = FAKE;
+    process.env.FAKE_CLAUDE_MODE = 'ok';
+    clearClaudeCliStatusCache();
+  });
+
+  afterEach(() => {
+    for (const k of ENV_KEYS) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+    clearClaudeCliStatusCache();
+  });
 
   async function photo(): Promise<string> {
     const { photoId } = await ingestUpload({
@@ -133,6 +159,19 @@ describe('POST /api/photos/{id}/rescan', () => {
     const again = await rescan(id);
     expect(again.status).toBe(409);
     expect(scanJobs()).toHaveLength(2);
+  });
+
+  it('409 cli_unavailable, and nothing is queued, unless the CLI is on the subscription (CR-02)', async () => {
+    const id = await photo();
+    setRun1(id, 'done');
+    for (const mode of ['api-key', 'logged-out']) {
+      process.env.FAKE_CLAUDE_MODE = mode;
+      clearClaudeCliStatusCache();
+      const res = await rescan(id);
+      expect(res.status, mode).toBe(409);
+      expect(await res.json()).toMatchObject({ error: 'cli_unavailable' });
+    }
+    expect(scanJobs()).toHaveLength(1);
   });
 
   it('201 after a failed run (error is not active)', async () => {

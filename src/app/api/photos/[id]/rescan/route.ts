@@ -1,4 +1,5 @@
 import { connection } from 'next/server';
+import { getClaudeCliStatus, isClaudeReady } from '@/server/claude/cli';
 import { startRescan } from '@/server/scan/rescan';
 
 // Explicit re-scan of one photo (D-17, INGEST-04). It spends subscription
@@ -16,6 +17,19 @@ export async function POST(
     return Response.json(
       { error: 'unsupported_type', message: 'Send application/json.' },
       { status: 415 },
+    );
+  }
+  // D-18 (CR-02): no re-scan unless the CLI is on the owner's subscription.
+  // The scan job re-checks right before the spawn; this refuses early so no
+  // run is queued just to fail.
+  if (!isClaudeReady(await getClaudeCliStatus({ maxAgeMs: 60_000 }))) {
+    return Response.json(
+      {
+        error: 'cli_unavailable',
+        message:
+          "The Claude CLI isn't signed in with your Claude subscription. Check the Claude CLI card in Settings.",
+      },
+      { status: 409 },
     );
   }
   const { id } = await params;

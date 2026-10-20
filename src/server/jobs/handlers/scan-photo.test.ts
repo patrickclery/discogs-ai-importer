@@ -180,6 +180,25 @@ describe('runScanPhoto', () => {
     expect(calls()).toBe(1);
   });
 
+  it('fails the run without a call unless the CLI is on the subscription (CR-02)', async () => {
+    for (const mode of ['api-key', 'logged-out']) {
+      process.env.FAKE_CLAUDE_MODE = mode;
+      getDb()
+        .$client.prepare(
+          `UPDATE vision_runs SET status = 'queued', error_kind = NULL,
+             error_reason = NULL, finished_at = NULL WHERE id = ?`,
+        )
+        .run(runId);
+      await runScanPhoto({ photoId, runId }, ctx());
+      const run = runRow();
+      expect(run.status, mode).toBe('error');
+      expect(run.error_kind, mode).toBe('cli_unavailable');
+      expect(run.error_reason, mode).toBe(reasonFor('cli_unavailable'));
+      expect(run.spawned_at, mode).toBeNull();
+    }
+    expect(calls()).toBe(0);
+  });
+
   it('turns an unreadable original into image_unreadable before any call', async () => {
     const photo = getDb()
       .$client.prepare('SELECT original_path FROM photos')
@@ -331,11 +350,19 @@ describe('runScanPhoto failure modes', () => {
   it('an aborted call is interrupted', async () => {
     process.env.FAKE_CLAUDE_MODE = 'hang';
     const ac = new AbortController();
-    setTimeout(() => ac.abort(), 200);
-    await expectError('interrupted', { signal: ac.signal });
+    // Abort once the vision call is running: a fixed delay races the CLI
+    // readiness check that now runs right before the spawn (CR-02).
+    const poll = setInterval(() => {
+      if (calls() > 0) ac.abort();
+    }, 20);
+    try {
+      await expectError('interrupted', { signal: ac.signal });
+    } finally {
+      clearInterval(poll);
+    }
   });
 
-  it('a missing CLI is cli_unavailable, with raw.json from the one spawn attempt', async () => {
+  it('a missing CLI is cli_unavailable before any vision spawn (CR-02)', async () => {
     process.env.CLAUDE_BIN = path.join(dataDir(), 'no-such-claude');
     const { photoId, runId } = await upload();
     await runScanPhoto({ photoId, runId }, ctx());
@@ -343,11 +370,9 @@ describe('runScanPhoto failure modes', () => {
     expect(run.status).toBe('error');
     expect(run.error_kind).toBe('cli_unavailable');
     expect(run.error_reason).toBe(reasonFor('cli_unavailable'));
-    expect(rawExists(run)).toBe(true);
-    const raw = JSON.parse(
-      fs.readFileSync(path.join(dataDir(), run.raw_path as string), 'utf8'),
-    ) as { run: { spawnError?: { code: string } } };
-    expect(raw.run.spawnError?.code).toBe('ENOENT');
+    // The readiness check fails first, so the call is never attempted.
+    expect(run.spawned_at).toBeNull();
+    expect(run.raw_path).toBeNull();
   });
 
   it('an undecodable HEIC is heic_decode with zero calls', async () => {
