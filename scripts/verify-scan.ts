@@ -1,9 +1,10 @@
 // Shelf-scan ingest proof (Plan 02-03): schema on the live DB, upload,
-// concurrent and repeat dedup, the queued one-shot run and job, the photo list.
+// concurrent and repeat dedup, the queued one-shot run and job, the photo list,
+// a >10 MB upload through the proxy, and refused non-photo uploads.
 // Run: node scripts/verify-scan.ts   (VERIFY_SKIP_BUILD=1 reuses .next)
 // Each step is a named function so later plans (02-04, 02-06, 02-08, 02-09)
 // can extend this script.
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
@@ -285,6 +286,84 @@ export async function stepRepeatDuplicate(
   check('200 duplicate, still one job and one run');
 }
 
+// (f) a JPEG over the proxy's default 10 MB buffer arrives byte for byte.
+export async function stepLargeUpload(ctx: Ctx): Promise<void> {
+  step('(f) noise JPEG between 11 MB and 60 MB');
+  let side = 2400;
+  let jpeg: Buffer;
+  for (;;) {
+    const w = side;
+    const h = Math.round(side * 0.75);
+    jpeg = await sharp(randomBytes(w * h * 3), {
+      raw: { width: w, height: h, channels: 3 },
+    })
+      .jpeg({ quality: 100, chromaSubsampling: '4:4:4' })
+      .toBuffer();
+    if (jpeg.byteLength > 11 * 1024 * 1024) break;
+    side = Math.round(side * 1.25);
+  }
+  const mb = jpeg.byteLength / (1024 * 1024);
+  assert(mb < 60, `noise JPEG is ${mb.toFixed(1)} MB, expected under 60`);
+  console.log(`uploading ${mb.toFixed(1)} MB`);
+  const bytes = new Uint8Array(jpeg);
+  const res = await upload(ctx, bytes, { filename: 'large.jpg' });
+  assert(
+    res.status === 201,
+    `large upload returned ${res.status}: ${JSON.stringify(res.body)}`,
+  );
+  const sha = sha256(bytes);
+  const file = storedFile(ctx, sha, 'jpg');
+  assert(fs.existsSync(file), `stored file missing: ${file}`);
+  const stored = fs.readFileSync(file);
+  assert(
+    stored.byteLength === bytes.byteLength && sha256(stored) === sha,
+    `stored ${stored.byteLength} bytes, sent ${bytes.byteLength}; sha256 differs`,
+  );
+  check(`${mb.toFixed(1)} MB upload stored intact (sha256 matches)`);
+}
+
+// (g) a no-preflight content type is refused before the body is read.
+export async function stepRefuseTextPlain(ctx: Ctx): Promise<void> {
+  step('(g) text/plain POST is refused');
+  const before = countRows(ctx, 'photos');
+  const jpeg = new Uint8Array(await renderJpeg(64, 48));
+  for (const contentType of [
+    'text/plain',
+    'application/x-www-form-urlencoded',
+    'multipart/form-data; boundary=x',
+  ]) {
+    const res = await upload(ctx, jpeg, { contentType });
+    assert(
+      res.status === 415 && res.body.error === 'unsupported_type',
+      `${contentType} returned ${res.status} ${JSON.stringify(res.body)}`,
+    );
+  }
+  assert(countRows(ctx, 'photos') === before, 'a refused upload stored a row');
+  check('415 unsupported_type for text, form and multipart; nothing stored');
+}
+
+// (h) bytes that are not an image are refused whatever the declared type.
+export async function stepRefuseNonImage(ctx: Ctx): Promise<void> {
+  step('(h) PDF bytes declared as image/jpeg are refused');
+  const before = countRows(ctx, 'photos');
+  const pdf = new TextEncoder().encode('%PDF-1.7\n%\u00e2\u00e3\n1 0 obj\n');
+  const res = await upload(ctx, pdf, { filename: 'scan.pdf' });
+  assert(
+    res.status === 415 && res.body.error === 'unsupported_type',
+    `PDF returned ${res.status} ${JSON.stringify(res.body)}`,
+  );
+  assert(countRows(ctx, 'photos') === before, 'the PDF created a photos row');
+  const sha = sha256(pdf);
+  const stored = fs
+    .readdirSync(path.join(ctx.dataDir, 'photos'), { recursive: true })
+    .map(String);
+  assert(
+    !stored.some((f) => f.includes(sha)),
+    'the PDF was written under photos/',
+  );
+  check('415 unsupported_type; no row, no file');
+}
+
 runMain('verify-scan', async (onCleanup) => {
   const tmp = await makeTempDir('verify-scan');
   onCleanup(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -311,6 +390,9 @@ runMain('verify-scan', async (onCleanup) => {
   stepQueuedRows(ctx, photoId, jpeg);
   await stepListQueued(ctx, photoId);
   await stepRepeatDuplicate(ctx, photoId, jpeg);
+  await stepLargeUpload(ctx);
+  await stepRefuseTextPlain(ctx);
+  await stepRefuseNonImage(ctx);
 
   step('stop');
   await server.stop('SIGTERM');
