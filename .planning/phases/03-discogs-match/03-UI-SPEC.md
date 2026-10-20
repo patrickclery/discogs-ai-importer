@@ -1,7 +1,8 @@
 ---
 phase: "3"
 slug: "discogs-match"
-status: draft
+status: approved
+reviewed_at: "2026-10-20"
 shadcn_initialized: true
 preset: "none (style new-york, base radix, base color neutral, cssVariables; tokens overridden per 01-UI-SPEC.md)"
 created: "2026-10-20"
@@ -64,7 +65,7 @@ This table is a **non-exhaustive** list of known-good components, not a closed a
 
 | Component | Import path | Phase 3 use |
 |-----------|-------------|-------------|
-| button | `@/components/ui/button` | `default` (accent): "Connect Discogs" / "Reconnect Discogs" (only once credentials are saved), "Add to candidates". `outline`: "Test connection", "Finish connecting", "Search again", "Retry search", "Search Discogs…", the dialog's "Search", "Open Settings" in the `/spines` notice. `ghost`: "Show all {n}" / "Show fewer", the copy-callback icon button, the candidate external-link icon button, "Cancel" in the dialog, "Disconnect" trigger (`text-destructive`). `destructive`: the Disconnect confirm only. |
+| button | `@/components/ui/button` | `default` (accent): "Connect Discogs" / "Reconnect Discogs" (only once credentials are saved), "Add to candidates". `outline`: "Test connection", "Finish connecting", "Search again", "Retry search", "Search Discogs…", the dialog's "Search Discogs", "Open Settings" in the `/spines` notice. `ghost`: "Show all {n}" / "Show fewer", the copy-callback icon button, the candidate external-link icon button, "Close search" in the dialog, "Disconnect Discogs" trigger (`text-destructive`). `destructive`: the Disconnect confirm only. |
 | card | `@/components/ui/card` | The Settings "Discogs" card (replaces the Phase 1 "Discogs app" card). |
 | badge | `@/components/ui/badge` | Connection badge, search-state badge, "Catalog number match", "Added manually", "Already listed". |
 | field / label / input | `@/components/ui/field`, `label`, `input` | Paste-code input, the dialog's search input with its inline error. |
@@ -187,7 +188,7 @@ No new tokens. All values are the Phase 1 tokens in `src/app/globals.css`.
 Accent is NOT used for:
 - The search-state badge or the candidate rows.
 - The "Catalog number match" badge or the external-link icon.
-- "Search again", "Retry search", "Search Discogs…", "Search", "Test connection" or "Show all".
+- "Search again", "Retry search", "Search Discogs…", "Search Discogs", "Test connection" or "Show all".
 - The `/spines` not-connected Alert's "Open Settings" button, which is `outline` because the page's focal point stays the spine cards.
 
 **Warning (`--warning`) reserved for** (Phase 3 additions, icons only):
@@ -200,7 +201,7 @@ Accent is NOT used for:
 - The dialog's inline errors (`FieldError` and the results-area error).
 - The `?discogs=error` Alert.
 - The Test connection failure icon.
-- The "Disconnect" ghost trigger text and the Disconnect confirm button.
+- The "Disconnect Discogs" ghost trigger text and the "Disconnect Discogs" confirm button.
 
 Contrast: every text pair meets WCAG AA (4.5:1). Warning is used only for icons (non-text, 3:1 minimum).
 
@@ -259,7 +260,7 @@ The card replaces the Phase 1 "Discogs app" card in the same position (second, a
      - Below it, Caption muted: the "what happens next" line (copy below).
      - Then a footer row (`flex flex-wrap items-center justify-between gap-2`):
        - Left: outline "Test connection" (`PlugZap`) with its inline result (`role="status" aria-live="polite"`, Body, `CircleCheck` `text-success` or `CircleX` `text-destructive`, the same pattern as Test Claude). Pending: `Spinner` + "Testing…". The result persists until the next test.
-       - Right: ghost `text-destructive` "Disconnect" (`Unplug` icon), which opens the AlertDialog.
+       - Right: ghost `text-destructive` "Disconnect Discogs" (`Unplug` icon), which opens the AlertDialog.
 6. **Disconnect confirm** (AlertDialog): destructive confirm. Pending: "Disconnecting…", both buttons disabled. On success: toast, the card returns to not connected, and the matches sections on `/spines` show the not-connected line on the next poll. On failure the dialog stays open with an inline destructive error.
 
 ### Header status indicator (D-07, Pitfall 8)
@@ -379,7 +380,7 @@ The trigger is "Search Discogs…" in the matches header. It is a `Dialog` at `m
 3. **Search form** (`<form>`, `flex gap-2`, items-start):
    - `Field` with a visually hidden Label "Search Discogs", an `Input` (`flex-1`), and a `FieldError` under it.
    - Prefill: the current artist and title values joined with a space. If both are empty, the catalog number. If that is empty too, empty.
-   - An outline "Search" button (`Search` icon), which submits. It is disabled while the trimmed value is empty. Enter submits.
+   - An outline "Search Discogs" button (`Search` icon), which submits. It is disabled while the trimmed value is empty. Enter submits.
    - Client-side `parseDiscogsRef` runs on submit:
      - master link or `[m…]`: no request. `FieldError` with the master copy, `aria-invalid`.
      - release link, `[r…]` or bare number: `POST /api/spines/{id}/search {mode:'ref', value}`.
@@ -400,7 +401,7 @@ The trigger is "Search Discogs…" in the matches header. It is a `Dialog` at `m
 | Failed | Caption `text-destructive`: the failure copy. Searching again is the retry. |
 
 5. **Footer:**
-   - Ghost "Cancel" (closes).
+   - Ghost "Close search" (closes).
    - Primary "Add to candidates", disabled until a row is selected. Pending: `Spinner` + "Adding…", both buttons disabled.
    - Posts `{searchId, releaseId}` to `POST /api/spines/{id}/candidates`. The client never sends candidate data.
    - On success: the dialog closes, a toast shows, and focus returns to the "Search Discogs…" trigger. The card's list now shows the release pinned first with "Added manually".
