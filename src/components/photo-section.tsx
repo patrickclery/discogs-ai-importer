@@ -88,9 +88,11 @@ function CardSkeletons() {
 function SectionBody({
   photo,
   spines,
+  threshold,
 }: {
   photo: PhotoDto;
   spines: SpineDto[];
+  threshold: number;
 }) {
   // First run still working: nothing to show yet.
   if (isActiveStatus(photo.status) && spines.length === 0) {
@@ -135,7 +137,7 @@ function SectionBody({
     <>
       {alert}
       {spines.map((spine) => (
-        <SpineCard key={spine.id} spine={spine} />
+        <SpineCard key={spine.id} spine={spine} threshold={threshold} />
       ))}
     </>
   );
@@ -149,9 +151,12 @@ function SectionBody({
 export function PhotoSection({
   photo,
   spines,
+  threshold,
 }: {
   photo: PhotoDto;
   spines: SpineDto[];
+  /** The confidence_threshold setting (D-09). */
+  threshold: number;
 }) {
   const headingId = `photo-${photo.id}`;
   const now = useNow(photo.status === 'calling' ? 1000 : 30_000);
@@ -188,7 +193,7 @@ export function PhotoSection({
           ) : null}
         </div>
       </div>
-      <SectionBody photo={photo} spines={spines} />
+      <SectionBody photo={photo} spines={spines} threshold={threshold} />
     </section>
   );
 }

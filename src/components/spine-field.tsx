@@ -1,17 +1,37 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type KeyboardEvent, useId, useRef, useState } from 'react';
+import { TriangleAlert, Undo2 } from 'lucide-react';
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  useId,
+  useRef,
+  useState,
+} from 'react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Button } from '@/components/ui/button';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { SpineFieldDto, SpinesResponse } from '@/lib/scan-types';
 import {
+  confidencePct,
+  FIELD_LABELS,
   isEdited,
+  isLowConfidence,
+  lowConfidenceTooltip,
   MAX_FIELD_CHARS,
   normalizeFieldInput,
   resolveDisplayedValue,
+  revertTooltip,
   withSpineField,
 } from '@/lib/spine-review';
 
@@ -23,11 +43,16 @@ async function patchField(
   spineId: string,
   body: PatchBody,
 ): Promise<SpineFieldDto> {
-  const res = await fetch(`/api/spines/${encodeURIComponent(spineId)}/fields`, {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api/spines/${encodeURIComponent(spineId)}/fields`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error('the app could not be reached');
+  }
   if (!res.ok) {
     let reason = `the server returned ${res.status}`;
     try {
@@ -52,28 +77,44 @@ function optimistic(f: SpineFieldDto, body: PatchBody): SpineFieldDto {
   };
 }
 
+/** Error copy without a doubled full stop when the reason ends in one. */
+function saveError(err: unknown): string {
+  const reason = (err instanceof Error ? err.message : String(err)).replace(
+    /[.\s]+$/,
+    '',
+  );
+  return `Not saved: ${reason}. Leave the field again to retry.`;
+}
+
 /**
  * One editable spine field (REV-02, D-08..D-10). The input keeps a local
  * draft; while it is focused or holds unsaved text, polled data never changes
  * it (RESEARCH Pitfall 6). Leaving the field saves through PATCH
- * /api/spines/{id}/fields with an optimistic cache update.
+ * /api/spines/{id}/fields with an optimistic cache update. Low-confidence
+ * reads get the warning border and icon (D-09); edited fields get the
+ * "Edited" badge and a revert button with an undo toast.
  */
 export function SpineField({
   spineId,
   field: f,
-  label,
+  threshold,
   className,
 }: {
   spineId: string;
   field: SpineFieldDto;
-  label: string;
+  threshold: number;
   className?: string;
 }) {
   const id = useId();
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const label = FIELD_LABELS[f.field];
+  const multiline = f.field === 'raw_text';
   const qc = useQueryClient();
   const [draft, setDraft] = useState(f.value ?? '');
   const [focused, setFocused] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const draftRef = useRef(draft);
   const skipCommit = useRef(false);
 
@@ -93,9 +134,6 @@ export function SpineField({
       qc.setQueriesData<SpinesResponse>({ queryKey: ['spines'] }, (old) =>
         withSpineField(old, spineId, saved),
       );
-      if (normalizeFieldInput(draftRef.current) === saved.value) {
-        setDirty(false);
-      }
     },
     onError: (_err, _body, ctx) => {
       // The cache goes back to the last saved state; the draft stays.
@@ -104,6 +142,9 @@ export function SpineField({
     onSettled: () => qc.invalidateQueries({ queryKey: ['spines'] }),
   });
 
+  const edited = isEdited(f);
+  const low = isLowConfidence(f, threshold);
+  const pct = confidencePct(f.confidence);
   const shown = resolveDisplayedValue({
     serverValue: f.value,
     draft,
@@ -116,13 +157,57 @@ export function SpineField({
     setDraft(v);
   }
 
+  function save(value: string | null) {
+    mutation.mutate(
+      { field: f.field, value },
+      {
+        onSuccess: (saved) => {
+          setError(null);
+          if (normalizeFieldInput(draftRef.current) === saved.value) {
+            setDirty(false);
+          }
+        },
+        // No toast and no rollback: the draft stays and the next blur retries.
+        onError: (err) => {
+          setError(saveError(err));
+          setDirty(true);
+        },
+      },
+    );
+  }
+
   function commit() {
     const next = normalizeFieldInput(draftRef.current);
     if (next === f.value) {
       setDirty(false);
+      setError(null);
       return;
     }
-    mutation.mutate({ field: f.field, value: next });
+    save(next);
+  }
+
+  function revert() {
+    const previous = f.value;
+    mutation.mutate(
+      { field: f.field, revert: true },
+      {
+        onSuccess: (saved) => {
+          setDraftValue(saved.value ?? '');
+          setDirty(false);
+          setError(null);
+          toast(`${label} reverted to Claude's read`, {
+            action: {
+              label: 'Undo revert',
+              onClick: () => {
+                setDraftValue(previous ?? '');
+                save(previous);
+              },
+            },
+          });
+        },
+        onError: (err) => setError(saveError(err)),
+      },
+    );
   }
 
   function onFocus() {
@@ -139,18 +224,45 @@ export function SpineField({
     commit();
   }
 
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
+  function onKeyDown(e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const commitKey = multiline
+      ? e.key === 'Enter' && (e.ctrlKey || e.metaKey)
+      : e.key === 'Enter';
+    if (commitKey) {
       e.preventDefault();
       e.currentTarget.blur();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setDraftValue(f.value ?? '');
       setDirty(false);
+      setError(null);
       skipCommit.current = true;
       e.currentTarget.blur();
     }
   }
+
+  const describedBy =
+    [low ? hintId : null, error ? errorId : null].filter(Boolean).join(' ') ||
+    undefined;
+  const controlProps = {
+    id,
+    name: f.field,
+    value: shown,
+    maxLength: MAX_FIELD_CHARS,
+    placeholder: f.aiValue === null && shown === '' ? 'Not read' : undefined,
+    spellCheck: false,
+    autoComplete: 'off',
+    'aria-invalid': error ? true : undefined,
+    'aria-describedby': describedBy,
+    className: low ? 'border-warning focus-visible:ring-warning/40' : undefined,
+    onFocus,
+    onBlur,
+    onKeyDown,
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setDraftValue(e.target.value);
+      setDirty(true);
+    },
+  };
 
   return (
     <Field className={`min-w-0 gap-1 ${className ?? ''}`}>
@@ -162,31 +274,73 @@ export function SpineField({
           {label}
         </FieldLabel>
         <div className="ml-auto flex items-center gap-1">
+          {low ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Low confidence, ${pct} percent`}
+                  className="rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  <TriangleAlert
+                    aria-hidden="true"
+                    className="size-4 text-warning"
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                {lowConfidenceTooltip(f.confidence)}
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
           {mutation.isPending ? (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Spinner className="size-3" aria-hidden="true" />
               Saving…
             </span>
           ) : null}
-          {isEdited(f) ? <Badge variant="secondary">Edited</Badge> : null}
+          {edited ? (
+            <>
+              <Badge variant="secondary">Edited</Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Revert ${label.toLowerCase()} to Claude's read`}
+                    onClick={revert}
+                  >
+                    <Undo2 aria-hidden="true" className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs break-words">
+                  {revertTooltip(f.aiValue)}
+                </TooltipContent>
+              </Tooltip>
+            </>
+          ) : null}
         </div>
       </div>
-      <Input
-        id={id}
-        name={f.field}
-        value={shown}
-        maxLength={MAX_FIELD_CHARS}
-        placeholder={f.aiValue === null ? 'Not read' : undefined}
-        spellCheck={false}
-        autoComplete="off"
-        onFocus={onFocus}
-        onBlur={onBlur}
-        onKeyDown={onKeyDown}
-        onChange={(e) => {
-          setDraftValue(e.target.value);
-          setDirty(true);
-        }}
-      />
+      {multiline ? (
+        <Textarea
+          {...controlProps}
+          rows={2}
+          className={`min-h-[calc(2lh+1rem+2px)] max-h-[calc(6lh+1rem+2px)] overflow-y-auto break-words ${controlProps.className ?? ''}`}
+        />
+      ) : (
+        <Input {...controlProps} />
+      )}
+      {low ? (
+        <span id={hintId} className="sr-only">
+          {`Low confidence, ${pct} percent. Check it against the crop.`}
+        </span>
+      ) : null}
+      {error ? (
+        <FieldError id={errorId} className="text-xs">
+          {error}
+        </FieldError>
+      ) : null}
     </Field>
   );
 }

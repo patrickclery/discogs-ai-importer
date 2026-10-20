@@ -2,6 +2,16 @@
 // list, the field editor (02-09) and getSpines' Needs review count all use
 // these, so "edited" and "low confidence" mean the same thing everywhere.
 import type { SpineDto, SpineFieldDto } from './scan-types';
+import type { SpineField } from './vision-contract';
+
+export const FIELD_LABELS: Record<SpineField, string> = {
+  artist: 'Artist',
+  title: 'Title',
+  format: 'Format',
+  label: 'Label',
+  catalog_number: 'Catalog number',
+  raw_text: 'Raw text',
+};
 
 /** A typed field value as stored: trimmed, and empty means "not read". */
 export function normalizeFieldInput(
@@ -11,9 +21,12 @@ export function normalizeFieldInput(
   return t === '' ? null : t;
 }
 
-/** The owner changed the value away from Claude's read (exact compare). */
+/**
+ * The owner changed the value away from Claude's read: exact compare (no case
+ * folding) after trimming and mapping empty to null on both sides.
+ */
 export function isEdited(f: Pick<SpineFieldDto, 'value' | 'aiValue'>): boolean {
-  return f.value !== f.aiValue;
+  return normalizeFieldInput(f.value) !== normalizeFieldInput(f.aiValue);
 }
 
 /**
@@ -24,12 +37,28 @@ export function isLowConfidence(
   f: Pick<SpineFieldDto, 'value' | 'aiValue' | 'confidence'>,
   threshold: number,
 ): boolean {
-  return f.aiValue !== null && !isEdited(f) && f.confidence < threshold;
+  return (
+    normalizeFieldInput(f.aiValue) !== null &&
+    !isEdited(f) &&
+    f.confidence < threshold
+  );
 }
 
 /** Confidence 0..1 as a whole percentage. */
 export function confidencePct(c: number): number {
   return Math.round(c * 100);
+}
+
+/** The low-confidence icon's tooltip (UI-SPEC copywriting). */
+export function lowConfidenceTooltip(confidence: number): string {
+  return `Claude is ${confidencePct(confidence)}% sure of this. Check it against the crop.`;
+}
+
+/** The revert button's tooltip, previewing Claude's read. */
+export function revertTooltip(aiValue: string | null): string {
+  return aiValue === null
+    ? "Revert to Claude's read (empty)"
+    : `Revert to Claude's read: \u201c${aiValue}\u201d`;
 }
 
 /** The lowest-confidence flagged field (first wins on a tie), or null. */
@@ -43,6 +72,21 @@ export function worstField(
     if (worst === null || f.confidence < worst.confidence) worst = f;
   }
   return worst;
+}
+
+/**
+ * The card's worst-field badge (D-09): "Hard to read" for an illegible
+ * detection, else "Check {field} · {pct}%" for the lowest flagged field, or
+ * null when every field is fine.
+ */
+export function worstFieldText(
+  spine: Pick<SpineDto, 'fields' | 'legibility'>,
+  threshold: number,
+): string | null {
+  if (spine.legibility === 'illegible') return 'Hard to read';
+  const worst = worstField(spine.fields, threshold);
+  if (!worst) return null;
+  return `Check ${FIELD_LABELS[worst.field].toLowerCase()} · ${confidencePct(worst.confidence)}%`;
 }
 
 export function editedCount(fields: readonly SpineFieldDto[]): number {

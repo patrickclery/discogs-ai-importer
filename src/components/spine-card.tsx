@@ -4,18 +4,10 @@ import { SpineField } from '@/components/spine-field';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { WorstFieldBadge } from '@/components/worst-field-badge';
 import type { SpineDto } from '@/lib/scan-types';
 import { editedCount, spineNumber } from '@/lib/spine-review';
 import type { SpineField as FieldName } from '@/lib/vision-contract';
-
-export const FIELD_LABELS: Record<FieldName, string> = {
-  artist: 'Artist',
-  title: 'Title',
-  format: 'Format',
-  label: 'Label',
-  catalog_number: 'Catalog number',
-  raw_text: 'Raw text',
-};
 
 /** UI-SPEC field grid: 6 columns at lg, 2 at sm, 1 below 640px. */
 export const FIELD_SPANS: Record<FieldName, string> = {
@@ -36,12 +28,15 @@ export const FIELD_SPANS: Record<FieldName, string> = {
  */
 export function SpineCard({
   spine,
+  threshold,
   badges,
   statusSlot,
   footer,
 }: {
   spine: SpineDto;
-  /** Left of the header, after `#n` (02-09 worst-field badge). */
+  /** The confidence_threshold setting (D-09). */
+  threshold: number;
+  /** Left of the header, after `#n` and the worst-field badge. */
   badges?: ReactNode;
   statusSlot?: ReactNode;
   footer?: ReactNode;
@@ -65,6 +60,7 @@ export function SpineCard({
         <span className="font-mono text-muted-foreground tabular-nums">
           #{number}
         </span>
+        <WorstFieldBadge spine={spine} threshold={threshold} />
         {badges}
         {status ? (
           <div className="ml-auto flex items-center gap-2">{status}</div>
@@ -77,7 +73,7 @@ export function SpineCard({
             key={f.field}
             spineId={spine.id}
             field={f}
-            label={FIELD_LABELS[f.field]}
+            threshold={threshold}
             className={FIELD_SPANS[f.field]}
           />
         ))}

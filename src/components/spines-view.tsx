@@ -145,7 +145,12 @@ export function SpinesView({
       <div className="flex flex-col gap-6">
         {pollError}
         {data.photos.map((p) => (
-          <PhotoSection key={p.id} photo={p} spines={byPhoto.get(p.id) ?? []} />
+          <PhotoSection
+            key={p.id}
+            photo={p}
+            spines={byPhoto.get(p.id) ?? []}
+            threshold={data.confidenceThreshold}
+          />
         ))}
       </div>
     );
