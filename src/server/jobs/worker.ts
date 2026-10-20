@@ -1,7 +1,7 @@
 import 'server-only';
 import type { StatusResponse } from '@/lib/status-types';
 import { newId } from '../ids';
-import { handlers as defaultHandlers } from './handlers';
+import { handlers as defaultHandlers, maintenance } from './handlers';
 import {
   acquireLease,
   heartbeatLease,
@@ -260,6 +260,17 @@ async function runLane(
   }
 }
 
+/** Holder-only maintenance hooks (run reconciliation); each one isolated. */
+function runMaintenance(): void {
+  for (const hook of maintenance) {
+    try {
+      hook();
+    } catch (err) {
+      console.error('[worker] maintenance hook error:', err);
+    }
+  }
+}
+
 function abortInflight(reason: string): void {
   for (const c of inflight().keys()) c.abort(new WorkerStoppedError(reason));
 }
@@ -293,6 +304,7 @@ function tick(w: InternalWorker): void {
           `[worker] recovered ${recovered.requeued} job(s), failed ${recovered.failed} exhausted job(s)`,
         );
       }
+      runMaintenance();
       w.state = 'running';
       startLanes(w);
     } else if (!heartbeatLease({ bootId: w.bootId })) {
@@ -307,6 +319,7 @@ function tick(w: InternalWorker): void {
           `[worker] reaped ${reaped.requeued} stranded job(s), failed ${reaped.failed} exhausted job(s)`,
         );
       }
+      runMaintenance();
     }
   } catch (err) {
     console.error('[worker] lease tick error:', err);
