@@ -114,3 +114,10 @@ export function reattachSpine(
   if (!dto) return { status: 'not_found' };
   return { status: 'ok', value: dto };
 }
+
+export type DismissResult = 'ok' | 'not_found' | 'conflict';
+
+/** Dismisses an orphaned spine (D-16). Not implemented yet (RED stub). */
+export function dismissSpine(_id: string): DismissResult {
+  return 'not_found';
+}
