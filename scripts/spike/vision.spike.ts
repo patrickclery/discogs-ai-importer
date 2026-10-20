@@ -65,7 +65,21 @@ const STEPS = new Set(
     .map((s) => s.trim())
     .filter(Boolean),
 );
-const MAX_CALLS = Number(process.env.SPIKE_MAX_CALLS ?? 24);
+/**
+ * The live-call budget. Anything but a non-negative integer is refused
+ * (IN-01): Number('abc') is NaN and `liveCalls >= NaN` is always false, which
+ * would remove the budget.
+ */
+function maxCalls(raw: string | undefined): number {
+  const text = (raw ?? '24').trim();
+  if (!/^\d+$/.test(text)) {
+    throw new Error(
+      `SPIKE_MAX_CALLS must be a non-negative integer, got ${JSON.stringify(raw)}`,
+    );
+  }
+  return Number.parseInt(text, 10);
+}
+const MAX_CALLS = maxCalls(process.env.SPIKE_MAX_CALLS);
 const FORCE = process.env.SPIKE_FORCE === '1';
 const CONCURRENCY = Math.max(1, Number(process.env.SPIKE_CONCURRENCY ?? 4));
 
