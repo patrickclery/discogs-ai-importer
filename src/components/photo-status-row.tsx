@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { type ReactNode, useEffect, useState } from 'react';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
 import { PhotoStatusBadge } from '@/components/photo-status-badge';
+import { RescanButton } from '@/components/rescan-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatElapsed, statusView } from '@/lib/photo-status';
+import { formatElapsed, rowAction, statusView } from '@/lib/photo-status';
 import type { PhotoDto } from '@/lib/scan-types';
 
 /** Current time, re-rendered every second while `ticking` (the m:ss timer). */
@@ -126,6 +127,7 @@ export function PhotoStatusRow({
   const calling = photo.status === 'calling';
   const now = useNow(calling);
   const view = statusView(photo, now);
+  const action = rowAction(photo);
 
   let subline: ReactNode;
   if (calling) {
@@ -172,12 +174,19 @@ export function PhotoStatusRow({
           <IncompleteBadge photo={photo} />
         ) : null}
         <PhotoStatusBadge status={photo.status} />
-        {photo.status === 'done' && photo.spineCount >= 1 ? (
+        {action === 'view_spines' ? (
           <Button asChild variant="outline">
             <Link href={`/spines?photo=${encodeURIComponent(photo.id)}`}>
               View spines
             </Link>
           </Button>
+        ) : null}
+        {action === 'rescan' ? (
+          <RescanButton
+            photoId={photo.id}
+            filename={photo.filename}
+            active={false}
+          />
         ) : null}
       </div>
     </li>

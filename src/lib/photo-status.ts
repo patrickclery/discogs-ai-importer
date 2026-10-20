@@ -109,9 +109,14 @@ export function incompleteTooltip(
 /** The action an /upload server row offers (UI-SPEC E3). */
 export type RowAction = 'view_spines' | 'rescan' | null;
 
-/** Stub until the row-action rule lands (Plan 02-10 Task 3). */
+/**
+ * View spines once a run found spines; Re-scan after a failure or a run that
+ * found none; nothing while a run is queued or analyzing.
+ */
 export function rowAction(
-  _photo: Pick<PhotoDto, 'status' | 'spineCount'>,
+  photo: Pick<PhotoDto, 'status' | 'spineCount'>,
 ): RowAction {
-  return null;
+  if (photo.status === 'error') return 'rescan';
+  if (photo.status !== 'done') return null;
+  return photo.spineCount >= 1 ? 'view_spines' : 'rescan';
 }
