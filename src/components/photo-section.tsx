@@ -4,6 +4,7 @@ import { CircleX, ImageIcon, ScanSearch } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
 import { PhotoStatusBadge } from '@/components/photo-status-badge';
+import { RescanButton } from '@/components/rescan-button';
 import { SpineCard } from '@/components/spine-card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -94,7 +95,9 @@ function SectionBody({
   spines: SpineDto[];
   threshold: number;
 }) {
-  // First run still working: nothing to show yet.
+  // First run still working: nothing to show yet. A re-scan that is still
+  // analyzing keeps the existing (editable) cards under the header's
+  // Analyzing badge; the merged cards replace them with the same keys.
   if (isActiveStatus(photo.status) && spines.length === 0) {
     return <CardSkeletons />;
   }
@@ -191,6 +194,14 @@ export function PhotoSection({
               {photo.truncated ? <IncompleteBadge photo={photo} /> : null}
             </div>
           ) : null}
+        </div>
+        <div className="shrink-0 self-start sm:self-center">
+          <RescanButton
+            photoId={photo.id}
+            filename={photo.filename}
+            active={isActiveStatus(photo.status)}
+            compactOnMobile
+          />
         </div>
       </div>
       <SectionBody photo={photo} spines={spines} threshold={threshold} />

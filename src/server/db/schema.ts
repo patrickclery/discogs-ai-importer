@@ -122,7 +122,7 @@ export const visionRuns = sqliteTable(
   ],
 );
 
-/** One detected item in one run. Rows are never updated after insert. */
+/** One detected item in one run. Never changed once its run is stored. */
 export const spineDetections = sqliteTable(
   'spine_detections',
   {

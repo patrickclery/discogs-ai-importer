@@ -10,6 +10,7 @@ import { newId } from '../ids';
 import type { Box } from '../images/crop';
 import { reasonFor, type ScanErrorKind } from '../vision/reasons';
 import type { CliEnvelope, SpineRead, VisionResult } from '../vision/schema';
+import { mergeRunIntoSpines } from './merge';
 
 // Run state transitions and persistence (RESEARCH Patterns 4 and 6). Every
 // transition is a compare-and-set on the current status, so a stale or
@@ -124,8 +125,9 @@ function usageJson(envelope: CliEnvelope): string {
  * Stores a parsed run in one IMMEDIATE transaction: every detection (all
  * media kinds), a stable spine with six spine_fields rows for each CD or
  * unsure detection (ai_value = value, D-10), and the run set done. Identical
- * reads stay separate spines (no dedup). Only first runs are handled here;
- * Plan 02-10 adds the re-scan merge (D-14..D-16) behind this function.
+ * reads stay separate spines (no dedup). A re-scan (run_no > 1) inserts its
+ * detections unlinked and hands them to mergeRunIntoSpines in the same
+ * transaction (D-13..D-16), so earlier runs are never touched.
  */
 export function persistRunResult(input: {
   runId: string;
@@ -145,11 +147,7 @@ export function persistRunResult(input: {
       | { photo_id: string; run_no: number; status: PhotoStatus }
       | undefined;
     if (!run) throw new Error(`persistRunResult: run ${runId} not found`);
-    if (run.run_no !== 1) {
-      throw new Error(
-        `persistRunResult: run_no ${run.run_no} needs the re-scan merge`,
-      );
-    }
+    const rescan = run.run_no > 1;
     if (run.status !== 'parsing') {
       throw new Error(`persistRunResult: run is ${run.status}, not parsing`);
     }
@@ -175,7 +173,8 @@ export function persistRunResult(input: {
     let spineCount = 0;
     for (const d of detections) {
       const isSpine = SPINE_MEDIA_KINDS.includes(d.mediaKind);
-      const spineId = isSpine ? newId() : null;
+      // A re-scan links its detections in mergeRunIntoSpines below.
+      const spineId = isSpine && !rescan ? newId() : null;
       insertDetection.run(
         d.id,
         runId,
@@ -202,6 +201,13 @@ export function persistRunResult(input: {
         insertField.run(spineId, field, value, value, confidence, now);
       }
       spineCount += 1;
+    }
+    if (rescan) {
+      spineCount = mergeRunIntoSpines(db, {
+        photoId: run.photo_id,
+        runId,
+        newDetections: detections,
+      }).spineCount;
     }
 
     const done = db
