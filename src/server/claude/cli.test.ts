@@ -218,6 +218,25 @@ describe('buildClaudeEnv', () => {
     expect(env).toEqual({ PATH: '/usr/bin' });
   });
 
+  it('drops inherited Claude Code session variables but keeps CLAUDE_CONFIG_DIR and CLAUDE_CODE_OAUTH_TOKEN', () => {
+    const env = buildClaudeEnv({
+      PATH: '/usr/bin',
+      CLAUDECODE: '1',
+      CLAUDE_EFFORT: 'max',
+      CLAUDE_PID: '4242',
+      CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING: '1',
+      CLAUDE_CODE_ENTRYPOINT: 'cli',
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: '64000',
+      CLAUDE_CONFIG_DIR: '/home/owner/.claude-alt',
+      CLAUDE_CODE_OAUTH_TOKEN: 'CANARY-OAUTH',
+    } as Record<string, string> as NodeJS.ProcessEnv);
+    expect(env).toEqual({
+      PATH: '/usr/bin',
+      CLAUDE_CONFIG_DIR: '/home/owner/.claude-alt',
+      CLAUDE_CODE_OAUTH_TOKEN: 'CANARY-OAUTH',
+    });
+  });
+
   it('does not mutate the env it was given', () => {
     const base = {
       ANTHROPIC_API_KEY: 'sk-ant-CANARY',
@@ -297,6 +316,8 @@ describe('getClaudeCliStatus', () => {
         ANTHROPIC_BASE_URL: false,
         CLAUDE_CODE_USE_BEDROCK: false,
         CLAUDE_CODE_USE_VERTEX: false,
+        CLAUDE_EFFORT: false,
+        CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING: false,
       });
       expect(e.cwd).toBe(fs.realpathSync(claudeWorkDir()));
       expect(e.cwd).not.toBe(fs.realpathSync(os.tmpdir()));
@@ -402,6 +423,48 @@ describe('buildClaudeArgs', () => {
       expect(args).toContain(f);
     }
     expect(args).not.toContain('--bare');
+  });
+
+  it('adds --json-schema, --effort and --max-turns when given', () => {
+    const args = buildClaudeArgs({
+      prompt: 'x',
+      model: 'claude-opus-5-5',
+      jsonSchema: '{"type":"object"}',
+      effort: 'high',
+      maxTurns: 6,
+    });
+    expect(args.slice(-6)).toEqual([
+      '--json-schema',
+      '{"type":"object"}',
+      '--effort',
+      'high',
+      '--max-turns',
+      '6',
+    ]);
+  });
+
+  it('leaves out --max-turns when maxTurns is null or omitted', () => {
+    for (const maxTurns of [null, undefined]) {
+      const args = buildClaudeArgs({ prompt: 'x', model: 'm', maxTurns });
+      expect(args).not.toContain('--max-turns');
+      expect(args).not.toContain('--effort');
+    }
+  });
+
+  it('rejects an effort outside VISION_EFFORTS', () => {
+    for (const effort of ['turbo', '', 'MEDIUM']) {
+      expect(() =>
+        buildClaudeArgs({ prompt: 'x', model: 'm', effort: effort as never }),
+      ).toThrow(/effort/);
+    }
+  });
+
+  it('rejects a maxTurns that is not an integer from 1 to 20', () => {
+    for (const maxTurns of [0, 21, 2.5, -1, Number.NaN]) {
+      expect(() =>
+        buildClaudeArgs({ prompt: 'x', model: 'm', maxTurns }),
+      ).toThrow(/maxTurns/);
+    }
   });
 
   it('rejects relative or flag-like readDirs', () => {
