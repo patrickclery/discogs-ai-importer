@@ -32,6 +32,27 @@ describe('detectImageKind (D-06 magic bytes)', () => {
     expect(detectImageKind(ftyp('isom', ['avif', 'heix']))).toBe('heic');
   });
 
+  it('accepts every HEIC/HEIF brand as the major brand', () => {
+    for (const brand of ['heic', 'heix', 'hevc', 'mif1', 'msf1', 'heif']) {
+      expect(detectImageKind(ftyp(brand)), brand).toBe('heic');
+      expect(detectImageKind(ftyp('isom', [brand])), brand).toBe('heic');
+    }
+  });
+
+  it('returns null for GIF, PDF and random bytes', () => {
+    expect(detectImageKind(bytes('GIF89a', [1, 0, 1, 0]))).toBeNull();
+    expect(detectImageKind(bytes('GIF87a', [1, 0, 1, 0]))).toBeNull();
+    expect(detectImageKind(bytes('%PDF-1.4\n%'))).toBeNull();
+    // A fixed pseudo-random sequence (LCG) that starts with no signature.
+    let x = 12345;
+    const random = Uint8Array.from({ length: 256 }, () => {
+      x = (x * 1103515245 + 12345) & 0x7fffffff;
+      return x & 0xff;
+    });
+    random[0] = 0x42;
+    expect(detectImageKind(random)).toBeNull();
+  });
+
   it('refuses everything else', () => {
     expect(detectImageKind(bytes('%PDF-1.7\n'))).toBeNull();
     expect(detectImageKind(bytes('hello world'))).toBeNull();
