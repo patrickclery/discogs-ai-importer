@@ -47,6 +47,18 @@ describe('orphaned spines', () => {
     expect(spines.slice(0, -1).every((s) => s.state === 'active')).toBe(true);
   });
 
+  it('getSpines review lists only the spines that need review, with both counts', async () => {
+    const { photoId, orphanId } = await orphanScenario();
+    const all = getSpines({ photoId });
+    const flagged = getSpines({ photoId, review: true });
+    expect(flagged.spines.map((s) => s.id)).toContain(orphanId);
+    expect(flagged.counts).toEqual(all.counts);
+    expect(flagged.counts.all).toBe(all.spines.length);
+    expect(flagged.counts.needsReview).toBe(flagged.spines.length);
+    expect(flagged.spines.length).toBeLessThan(all.spines.length);
+    expect(flagged.photoOptions).toEqual(all.photoOptions);
+  });
+
   it('re-attach moves the edits, follows the new read and supersedes the target', async () => {
     const { orphanId, vId, vDetectionId } = await orphanScenario();
     const oldArtistRead = layout.spines[ORPHAN_INDEX].artist;

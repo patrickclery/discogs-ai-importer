@@ -93,11 +93,17 @@ export function editedCount(fields: readonly SpineFieldDto[]): number {
   return fields.filter(isEdited).length;
 }
 
-/** The spine has at least one low-confidence field (A-16 Needs review). */
+/**
+ * The Needs review filter (D-07, D-09, D-16): every orphaned spine, and an
+ * active spine with at least one non-empty, unedited field below the
+ * confidence threshold.
+ */
 export function needsReview(
-  spine: Pick<SpineDto, 'fields'>,
+  spine: Pick<SpineDto, 'fields' | 'state'>,
   threshold: number,
 ): boolean {
+  if (spine.state === 'orphaned') return true;
+  if (spine.state !== 'active') return false;
   return spine.fields.some((f) => isLowConfidence(f, threshold));
 }
 

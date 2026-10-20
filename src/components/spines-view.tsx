@@ -1,11 +1,15 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { CircleX, ImageOff, Rows3 } from 'lucide-react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { CircleCheck, CircleX, ImageOff, Rows3 } from 'lucide-react';
 import Link from 'next/link';
-import { useQueryState } from 'nuqs';
 import { type ReactNode, useMemo } from 'react';
 import { PhotoSection } from '@/components/photo-section';
+import {
+  SpinesFilterBar,
+  usePhotoFilter,
+  useReviewFilter,
+} from '@/components/spines-filter-bar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,8 +24,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { photosRefetchInterval, pluralize } from '@/lib/photo-status';
 import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
-async function fetchSpines(photo: string | null): Promise<SpinesResponse> {
-  const qs = photo ? `?photo=${encodeURIComponent(photo)}` : '';
+async function fetchSpines(
+  photo: string | null,
+  review: boolean,
+): Promise<SpinesResponse> {
+  const params = new URLSearchParams();
+  if (photo) params.set('photo', photo);
+  if (review) params.set('review', '1');
+  const qs = params.size > 0 ? `?${params}` : '';
   const res = await fetch(`/api/spines${qs}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`GET /api/spines returned ${res.status}`);
   return (await res.json()) as SpinesResponse;
@@ -94,6 +104,30 @@ function PhotoNotFound({ onShowAll }: { onShowAll: () => void }) {
   );
 }
 
+function NothingNeedsReview({ onShowAll }: { onShowAll: () => void }) {
+  return (
+    <Empty className="pt-16 pb-12">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <CircleCheck className="size-5" />
+        </EmptyMedia>
+        <EmptyTitle className="text-base font-medium">
+          Nothing needs review
+        </EmptyTitle>
+        <EmptyDescription>
+          Every field Claude read is above the confidence threshold, or you've
+          already checked it.
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button variant="outline" onClick={onShowAll}>
+          Show all spines
+        </Button>
+      </EmptyContent>
+    </Empty>
+  );
+}
+
 /**
  * The /spines page body (REV-01, RESEARCH Pattern 7). Server-rendered from
  * `initialData`, then GET /api/spines every 1.5 s while any photo is active.
@@ -103,17 +137,27 @@ function PhotoNotFound({ onShowAll }: { onShowAll: () => void }) {
 export function SpinesView({
   initialData,
   initialPhoto,
+  initialReview,
 }: {
   initialData: SpinesResponse;
   initialPhoto: string | null;
+  initialReview: boolean;
 }) {
-  const [photoParam, setPhoto] = useQueryState('photo');
-  const photo = photoParam || null;
+  const [photo, setPhoto] = usePhotoFilter();
+  const [review, setReview] = useReviewFilter();
   const query = useQuery({
-    queryKey: ['spines', { photo }],
-    queryFn: () => fetchSpines(photo),
-    initialData: photo === initialPhoto ? initialData : undefined,
-    refetchInterval: (q) => photosRefetchInterval(q.state.data?.photos),
+    queryKey: ['spines', { photo, review }],
+    queryFn: () => fetchSpines(photo, review),
+    initialData:
+      photo === initialPhoto && review === initialReview
+        ? initialData
+        : undefined,
+    // Changing a filter keeps the last list and the filter bar on screen
+    // until the new one loads.
+    placeholderData: keepPreviousData,
+    // Every photo's status, so a scan finishing on a photo the filters hide
+    // still refreshes the counts.
+    refetchInterval: (q) => photosRefetchInterval(q.state.data?.photoOptions),
   });
   const data = query.data;
   const byPhoto = useMemo(() => groupByPhoto(data?.spines ?? []), [data]);
@@ -134,12 +178,12 @@ export function SpinesView({
   let body: ReactNode;
   if (!data) {
     body = pollError ?? <ListSkeleton />;
-  } else if (data.photos.length === 0) {
-    body = photo ? (
-      <PhotoNotFound onShowAll={() => void setPhoto(null)} />
-    ) : (
-      <NoSpinesYet />
-    );
+  } else if (photo && !data.photoOptions.some((p) => p.id === photo)) {
+    body = <PhotoNotFound onShowAll={() => void setPhoto(null)} />;
+  } else if (data.photoOptions.length === 0) {
+    body = <NoSpinesYet />;
+  } else if (review && data.spines.length === 0) {
+    body = <NothingNeedsReview onShowAll={() => void setReview(false)} />;
   } else {
     body = (
       <div className="flex flex-col gap-6">
@@ -157,7 +201,11 @@ export function SpinesView({
   }
 
   const spineCount = data?.counts.all ?? 0;
-  const photoCount = data?.photos.length ?? 0;
+  const photoCount = !data
+    ? 0
+    : photo
+      ? data.photoOptions.filter((p) => p.id === photo).length
+      : data.photoOptions.length;
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
@@ -165,6 +213,14 @@ export function SpinesView({
         <p className="text-sm text-muted-foreground">
           {`${pluralize(spineCount, 'spine', 'spines')} from ${pluralize(photoCount, 'photo', 'photos')}. Changes save when you leave a field.`}
         </p>
+        {data ? (
+          <div className="pt-6">
+            <SpinesFilterBar
+              counts={data.counts}
+              photoOptions={data.photoOptions}
+            />
+          </div>
+        ) : null}
       </div>
       {body}
     </div>

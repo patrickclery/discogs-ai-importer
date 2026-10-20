@@ -261,26 +261,44 @@ export function listSpines(opts: { photoId?: string } = {}): SpineDto[] {
   );
 }
 
+/** True only for the exact `?review=1` value (T-02-28). */
+export function parseReviewParam(v: string | null | undefined): boolean {
+  return v === '1';
+}
+
 /**
- * The /spines read model (REV-01): photos newest first (only `photoId` when
- * given; an unknown id yields no photos), their active spines in detection
- * order then their orphaned spines (D-16), and the counts the page shows. A-16: Needs review counts spines with
- * a low-confidence field; 02-12 adds orphaned spines.
+ * The /spines read model (REV-01, D-07): photos newest first (only `photoId`
+ * when given; an unknown id yields no photos), their active spines in
+ * detection order then their orphaned spines (D-16), and the counts the
+ * filter bar shows. With `review`, only spines that need review are listed
+ * (orphaned, or a non-empty unedited field below the threshold) and photos
+ * without such spines are omitted. `counts` cover the photo filter and ignore
+ * the review filter, so both toggle counts stay visible.
  */
-export function getSpines(opts: { photoId?: string } = {}): SpinesResponse {
-  const photos = opts.photoId
-    ? [getPhoto(opts.photoId)].filter((p): p is PhotoDto => p !== null)
-    : listPhotos();
-  const spines = photos.length === 0 ? [] : listSpines(opts);
+export function getSpines(
+  opts: { photoId?: string; review?: boolean } = {},
+): SpinesResponse {
+  const all = listPhotos();
+  const photoOptions = all.map(({ id, filename, status }) => ({
+    id,
+    filename,
+    status,
+  }));
+  const scoped = opts.photoId ? all.filter((p) => p.id === opts.photoId) : all;
+  const listed =
+    scoped.length === 0 ? [] : listSpines({ photoId: opts.photoId });
   const confidenceThreshold = getConfidenceThreshold();
+  const flagged = listed.filter((s) => needsReview(s, confidenceThreshold));
+  const spines = opts.review ? flagged : listed;
+  const withSpines = new Set(spines.map((s) => s.photoId));
+  const photos = opts.review
+    ? scoped.filter((p) => withSpines.has(p.id))
+    : scoped;
   return {
     photos,
     spines,
-    counts: {
-      all: spines.length,
-      needsReview: spines.filter((s) => needsReview(s, confidenceThreshold))
-        .length,
-    },
+    photoOptions,
+    counts: { all: listed.length, needsReview: flagged.length },
     confidenceThreshold,
     densityMaxSpines: getDensityThresholds().maxSpines,
   };

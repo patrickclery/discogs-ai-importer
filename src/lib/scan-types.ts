@@ -98,9 +98,16 @@ export type SpineDto = {
 
 export type PhotosResponse = { photos: PhotoDto[] };
 
+/** One entry of the /spines photo filter (every photo, newest first). */
+export type PhotoOption = Pick<PhotoDto, 'id' | 'filename' | 'status'>;
+
 export type SpinesResponse = {
+  /** Photos with a section under the current filters. */
   photos: PhotoDto[];
   spines: SpineDto[];
+  /** Every photo, newest first, for the photo Select and polling. */
+  photoOptions: PhotoOption[];
+  /** Within the photo filter, ignoring the review filter. */
   counts: { all: number; needsReview: number };
   confidenceThreshold: number;
   densityMaxSpines: number;

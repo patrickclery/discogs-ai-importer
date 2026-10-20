@@ -80,8 +80,10 @@ describe('worstField / editedCount / needsReview', () => {
     expect(editedCount(fields)).toBe(1);
   });
   it('needs review when any field is low confidence', () => {
-    expect(needsReview({ fields }, 0.6)).toBe(true);
-    expect(needsReview({ fields: [field()] }, 0.6)).toBe(false);
+    expect(needsReview({ fields, state: 'active' }, 0.6)).toBe(true);
+    expect(needsReview({ fields: [field()], state: 'active' }, 0.6)).toBe(
+      false,
+    );
   });
 });
 

@@ -1,6 +1,6 @@
 import { connection } from 'next/server';
 import { SpinesView } from '@/components/spines-view';
-import { getSpines } from '@/server/scan/queries';
+import { getSpines, parseReviewParam } from '@/server/scan/queries';
 
 // /spines (REV-01): the server render already holds the title block and the
 // list, then SpinesView polls GET /api/spines while a photo is analyzed.
@@ -11,12 +11,16 @@ export default async function SpinesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
-  const raw = (await searchParams).photo;
-  const photoId = (Array.isArray(raw) ? raw[0] : raw) || undefined;
+  const params = await searchParams;
+  const first = (v: string | string[] | undefined) =>
+    Array.isArray(v) ? v[0] : v;
+  const photoId = first(params.photo) || undefined;
+  const review = parseReviewParam(first(params.review));
   return (
     <SpinesView
-      initialData={getSpines({ photoId })}
+      initialData={getSpines({ photoId, review })}
       initialPhoto={photoId ?? null}
+      initialReview={review}
     />
   );
 }
