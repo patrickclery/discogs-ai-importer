@@ -10,6 +10,7 @@ import {
   lowConfidenceTooltip,
   needsReview,
   normalizeFieldInput,
+  rescanHint,
   resolveDisplayedValue,
   revertTooltip,
   spineNumber,
@@ -293,5 +294,26 @@ describe('needsReview (02-12, D-07)', () => {
       false,
     );
     expect(needsReview({ state: 'dismissed', fields: [low] }, 0.6)).toBe(false);
+  });
+});
+
+describe('rescanHint (02-12, D-15)', () => {
+  const edited = field({
+    field: 'title',
+    aiValue: 'New read',
+    value: 'Owner title',
+    editBaseAiValue: 'Old read',
+  });
+  it('returns the new read when an edited field was re-read differently', () => {
+    expect(rescanHint(edited)).toBe('New read');
+  });
+  it('returns null for an unedited field', () => {
+    expect(rescanHint({ ...edited, value: 'New read' })).toBeNull();
+  });
+  it('returns null when the latest read is empty (A-18)', () => {
+    expect(rescanHint({ ...edited, aiValue: null })).toBeNull();
+  });
+  it('returns null when the latest read equals the read the owner edited', () => {
+    expect(rescanHint({ ...edited, aiValue: 'Old read' })).toBeNull();
   });
 });

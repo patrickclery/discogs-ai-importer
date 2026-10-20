@@ -108,6 +108,17 @@ export function needsReview(
 }
 
 /**
+ * D-15 re-scan hint: the latest AI read of an edited field when it differs
+ * from the read the owner edited against, or null (A-18: no hint when the
+ * latest read is empty).
+ */
+export function rescanHint(
+  _f: Pick<SpineFieldDto, 'value' | 'aiValue' | 'editBaseAiValue'>,
+): string | null {
+  return null; // RED stub
+}
+
+/**
  * The number shown as `#n`. Claude's index is 0-based in reading order
  * (prompt.ts), so the owner sees 1, 2, 3 for the first spines.
  */
