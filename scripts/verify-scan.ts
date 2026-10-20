@@ -2,7 +2,8 @@
 // repeat dedup, the queued one-shot run and job, the photo list, a >10 MB
 // upload through the proxy, and refused non-photo uploads. Plan 02-04: the
 // scan job against the fake CLI (one recorded call, raw output first, crops,
-// the file-route allowlist and the spines page).
+// the file-route allowlist and the spines page). Plan 02-06: the /upload
+// Photos list server-renders the done photo with its View spines link.
 // Run: node scripts/verify-scan.ts   (VERIFY_SKIP_BUILD=1 reuses .next)
 // Each step is a named function so later plans (02-04, 02-06, 02-08, 02-09)
 // can extend this script.
@@ -378,6 +379,19 @@ export async function stepScanDone(ctx: Ctx, photoId: string): Promise<void> {
   check(`done with ${expected} spines; the two identical reads stay separate`);
 }
 
+// (i2) /upload server-renders the done photo with its View spines link.
+export async function stepUploadPage(ctx: Ctx, photoId: string) {
+  step('(i2) GET /upload lists the done photo with View spines');
+  const res = await fetch(`${ctx.baseUrl}/upload`);
+  assert(res.status === 200, `GET /upload returned ${res.status}`);
+  const html = await res.text();
+  assert(html.includes('shelf.jpg'), '/upload lacks the file name shelf.jpg');
+  assert(html.includes('View spines'), '/upload lacks "View spines"');
+  const href = `href="/spines?photo=${photoId}"`;
+  assert(html.includes(href), `/upload lacks ${href}`);
+  check(`shelf.jpg row links to /spines?photo=${photoId}`);
+}
+
 type RunRecord = {
   id: string;
   model: string | null;
@@ -620,6 +634,7 @@ runMain('verify-scan', async (onCleanup) => {
   stepQueuedRows(ctx, photoId, jpeg);
   await stepListQueued(ctx, photoId);
   await stepScanDone(ctx, photoId);
+  await stepUploadPage(ctx, photoId);
   await stepRepeatDuplicate(ctx, photoId, jpeg);
   await stepRunRecorded(ctx, photoId);
   const cropUrl = await stepSpinesPage(ctx, photoId);

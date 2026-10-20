@@ -4,6 +4,7 @@ import { AppHeader } from '@/components/app-header';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Providers } from './providers';
 import './globals.css';
 
 const geistSans = Geist({
@@ -31,8 +32,10 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <body className="min-h-full font-sans">
         <ThemeProvider>
           <TooltipProvider>
-            <AppHeader />
-            <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+            <Providers>
+              <AppHeader />
+              <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+            </Providers>
             <Toaster position="bottom-right" richColors={false} />
           </TooltipProvider>
         </ThemeProvider>

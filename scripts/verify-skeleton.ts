@@ -218,7 +218,7 @@ function assertContains(html: string, text: string, where: string): void {
 export async function stepShellPages(port: number): Promise<void> {
   step('(e2) app shell, empty states and Developer card (hooks on)');
   const upload = await getPage(port, '/upload');
-  assertContains(upload, "Upload isn't built yet", '/upload');
+  assertContains(upload, "The Claude CLI isn't ready", '/upload');
   assertContains(upload, 'Open Settings', '/upload');
   assertContains(upload, 'Checking worker…', '/upload');
   const nav = upload.match(/<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/);

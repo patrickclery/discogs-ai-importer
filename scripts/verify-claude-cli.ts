@@ -18,7 +18,9 @@ const FAKE = path.resolve('test/fixtures/fake-claude.mjs');
 const CANARY_API_KEY = 'sk-ant-CANARY-0123456789zz';
 const FAKE_EMAIL = 'fake-owner@example.invalid';
 const FAKE_ORG = 'Fake Org Name';
-const ALREADY_SET_UP = 'The Claude CLI is already set up.';
+// The empty Photos list; /upload renders it on an empty data folder.
+const ALREADY_SET_UP = 'Photos you drop appear here';
+const NOT_READY = "The Claude CLI isn't ready";
 
 type LogEntry = {
   argv: string[];
@@ -34,10 +36,20 @@ function step(label: string) {
   console.log(`-- ${label}`);
 }
 
+/** React escapes apostrophes and quotes in text; compare decoded copy. */
+function decodeEntities(html: string): string {
+  return html
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 async function getPage(port: number, p: string): Promise<string> {
   const res = await httpRequest({ port, path: p, timeoutMs: 30_000 });
   assert(res.status === 200, `${p} returned ${res.status}`);
-  return res.body;
+  return decodeEntities(res.body);
 }
 
 /** RSC payload of a page; follows Next's one-time cache-busting 307. */
@@ -144,7 +156,7 @@ runMain('verify-claude-cli', async (onCleanup) => {
       const upload = await getPage(port, '/upload');
       pages.push(upload);
       contains('/upload', upload, [ALREADY_SET_UP]);
-      lacks('/upload', upload, ['Open Settings', 'sk-ant-CANARY']);
+      lacks('/upload', upload, [NOT_READY, 'Open Settings', 'sk-ant-CANARY']);
       console.log('   settings and upload OK');
     },
   );
@@ -182,8 +194,7 @@ runMain('verify-claude-cli', async (onCleanup) => {
       lacks('/settings', settings, ['ANTHROPIC_API_KEY is set']);
       const upload = await getPage(port, '/upload');
       pages.push(upload);
-      contains('/upload', upload, ['Open Settings', 'Set up the Claude CLI']);
-      lacks('/upload', upload, [ALREADY_SET_UP]);
+      contains('/upload', upload, [NOT_READY, 'Open Settings']);
     },
   );
 
@@ -197,8 +208,7 @@ runMain('verify-claude-cli', async (onCleanup) => {
       // WR-06: an API-billed login is not ready; Upload sends to Settings.
       const upload = await getPage(port, '/upload');
       pages.push(upload);
-      contains('/upload', upload, ['Open Settings']);
-      lacks('/upload', upload, [ALREADY_SET_UP]);
+      contains('/upload', upload, [NOT_READY, 'Open Settings']);
     },
   );
 
@@ -212,7 +222,7 @@ runMain('verify-claude-cli', async (onCleanup) => {
       lacks('/settings', settings, ['Subscription']);
       const upload = await getPage(port, '/upload');
       pages.push(upload);
-      contains('/upload', upload, ['Open Settings']);
+      contains('/upload', upload, [NOT_READY, 'Open Settings']);
     },
   );
 
