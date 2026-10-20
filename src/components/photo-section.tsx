@@ -95,6 +95,8 @@ function SectionBody({
   spines: SpineDto[];
   threshold: number;
 }) {
+  const active = spines.filter((s) => s.state !== 'orphaned');
+  const orphans = spines.filter((s) => s.state === 'orphaned');
   // First run still working: nothing to show yet. A re-scan that is still
   // analyzing keeps the existing (editable) cards under the header's
   // Analyzing badge; the merged cards replace them with the same keys.
@@ -117,8 +119,8 @@ function SectionBody({
     </Alert>
   ) : null;
 
-  if (photo.status === 'done' && spines.length === 0) {
-    return (
+  const noCds =
+    photo.status === 'done' && active.length === 0 ? (
       <Empty className="py-8 md:py-8">
         <EmptyHeader>
           <EmptyMedia variant="icon">
@@ -133,15 +135,30 @@ function SectionBody({
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
-    );
-  }
+    ) : null;
+
+  // D-16: spines the latest re-scan no longer found but that carry edits
+  // follow the active cards under their own Caption sub-heading.
+  const orphanList =
+    orphans.length > 0 ? (
+      <>
+        <p className="pt-2 text-xs text-muted-foreground">
+          {`No longer detected (${orphans.length})`}
+        </p>
+        {orphans.map((spine) => (
+          <SpineCard key={spine.id} spine={spine} threshold={threshold} />
+        ))}
+      </>
+    ) : null;
 
   return (
     <>
       {alert}
-      {spines.map((spine) => (
+      {noCds}
+      {active.map((spine) => (
         <SpineCard key={spine.id} spine={spine} threshold={threshold} />
       ))}
+      {orphanList}
     </>
   );
 }

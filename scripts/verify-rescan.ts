@@ -70,6 +70,7 @@ type SpineApi = {
   photoId: string;
   index: number;
   state: string;
+  crop: { url: string } | null;
   fields: FieldDto[];
 };
 type PhotoApi = {
@@ -354,9 +355,10 @@ export async function stepMerged(
   ctx: Ctx,
   photoId: string,
   before: SpineApi[],
-): Promise<void> {
+): Promise<SpineApi> {
   step('(e) GET /api/spines shows the merged spines');
-  const after = await getSpines(ctx, photoId);
+  const listed = await getSpines(ctx, photoId);
+  const after = listed.filter((s) => s.state === 'active');
   const byId = new Map(after.map((s) => [s.id, s]));
   const old = (i: number) => before[i];
 
@@ -382,8 +384,18 @@ export async function stepMerged(
   for (const i of [0, 2]) {
     assert(byId.has(old(i).id), `spine ${i} (duplicate read) lost its id`);
   }
-  assert(!byId.has(old(ROLES.W).id), 'W is still listed');
-  assert(!byId.has(old(ROLES.Y).id), 'Y is still listed');
+  assert(!listed.some((s) => s.id === old(ROLES.W).id), 'W is still listed');
+  assert(!byId.has(old(ROLES.Y).id), 'Y is still listed as active');
+  // D-16: the orphan is listed after the active spines, edits kept.
+  const y = listed.at(-1);
+  assert(
+    y?.id === old(ROLES.Y).id && y.state === 'orphaned',
+    `last listed spine is ${y?.id} (${y?.state}), expected orphaned Y`,
+  );
+  assert(
+    field(y, 'artist').value === Y_OWNER_ARTIST,
+    `orphaned Y artist ${field(y, 'artist').value}`,
+  );
 
   const oldIds = new Set(before.map((s) => s.id));
   const fresh = after.filter((s) => !oldIds.has(s.id));
@@ -393,7 +405,10 @@ export async function stepMerged(
     `new spine reads ${field(fresh[0], 'raw_text').value}`,
   );
   assert(after.length === 5, `${after.length} active spines, expected 5`);
-  check('X kept the edit with the new read beside it; Z, 0, 2 kept; V new');
+  check(
+    'X kept the edit with the new read beside it; Z, 0, 2 kept; V new; Y listed as orphaned',
+  );
+  return fresh[0];
 }
 
 // (f) D-16 states in app.db and D-13: run 1 is untouched.
@@ -464,7 +479,111 @@ export async function stepSpinesPage(ctx: Ctx): Promise<void> {
     html.includes(`aria-label="Re-scan ${FILENAME}"`),
     '/spines lacks the icon-only Re-scan aria-label',
   );
-  check('Re-scan photo and its icon-only aria-label are rendered');
+  assert(
+    html.includes('No longer detected (1)'),
+    '/spines lacks the "No longer detected (1)" sub-heading',
+  );
+  assert(html.includes('Re-attach spine…'), '/spines lacks "Re-attach spine…"');
+  check(
+    'Re-scan photo, its icon-only aria-label and the orphan section are rendered',
+  );
+}
+
+export async function postJson(
+  ctx: Ctx,
+  url: string,
+  body: unknown,
+  contentType = 'application/json',
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await fetch(`${ctx.baseUrl}${url}`, {
+    method: 'POST',
+    headers: { origin: ctx.origin, 'content-type': contentType },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  try {
+    return { status: res.status, body: JSON.parse(text) };
+  } catch {
+    return { status: res.status, body: { raw: text } };
+  }
+}
+
+// (i) D-16 re-attach: the orphan Y takes over the new spine V.
+export async function stepReattach(
+  ctx: Ctx,
+  photoId: string,
+  before: SpineApi[],
+  v: SpineApi,
+): Promise<void> {
+  step('(i) re-attach orphaned Y to the new spine V');
+  const yId = before[ROLES.Y].id;
+  const list = await fetch(`${ctx.baseUrl}/api/spines/${yId}/reattach`);
+  assert(list.status === 200, `GET reattach returned ${list.status}`);
+  const { candidates } = (await list.json()) as { candidates: SpineApi[] };
+  assert(
+    candidates.map((c) => c.id).join(',') === v.id,
+    `candidates ${candidates.map((c) => c.id).join(',')}, expected only V ${v.id}`,
+  );
+  const missing = await fetch(`${ctx.baseUrl}/api/spines/no-such/reattach`);
+  assert(missing.status === 404, `GET unknown reattach ${missing.status}`);
+  const plain = await postJson(
+    ctx,
+    `/api/spines/${yId}/reattach`,
+    { targetSpineId: v.id },
+    'text/plain',
+  );
+  assert(plain.status === 415, `text/plain reattach returned ${plain.status}`);
+
+  const ok = await postJson(ctx, `/api/spines/${yId}/reattach`, {
+    targetSpineId: v.id,
+  });
+  assert(
+    ok.status === 200 && ok.body.id === yId && ok.body.state === 'active',
+    `reattach returned ${ok.status} ${JSON.stringify(ok.body)}`,
+  );
+
+  const listed = await getSpines(ctx, photoId);
+  const y = listed.find((s) => s.id === yId);
+  assert(y && y.state === 'active', `Y is ${y?.state}, expected active`);
+  const artist = field(y, 'artist');
+  assert(artist.value === Y_OWNER_ARTIST, `Y artist ${artist.value}`);
+  assert(
+    artist.aiValue === 'Marlow Reed',
+    `Y artist aiValue ${artist.aiValue}`,
+  );
+  assert(
+    field(y, 'raw_text').value === V_TEXT,
+    `Y unedited raw_text ${field(y, 'raw_text').value}`,
+  );
+  assert(
+    y.crop !== null && y.crop.url === v.crop?.url,
+    `Y crop ${y.crop?.url}, expected V's ${v.crop?.url}`,
+  );
+  assert(!listed.some((s) => s.id === v.id), 'V is still listed');
+  assert(
+    !listed.some((s) => s.state === 'orphaned'),
+    'an orphan is still listed',
+  );
+  withDb(ctx, (db) => {
+    const row = db
+      .prepare('SELECT state FROM spines WHERE id = ?')
+      .get(v.id) as {
+      state: string;
+    };
+    assert(
+      row.state === 'superseded',
+      `V is ${row.state}, expected superseded`,
+    );
+  });
+
+  const again = await postJson(ctx, `/api/spines/${yId}/reattach`, {
+    targetSpineId: v.id,
+  });
+  assert(
+    again.status === 409 && again.body.error === 'conflict',
+    `second reattach returned ${again.status} ${JSON.stringify(again.body)}`,
+  );
+  check("Y active with its edit and V's crop; V superseded; 409 on repeat");
 }
 
 // (h) one call per run: exactly two -p invocations.
@@ -517,9 +636,10 @@ runMain('verify-rescan', async (onCleanup) => {
   const snapshot = snapshotRun1(ctx, photoId);
   await stepRefusals(ctx, photoId);
   await stepRescan(ctx, photoId);
-  await stepMerged(ctx, photoId, spines);
+  const v = await stepMerged(ctx, photoId, spines);
   stepStatesAndHistory(ctx, photoId, spines, snapshot);
   await stepSpinesPage(ctx);
+  await stepReattach(ctx, photoId, spines, v);
   stepTwoCalls(ctx);
 
   step('stop');

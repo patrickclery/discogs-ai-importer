@@ -22,6 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
 import { cn } from '@/lib/utils';
 
 // Re-scan trigger and confirm (UI-SPEC Re-scan, D-17, INGEST-04). Shared by
@@ -30,23 +31,6 @@ import { cn } from '@/lib/utils';
 // deleted, D-13).
 
 const ACTIVE_TOOLTIP = 'This photo is already being analyzed.';
-
-/** The server's message (or a fallback) without its final period. */
-async function failureReason(res: Response): Promise<string> {
-  try {
-    const body = (await res.json()) as { message?: unknown; error?: unknown };
-    const text =
-      typeof body.message === 'string'
-        ? body.message
-        : typeof body.error === 'string'
-          ? body.error
-          : '';
-    if (text) return text.replace(/\.\s*$/, '');
-  } catch {
-    // Not JSON: fall through.
-  }
-  return `the server answered ${res.status}`;
-}
 
 export function RescanButton({
   photoId,
@@ -131,7 +115,7 @@ export function RescanButton({
       ]);
       window.dispatchEvent(new Event(STATUS_REFRESH_EVENT));
     } catch {
-      setError("the app couldn't reach the server");
+      setError(UNREACHABLE_REASON);
     } finally {
       setPending(false);
     }

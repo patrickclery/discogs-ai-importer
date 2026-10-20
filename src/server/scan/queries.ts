@@ -136,6 +136,7 @@ type SpineListRow = {
   crop_path: string | null;
   crop_w: number | null;
   crop_h: number | null;
+  orphaned_run_no: number | null;
 };
 
 type SpineFieldListRow = {
@@ -154,24 +155,35 @@ function toLegibility(v: string | null): Legibility | null {
 }
 
 /**
- * Active spines, grouped by photo (newest first) and, within a photo, in
- * Claude's index order with ties broken by array position (VIS-01, VIS-02).
+ * Spine DTOs for the spines matching `where` (a SQL condition over `s`, the
+ * spines row, with named parameters), in `orderBy` order. Shared by the
+ * /spines list and the orphan routes so every spine is shaped the same.
+ * `orphaned_run_no` is the first finished run after the one that last found
+ * the spine: the re-scan that orphaned it (D-16).
  */
-export function listSpines(opts: { photoId?: string } = {}): SpineDto[] {
+export function loadSpineDtos(
+  where: string,
+  params: Record<string, unknown> = {},
+  orderBy = 'p.created_at DESC, p.id DESC, d.idx, d.position, s.id',
+): SpineDto[] {
   const db = getDb().$client;
-  const where = opts.photoId ? 'AND s.photo_id = ?' : '';
-  const params = opts.photoId ? [opts.photoId] : [];
   const rows = db
     .prepare(
       `SELECT s.id, s.photo_id, s.state, s.created_run_id,
-         d.idx, d.legibility, d.crop_path, d.crop_w, d.crop_h
+         d.idx, d.legibility, d.crop_path, d.crop_w, d.crop_h,
+         CASE WHEN s.state = 'orphaned' THEN (
+           SELECT MIN(o.run_no) FROM vision_runs o
+           WHERE o.photo_id = s.photo_id AND o.status = 'done'
+             AND o.run_no > COALESCE(dr.run_no, 0)
+         ) END AS orphaned_run_no
        FROM spines s
        JOIN photos p ON p.id = s.photo_id
        LEFT JOIN spine_detections d ON d.id = s.current_detection_id
-       WHERE s.state = 'active' ${where}
-       ORDER BY p.created_at DESC, p.id DESC, d.idx, d.position, s.id`,
+       LEFT JOIN vision_runs dr ON dr.id = d.run_id
+       WHERE ${where}
+       ORDER BY ${orderBy}`,
     )
-    .all(...params) as SpineListRow[];
+    .all(params) as SpineListRow[];
   if (rows.length === 0) return [];
 
   const fieldRows = db
@@ -180,9 +192,9 @@ export function listSpines(opts: { photoId?: string } = {}): SpineDto[] {
          f.edit_base_ai_value
        FROM spine_fields f
        JOIN spines s ON s.id = f.spine_id
-       WHERE s.state = 'active' ${where}`,
+       WHERE ${where}`,
     )
-    .all(...params) as SpineFieldListRow[];
+    .all(params) as SpineFieldListRow[];
   const fieldsBySpine = new Map<string, Map<SpineField, SpineFieldDto>>();
   for (const f of fieldRows) {
     let m = fieldsBySpine.get(f.spine_id);
@@ -223,15 +235,36 @@ export function listSpines(opts: { photoId?: string } = {}): SpineDto[] {
           },
       ),
       createdRunId: r.created_run_id,
-      orphanedRunNo: null,
+      orphanedRunNo: r.orphaned_run_no,
     };
   });
+}
+
+/** One spine in any state, or null. */
+export function getSpineDto(id: string): SpineDto | null {
+  return loadSpineDtos('s.id = @id', { id })[0] ?? null;
+}
+
+/**
+ * Listed spines, grouped by photo (newest first). Within a photo the active
+ * spines come first in Claude's index order (ties broken by array position,
+ * VIS-01, VIS-02), then the orphaned ones (D-16). Superseded and dismissed
+ * spines are never listed.
+ */
+export function listSpines(opts: { photoId?: string } = {}): SpineDto[] {
+  const photoFilter = opts.photoId ? ' AND s.photo_id = @photoId' : '';
+  return loadSpineDtos(
+    `s.state IN ('active', 'orphaned')${photoFilter}`,
+    opts.photoId ? { photoId: opts.photoId } : {},
+    `p.created_at DESC, p.id DESC,
+     CASE s.state WHEN 'active' THEN 0 ELSE 1 END, d.idx, d.position, s.id`,
+  );
 }
 
 /**
  * The /spines read model (REV-01): photos newest first (only `photoId` when
  * given; an unknown id yields no photos), their active spines in detection
- * order, and the counts the page shows. A-16: Needs review counts spines with
+ * order then their orphaned spines (D-16), and the counts the page shows. A-16: Needs review counts spines with
  * a low-confidence field; 02-12 adds orphaned spines.
  */
 export function getSpines(opts: { photoId?: string } = {}): SpinesResponse {
