@@ -1,6 +1,8 @@
-// Shelf-scan ingest proof (Plan 02-03): schema on the live DB, upload,
-// concurrent and repeat dedup, the queued one-shot run and job, the photo list,
-// a >10 MB upload through the proxy, and refused non-photo uploads.
+// Shelf-scan proof. Plan 02-03: schema on the live DB, upload, concurrent and
+// repeat dedup, the queued one-shot run and job, the photo list, a >10 MB
+// upload through the proxy, and refused non-photo uploads. Plan 02-04: the
+// scan job against the fake CLI (one recorded call, raw output first, crops,
+// the file-route allowlist and the spines page).
 // Run: node scripts/verify-scan.ts   (VERIFY_SKIP_BUILD=1 reuses .next)
 // Each step is a named function so later plans (02-04, 02-06, 02-08, 02-09)
 // can extend this script.
@@ -9,6 +11,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import sharp from 'sharp';
+import {
+  LAYOUTS,
+  makeSyntheticShelf,
+  structuredOutputFor,
+} from '../test/fixtures/vision/synthetic-shelf.mjs';
 import { assert, check, step } from './lib/jobs.ts';
 import {
   buildApp,
@@ -17,7 +24,11 @@ import {
   runMain,
   type ServerHandle,
   startServer,
+  waitFor,
 } from './lib/server.ts';
+
+const FAKE_CLAUDE = path.join(process.cwd(), 'test/fixtures/fake-claude.mjs');
+const TRACER = LAYOUTS.tracerShelf;
 
 const SCAN_TABLES = [
   'photos',
@@ -32,6 +43,8 @@ export type Ctx = {
   dataDir: string;
   baseUrl: string;
   origin: string;
+  /** The fake CLI's invocation log (FAKE_CLAUDE_LOG). */
+  claudeLog: string;
 };
 
 type Upload = { status: number; body: Record<string, unknown> };
@@ -105,18 +118,46 @@ export async function renderJpeg(width: number, height: number) {
     .toBuffer();
 }
 
-export async function stepStart(dataDir: string, port: number) {
+/** The server env with the fake CLI in vision mode (never the live CLI). */
+export function fakeVisionEnv(
+  tmp: string,
+  layout: typeof TRACER = TRACER,
+): Record<string, string> {
+  const fixture = path.join(tmp, `vision-${layout.name}.json`);
+  fs.writeFileSync(fixture, JSON.stringify(structuredOutputFor(layout)));
+  return {
+    CLAUDE_BIN: FAKE_CLAUDE,
+    FAKE_CLAUDE_MODE: 'vision',
+    FAKE_CLAUDE_VISION_FIXTURE: fixture,
+    FAKE_CLAUDE_LOG: path.join(tmp, 'fake-claude.jsonl'),
+  };
+}
+
+export async function stepStart(
+  dataDir: string,
+  port: number,
+  claudeEnv: Record<string, string> = {
+    // No CLI at all, for steps that must never reach Claude.
+    CLAUDE_BIN: '/nonexistent/dai-claude-cli',
+  },
+) {
   step(`next start on 127.0.0.1:${port}`);
   return startServer({
     mode: 'start',
     port,
-    env: {
-      DATA_DIR: dataDir,
-      APP_TEST_HOOKS: '',
-      // No real CLI: nothing in this script may reach Claude.
-      CLAUDE_BIN: '/nonexistent/dai-claude-cli',
-    },
+    env: { DATA_DIR: dataDir, APP_TEST_HOOKS: '', ...claudeEnv },
   });
+}
+
+/** -p invocations recorded by the fake CLI (auth and version probes excluded). */
+export function visionCalls(ctx: Ctx): { argv: string[] }[] {
+  if (!fs.existsSync(ctx.claudeLog)) return [];
+  return fs
+    .readFileSync(ctx.claudeLog, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l) as { argv: string[] })
+    .filter((e) => e.argv[0] === '-p');
 }
 
 // (a) boot applied every migration to the live app.db.
@@ -243,9 +284,10 @@ export function stepQueuedRows(
   check('photo, run 1 and job (max_attempts 1, scan:ID:1) stored once');
 }
 
-// (d) the photo list shows the queued photo.
+// (d) the photo list shows the photo. The worker may already have claimed
+// it, so any run status counts; (i) waits for done.
 export async function stepListQueued(ctx: Ctx, photoId: string) {
-  step('(d) GET /api/photos lists the photo as queued');
+  step('(d) GET /api/photos lists the photo on run 1');
   const res = await fetch(`${ctx.baseUrl}/api/photos`);
   assert(res.status === 200, `GET /api/photos returned ${res.status}`);
   const { photos } = (await res.json()) as {
@@ -253,10 +295,15 @@ export async function stepListQueued(ctx: Ctx, photoId: string) {
   };
   const photo = photos.find((p) => p.id === photoId);
   assert(photo, `photo ${photoId} missing from GET /api/photos`);
-  assert(photo.status === 'queued', `status ${photo.status}, expected queued`);
+  assert(
+    ['queued', 'preparing', 'calling', 'parsing', 'done'].includes(
+      photo.status,
+    ),
+    `status ${photo.status}, expected queued or later`,
+  );
   assert(photo.runNo === 1, `runNo ${photo.runNo}, expected 1`);
   assert(photo.filename === 'shelf.jpg', `filename ${photo.filename}`);
-  check('listed with status queued');
+  check(`listed on run 1 (${photo.status})`);
 }
 
 // (e) a repeat upload of identical bytes is free (INGEST-03).
@@ -284,6 +331,184 @@ export async function stepRepeatDuplicate(
   assert(jobs === 1, `${jobs} scan_photo jobs after re-upload, expected 1`);
   assert(countRows(ctx, 'vision_runs') === 1, 'a second run was created');
   check('200 duplicate, still one job and one run');
+}
+
+// (i) the scan job finishes with every CD spine, duplicates kept apart.
+export async function stepScanDone(ctx: Ctx, photoId: string): Promise<void> {
+  step('(i) GET /api/photos reaches done with every CD spine');
+  const expected = TRACER.spines.length;
+  const photo = await waitFor(
+    'photo done',
+    async () => {
+      const res = await fetch(`${ctx.baseUrl}/api/photos`);
+      const { photos } = (await res.json()) as {
+        photos: {
+          id: string;
+          status: string;
+          spineCount: number;
+          errorReason: string | null;
+        }[];
+      };
+      const p = photos.find((x) => x.id === photoId);
+      if (p?.status === 'error') {
+        throw new Error(`scan failed: ${p.errorReason}`);
+      }
+      return p?.status === 'done' ? p : undefined;
+    },
+    { timeoutMs: 60_000, intervalMs: 250 },
+  );
+  assert(
+    photo.spineCount === expected,
+    `spineCount ${photo.spineCount}, expected ${expected}`,
+  );
+  const raws = withDb(ctx, (db) =>
+    (
+      db
+        .prepare(
+          "SELECT f.value FROM spine_fields f JOIN spines s ON s.id = f.spine_id WHERE s.photo_id = ? AND f.field = 'raw_text'",
+        )
+        .all(photoId) as { value: string }[]
+    ).map((r) => r.value),
+  );
+  assert(raws.length === expected, `${raws.length} raw_text rows`);
+  assert(
+    new Set(raws).size === expected - 1,
+    `${new Set(raws).size} distinct raw texts, expected ${expected - 1} (two spines share one)`,
+  );
+  check(`done with ${expected} spines; the two identical reads stay separate`);
+}
+
+type RunRecord = {
+  id: string;
+  model: string | null;
+  effort: string | null;
+  spawned_at: number | null;
+  raw_path: string | null;
+  vision_path: string | null;
+  vision_w: number | null;
+  vision_h: number | null;
+};
+
+// (j) the run is a recorded call with its raw answer and the sent image.
+export async function stepRunRecorded(ctx: Ctx, photoId: string) {
+  step('(j) vision_runs row, raw.json and image.jpg on disk');
+  const run = withDb(
+    ctx,
+    (db) =>
+      db
+        .prepare('SELECT * FROM vision_runs WHERE photo_id = ? AND run_no = 1')
+        .get(photoId) as RunRecord | undefined,
+  );
+  assert(run, 'no vision_runs row');
+  assert(run.model === 'claude-opus-5-5', `model ${run.model}`);
+  assert(run.effort === 'high', `effort ${run.effort}`);
+  assert(typeof run.spawned_at === 'number', 'spawned_at not set');
+  assert(
+    run.raw_path === `vision/${photoId}/run-1/raw.json`,
+    `raw_path ${run.raw_path}`,
+  );
+  const raw = JSON.parse(
+    fs.readFileSync(path.join(ctx.dataDir, run.raw_path), 'utf8'),
+  ) as { runId: string; run: { stdout: string } };
+  assert(raw.runId === run.id, 'raw.json runId differs');
+  const envelope = JSON.parse(raw.run.stdout) as {
+    structured_output?: unknown;
+  };
+  assert(envelope.structured_output, 'raw stdout has no structured_output');
+  assert(
+    run.vision_path === `vision/${photoId}/run-1/image.jpg`,
+    `vision_path ${run.vision_path}`,
+  );
+  const meta = await sharp(path.join(ctx.dataDir, run.vision_path)).metadata();
+  assert(
+    meta.width === run.vision_w && meta.height === run.vision_h,
+    `image.jpg ${meta.width}x${meta.height}, run says ${run.vision_w}x${run.vision_h}`,
+  );
+  check(
+    `model, effort, spawned_at, raw.json and a ${meta.width}x${meta.height} image.jpg`,
+  );
+}
+
+// (k) the spines page lists every artist with its crop.
+export async function stepSpinesPage(
+  ctx: Ctx,
+  photoId: string,
+): Promise<string> {
+  step('(k) GET /spines shows every artist and crop');
+  const res = await fetch(`${ctx.baseUrl}/spines`);
+  assert(res.status === 200, `GET /spines returned ${res.status}`);
+  const html = await res.text();
+  for (const s of TRACER.spines) {
+    assert(html.includes(s.artist), `artist ${s.artist} missing from /spines`);
+  }
+  const prefix = `/api/files/crops/${photoId}/`;
+  const srcs = [...html.matchAll(/<img[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]);
+  const crops = srcs.filter((src) => src.startsWith(prefix));
+  assert(
+    crops.length === TRACER.spines.length,
+    `${crops.length} crop images on /spines, expected ${TRACER.spines.length}`,
+  );
+  check(`${crops.length} crops under ${prefix}`);
+  return crops[0];
+}
+
+// (l) a crop is served as a horizontal WebP.
+export async function stepServeCrop(ctx: Ctx, url: string): Promise<void> {
+  step('(l) one crop through /api/files');
+  const res = await fetch(`${ctx.baseUrl}${url}`);
+  assert(res.status === 200, `crop returned ${res.status}`);
+  assert(
+    res.headers.get('content-type') === 'image/webp',
+    `content-type ${res.headers.get('content-type')}`,
+  );
+  assert(
+    res.headers.get('x-content-type-options') === 'nosniff',
+    'no nosniff header',
+  );
+  const meta = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
+  assert(
+    (meta.width ?? 0) > (meta.height ?? 0),
+    `crop is ${meta.width}x${meta.height}, expected wider than tall`,
+  );
+  check(`200 image/webp nosniff, ${meta.width}x${meta.height}`);
+}
+
+// (m) originals, raw output and traversal never leave the server.
+export async function stepFileAllowlist(
+  ctx: Ctx,
+  photoId: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  step('(m) /api/files refuses photos/, raw.json and traversal');
+  const sha = sha256(bytes);
+  const refused = [
+    `/api/files/photos/${sha.slice(0, 2)}/${sha}.jpg`,
+    `/api/files/vision/${photoId}/run-1/raw.json`,
+    '/api/files/crops/..%2F..%2Fapp.db',
+    `/api/files/crops/${photoId}/..%2F..%2Fphotos%2F${sha.slice(0, 2)}%2F${sha}.jpg`,
+    '/api/files/app.db',
+  ];
+  for (const url of refused) {
+    const res = await fetch(`${ctx.baseUrl}${url}`);
+    assert(res.status === 404, `${url} returned ${res.status}, expected 404`);
+  }
+  const vision = await fetch(
+    `${ctx.baseUrl}/api/files/vision/${photoId}/run-1/image.jpg`,
+  );
+  assert(vision.status === 200, `vision image returned ${vision.status}`);
+  assert(
+    vision.headers.get('content-type') === 'image/jpeg',
+    'vision image is not image/jpeg',
+  );
+  check(`${refused.length} refused with 404; the vision image is served`);
+}
+
+// (n) the duplicate uploads made no call: one -p for the whole photo.
+export function stepOneCall(ctx: Ctx): void {
+  step('(n) the fake CLI saw exactly one -p call');
+  const n = visionCalls(ctx).length;
+  assert(n === 1, `${n} -p invocations, expected 1`);
+  check('one call for one photo and three identical uploads');
 }
 
 // (f) a JPEG over the proxy's default 10 MB buffer arrives byte for byte.
@@ -373,7 +598,11 @@ runMain('verify-scan', async (onCleanup) => {
   step('build');
   await buildApp();
 
-  const server: ServerHandle = await stepStart(dataDir, port);
+  const server: ServerHandle = await stepStart(
+    dataDir,
+    port,
+    fakeVisionEnv(tmp),
+  );
   onCleanup(async () => {
     await server.stop('SIGKILL');
   });
@@ -382,14 +611,22 @@ runMain('verify-scan', async (onCleanup) => {
     dataDir,
     baseUrl: server.baseUrl,
     origin: `http://127.0.0.1:${port}`,
+    claudeLog: path.join(tmp, 'fake-claude.jsonl'),
   };
 
   stepSchema(ctx);
-  const jpeg = new Uint8Array(await renderJpeg(800, 600));
+  const jpeg = new Uint8Array((await makeSyntheticShelf(TRACER)).jpeg);
   const photoId = await stepConcurrentUpload(ctx, jpeg);
   stepQueuedRows(ctx, photoId, jpeg);
   await stepListQueued(ctx, photoId);
+  await stepScanDone(ctx, photoId);
   await stepRepeatDuplicate(ctx, photoId, jpeg);
+  await stepRunRecorded(ctx, photoId);
+  const cropUrl = await stepSpinesPage(ctx, photoId);
+  await stepServeCrop(ctx, cropUrl);
+  await stepFileAllowlist(ctx, photoId, jpeg);
+  stepOneCall(ctx);
+  // After (n): the large upload queues a second scan (and a second call).
   await stepLargeUpload(ctx);
   await stepRefuseTextPlain(ctx);
   await stepRefuseNonImage(ctx);

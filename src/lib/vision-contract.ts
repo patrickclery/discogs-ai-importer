@@ -1,6 +1,7 @@
 // Vision contract (D-01). Client-safe: enums the review UI needs plus the
-// constants the Plan 02-04 freeze decides. This is the one file that freeze
-// edits; every stored run records the values it was made with.
+// constants frozen in Plan 02-04 from test/fixtures/vision/spike/report.json
+// (owner decision freeze-master, no overrides). Every stored run records the
+// values it was made with; changing any of them means paid re-scans.
 
 /** Extracted spine fields, in UI order (VIS-02). */
 export const SPINE_FIELDS = [
@@ -46,7 +47,7 @@ export const SPINE_MEDIA_KINDS: readonly MediaKind[] = ['cd', 'unsure'];
 export const LEGIBILITY_LEVELS = ['clear', 'partial', 'illegible'] as const;
 export type Legibility = (typeof LEGIBILITY_LEVELS)[number];
 
-/** Model image tier for Claude 4.7 and later (both allowed models). */
+/** Model image tier for Claude 4.7 and later (both allowed models). Frozen. */
 export const VISION_MAX_EDGE = 2576;
 export const VISION_MAX_TOKENS = 4784;
 
@@ -63,13 +64,33 @@ export const VISION_EFFORTS = [
   'max',
 ] as const;
 export type VisionEffort = (typeof VISION_EFFORTS)[number];
-export const DEFAULT_VISION_EFFORT: VisionEffort = 'medium';
+/** Frozen: high beat medium by more than 5 points in the spike. */
+export const DEFAULT_VISION_EFFORT: VisionEffort = 'high';
 
 /** --max-turns for the vision call; null omits the flag. */
 export const VISION_MAX_TURNS: number | null = 6;
 export const VISION_CALL_TIMEOUT_MS = 600_000;
-/** CLAUDE_CODE_MAX_OUTPUT_TOKENS for the vision call; null leaves it unset. */
-export const VISION_MAX_OUTPUT_TOKENS: number | null = null;
+/**
+ * CLAUDE_CODE_MAX_OUTPUT_TOKENS for the vision call; null leaves it unset.
+ * Frozen at 32000: a spike run returned under 80% of its own estimate.
+ */
+export const VISION_MAX_OUTPUT_TOKENS: number | null = 32_000;
+
+/** Default low-confidence threshold (Claude's discretion; A6: uncalibrated). */
+export const DEFAULT_CONFIDENCE_THRESHOLD = 0.6;
+/** Dense-shelf warning defaults (D-03): more than N spines ... */
+export const DEFAULT_DENSITY_MAX_SPINES = 90;
+/** ... or a median spine short side under W vision-image pixels. */
+export const DEFAULT_DENSITY_MIN_SHORT_SIDE_PX = 33;
+
+/**
+ * Where crops are cut from (RESEARCH A5). master: the full-resolution upright
+ * image, with boxes scaled exactly from vision space (same frame, about 3x
+ * sharper). vision: the JPEG Claude saw, identity scale. Frozen: master.
+ */
+export const CROP_SOURCES = ['master', 'vision'] as const;
+export type CropSource = (typeof CROP_SOURCES)[number];
+export const CROP_SOURCE: CropSource = 'master';
 
 export const PROMPT_VERSION = 1;
 export const SCHEMA_VERSION = 1;

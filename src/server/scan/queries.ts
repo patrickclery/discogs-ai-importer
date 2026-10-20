@@ -4,7 +4,16 @@ import {
   type DensityFlag,
   type PhotoDto,
   type PhotoStatus,
+  type SpineDto,
+  type SpineFieldDto,
+  type SpineState,
 } from '@/lib/scan-types';
+import {
+  LEGIBILITY_LEVELS,
+  type Legibility,
+  SPINE_FIELDS,
+  type SpineField,
+} from '@/lib/vision-contract';
 import { getDb } from '../db/client';
 import { VISION_MODELS } from '../settings';
 
@@ -109,4 +118,106 @@ export function getPhoto(id: string): PhotoDto | null {
     .$client.prepare(`${PHOTO_SELECT} WHERE p.id = ?`)
     .get(id) as PhotoListRow | undefined;
   return row ? toPhotoDto(row) : null;
+}
+
+type SpineListRow = {
+  id: string;
+  photo_id: string;
+  state: SpineState;
+  created_run_id: string | null;
+  idx: number | null;
+  legibility: string | null;
+  crop_path: string | null;
+  crop_w: number | null;
+  crop_h: number | null;
+};
+
+type SpineFieldListRow = {
+  spine_id: string;
+  field: SpineField;
+  ai_value: string | null;
+  value: string | null;
+  confidence: number;
+  edit_base_ai_value: string | null;
+};
+
+function toLegibility(v: string | null): Legibility | null {
+  return (LEGIBILITY_LEVELS as readonly (string | null)[]).includes(v)
+    ? (v as Legibility)
+    : null;
+}
+
+/**
+ * Active spines, grouped by photo (newest first) and, within a photo, in
+ * Claude's index order with ties broken by array position (VIS-01, VIS-02).
+ */
+export function listSpines(opts: { photoId?: string } = {}): SpineDto[] {
+  const db = getDb().$client;
+  const where = opts.photoId ? 'AND s.photo_id = ?' : '';
+  const params = opts.photoId ? [opts.photoId] : [];
+  const rows = db
+    .prepare(
+      `SELECT s.id, s.photo_id, s.state, s.created_run_id,
+         d.idx, d.legibility, d.crop_path, d.crop_w, d.crop_h
+       FROM spines s
+       JOIN photos p ON p.id = s.photo_id
+       LEFT JOIN spine_detections d ON d.id = s.current_detection_id
+       WHERE s.state = 'active' ${where}
+       ORDER BY p.created_at DESC, p.id DESC, d.idx, d.position, s.id`,
+    )
+    .all(...params) as SpineListRow[];
+  if (rows.length === 0) return [];
+
+  const fieldRows = db
+    .prepare(
+      `SELECT f.spine_id, f.field, f.ai_value, f.value, f.confidence,
+         f.edit_base_ai_value
+       FROM spine_fields f
+       JOIN spines s ON s.id = f.spine_id
+       WHERE s.state = 'active' ${where}`,
+    )
+    .all(...params) as SpineFieldListRow[];
+  const fieldsBySpine = new Map<string, Map<SpineField, SpineFieldDto>>();
+  for (const f of fieldRows) {
+    let m = fieldsBySpine.get(f.spine_id);
+    if (!m) {
+      m = new Map();
+      fieldsBySpine.set(f.spine_id, m);
+    }
+    m.set(f.field, {
+      field: f.field,
+      aiValue: f.ai_value,
+      value: f.value,
+      confidence: f.confidence,
+      editBaseAiValue: f.edit_base_ai_value,
+    });
+  }
+
+  return rows.map((r) => {
+    const m = fieldsBySpine.get(r.id);
+    const url = fileUrl(r.crop_path);
+    return {
+      id: r.id,
+      photoId: r.photo_id,
+      index: r.idx ?? 0,
+      state: r.state,
+      legibility: toLegibility(r.legibility),
+      crop:
+        url && r.crop_w && r.crop_h
+          ? { url, width: r.crop_w, height: r.crop_h }
+          : null,
+      fields: SPINE_FIELDS.map(
+        (field) =>
+          m?.get(field) ?? {
+            field,
+            aiValue: null,
+            value: null,
+            confidence: 0,
+            editBaseAiValue: null,
+          },
+      ),
+      createdRunId: r.created_run_id,
+      orphanedRunNo: null,
+    };
+  });
 }

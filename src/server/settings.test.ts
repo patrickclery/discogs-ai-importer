@@ -9,9 +9,13 @@ import { saveVisionModel } from '@/app/settings/actions';
 import { closeDb, getDb } from './db/client';
 import {
   DEFAULT_VISION_MODEL,
+  getConfidenceThreshold,
+  getDensityThresholds,
   getSetting,
+  getVisionEffort,
   getVisionModel,
   setSetting,
+  setVisionEffort,
   setVisionModel,
   VISION_MODELS,
 } from './settings';
@@ -101,5 +105,36 @@ describe('settings', () => {
     expect(res.ok ? '' : res.formError).toBeTruthy();
     expect(rawRow('vision_model')).toBeUndefined();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('vision settings default to the values frozen at the 02-04 checkpoint', () => {
+    expect(getVisionEffort()).toBe('high');
+    expect(getConfidenceThreshold()).toBe(0.6);
+    expect(getDensityThresholds()).toEqual({
+      maxSpines: 90,
+      minShortSidePx: 33,
+    });
+  });
+
+  it('setVisionEffort stores a valid effort and rejects an unknown one', () => {
+    setVisionEffort('medium');
+    expect(getVisionEffort()).toBe('medium');
+    expect(() => setVisionEffort('turbo')).toThrow();
+    expect(getVisionEffort()).toBe('medium');
+  });
+
+  it('out-of-range thresholds read back as the defaults', () => {
+    setSetting('confidence_threshold', 1.5);
+    setSetting('density_max_spines', 0);
+    setSetting('density_min_short_side_px', 12.5);
+    expect(getConfidenceThreshold()).toBe(0.6);
+    expect(getDensityThresholds()).toEqual({
+      maxSpines: 90,
+      minShortSidePx: 33,
+    });
+    setSetting('confidence_threshold', 0.4);
+    setSetting('density_max_spines', 45);
+    expect(getConfidenceThreshold()).toBe(0.4);
+    expect(getDensityThresholds().maxSpines).toBe(45);
   });
 });

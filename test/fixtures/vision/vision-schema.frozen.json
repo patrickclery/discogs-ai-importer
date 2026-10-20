@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "image_width": {
+      "type": "number"
+    },
+    "image_height": {
+      "type": "number"
+    },
+    "spine_count_estimate": {
+      "type": "number"
+    },
+    "spines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "number"
+          },
+          "media_kind": {
+            "type": "string",
+            "enum": [
+              "cd",
+              "dvd",
+              "bluray",
+              "vinyl",
+              "cassette",
+              "game",
+              "book",
+              "other",
+              "unsure"
+            ]
+          },
+          "bbox": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "text_orientation": {
+            "type": "string",
+            "enum": [
+              "horizontal",
+              "upside_down",
+              "top_to_bottom",
+              "bottom_to_top"
+            ]
+          },
+          "legibility": {
+            "type": "string",
+            "enum": ["clear", "partial", "illegible"]
+          },
+          "raw_text": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": ["string", "null"]
+              },
+              "confidence": {
+                "type": "number"
+              }
+            },
+            "required": ["value", "confidence"],
+            "additionalProperties": false
+          },
+          "artist": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": ["string", "null"]
+              },
+              "confidence": {
+                "type": "number"
+              }
+            },
+            "required": ["value", "confidence"],
+            "additionalProperties": false
+          },
+          "title": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": ["string", "null"]
+              },
+              "confidence": {
+                "type": "number"
+              }
+            },
+            "required": ["value", "confidence"],
+            "additionalProperties": false
+          },
+          "format": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": ["string", "null"]
+              },
+              "confidence": {
+                "type": "number"
+              }
+            },
+            "required": ["value", "confidence"],
+            "additionalProperties": false
+          },
+          "label": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": ["string", "null"]
+              },
+              "confidence": {
+                "type": "number"
+              }
+            },
+            "required": ["value", "confidence"],
+            "additionalProperties": false
+          },
+          "catalog_number": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": ["string", "null"]
+              },
+              "confidence": {
+                "type": "number"
+              }
+            },
+            "required": ["value", "confidence"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "index",
+          "media_kind",
+          "bbox",
+          "text_orientation",
+          "legibility",
+          "raw_text",
+          "artist",
+          "title",
+          "format",
+          "label",
+          "catalog_number"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["image_width", "image_height", "spine_count_estimate", "spines"],
+  "additionalProperties": false
+}

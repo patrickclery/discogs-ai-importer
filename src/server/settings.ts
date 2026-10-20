@@ -1,6 +1,14 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import {
+  DEFAULT_CONFIDENCE_THRESHOLD,
+  DEFAULT_DENSITY_MAX_SPINES,
+  DEFAULT_DENSITY_MIN_SHORT_SIDE_PX,
+  DEFAULT_VISION_EFFORT,
+  VISION_EFFORTS,
+  type VisionEffort,
+} from '@/lib/vision-contract';
 import { getDb } from './db/client';
 import { settings } from './db/schema';
 
@@ -62,4 +70,49 @@ export function getVisionModel(): VisionModelId {
 /** Throws on any id outside VISION_MODELS. */
 export function setVisionModel(id: string): void {
   setSetting(VISION_MODEL_KEY, VisionModelSchema.parse(id));
+}
+
+// Vision settings frozen in Plan 02-04 (D-01, D-03). Defaults come from the
+// vision contract; a stored value outside its schema falls back to them.
+
+const VISION_EFFORT_KEY = 'vision_effort';
+const CONFIDENCE_THRESHOLD_KEY = 'confidence_threshold';
+const DENSITY_MAX_SPINES_KEY = 'density_max_spines';
+const DENSITY_MIN_SHORT_SIDE_PX_KEY = 'density_min_short_side_px';
+
+export const VisionEffortSchema = z.enum(VISION_EFFORTS);
+export const ConfidenceThresholdSchema = z.number().min(0).max(1);
+const DensityValueSchema = z.number().int().min(1);
+
+export function getVisionEffort(): VisionEffort {
+  return (
+    getSetting(VISION_EFFORT_KEY, VisionEffortSchema) ?? DEFAULT_VISION_EFFORT
+  );
+}
+
+/** Throws on any value outside VISION_EFFORTS. */
+export function setVisionEffort(effort: string): void {
+  setSetting(VISION_EFFORT_KEY, VisionEffortSchema.parse(effort));
+}
+
+export function getConfidenceThreshold(): number {
+  return (
+    getSetting(CONFIDENCE_THRESHOLD_KEY, ConfidenceThresholdSchema) ??
+    DEFAULT_CONFIDENCE_THRESHOLD
+  );
+}
+
+/** Dense-shelf warning thresholds N (spines) and W (median short side px). */
+export function getDensityThresholds(): {
+  maxSpines: number;
+  minShortSidePx: number;
+} {
+  return {
+    maxSpines:
+      getSetting(DENSITY_MAX_SPINES_KEY, DensityValueSchema) ??
+      DEFAULT_DENSITY_MAX_SPINES,
+    minShortSidePx:
+      getSetting(DENSITY_MIN_SHORT_SIDE_PX_KEY, DensityValueSchema) ??
+      DEFAULT_DENSITY_MIN_SHORT_SIDE_PX,
+  };
 }
