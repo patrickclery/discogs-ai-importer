@@ -43,6 +43,8 @@ function toRow(r: RawJob): JobRow {
   };
 }
 
+const DEFAULT_MAX_ATTEMPTS = 3;
+
 function sql() {
   return getDb().$client;
 }
@@ -53,13 +55,19 @@ export function enqueue(input: {
   payload?: unknown;
   dedupeKey?: string;
   runAfter?: number;
+  /** Integer 1..10, default 3. Paid one-shot jobs pass 1 (RESEARCH Pitfall 3). */
+  maxAttempts?: number;
 }): { id: string; created: boolean } {
+  const maxAttempts = input.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) {
+    throw new Error(`enqueue: maxAttempts must be an integer 1..10`);
+  }
   const now = Date.now();
   const id = newId();
   const info = sql()
     .prepare(
-      `INSERT INTO jobs (id, lane, type, payload, run_after, dedupe_key, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO jobs (id, lane, type, payload, max_attempts, run_after, dedupe_key, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(dedupe_key) DO NOTHING`,
     )
     .run(
@@ -67,6 +75,7 @@ export function enqueue(input: {
       input.lane,
       input.type,
       JSON.stringify(input.payload ?? {}),
+      maxAttempts,
       input.runAfter ?? now,
       input.dedupeKey ?? null,
       now,

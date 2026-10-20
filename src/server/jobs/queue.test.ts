@@ -115,6 +115,32 @@ describe('jobs queue (retry, recovery, dedupe, ordering)', () => {
     expect(rowCount()).toBe(1);
   });
 
+  it('maxAttempts 1 fails on the first failure and on boot recovery (RESEARCH Pitfall 3)', () => {
+    const a = enqueue({
+      lane: 'anthropic',
+      type: 'noop',
+      runAfter: T0,
+      maxAttempts: 1,
+    });
+    expect(claimNext('anthropic', T0)?.maxAttempts).toBe(1);
+    expect(failOrRetry(a.id, new Error('boom'), T0)).toBe('failed');
+
+    enqueue({ lane: 'anthropic', type: 'noop', runAfter: T0, maxAttempts: 1 });
+    expect(claimNext('anthropic', T0)?.attempts).toBe(1);
+    expect(recoverRunningJobs(T0)).toEqual({ requeued: 0, failed: 1 });
+    expect(claimNext('anthropic', T0)).toBeUndefined();
+  });
+
+  it('maxAttempts defaults to 3 and rejects values outside 1..10', () => {
+    enqueue({ lane: 'anthropic', type: 'noop', runAfter: T0 });
+    expect(claimNext('anthropic', T0)?.maxAttempts).toBe(3);
+    for (const bad of [0, 11, 1.5]) {
+      expect(() =>
+        enqueue({ lane: 'anthropic', type: 'noop', maxAttempts: bad }),
+      ).toThrow(/maxAttempts/);
+    }
+  });
+
   it('jobs with equal run_after are claimed in insertion (ULID) order', () => {
     const ids = [1, 2, 3].map(
       () => enqueue({ lane: 'discogs', type: 'noop', runAfter: T0 }).id,

@@ -95,15 +95,27 @@ export function stepDataFolder(dataDir: string): void {
           .all() as { name: string }[]
       ).map((r) => r.name),
     );
-    for (const t of ['jobs', 'settings', 'worker_lease']) {
+    for (const t of [
+      'jobs',
+      'settings',
+      'worker_lease',
+      'photos',
+      'vision_runs',
+      'spine_detections',
+      'spines',
+      'spine_fields',
+    ]) {
       assert(tables.has(t), `table ${t} missing from live app.db`);
     }
+    const sqlFiles = fs
+      .readdirSync(path.join(process.cwd(), 'drizzle'))
+      .filter((f) => f.endsWith('.sql')).length;
     const migrations = db
       .prepare('SELECT COUNT(*) AS n FROM __drizzle_migrations')
       .get() as { n: number };
     assert(
-      migrations.n === 1,
-      `__drizzle_migrations has ${migrations.n} rows, expected 1`,
+      migrations.n === sqlFiles,
+      `__drizzle_migrations has ${migrations.n} rows, expected ${sqlFiles} (one per drizzle/*.sql)`,
     );
     const mode = db.pragma('journal_mode', { simple: true });
     assert(mode === 'wal', `journal_mode is ${String(mode)}, expected wal`);
