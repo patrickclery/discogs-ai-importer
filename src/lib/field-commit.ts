@@ -15,18 +15,22 @@
  */
 export function createFieldCommit() {
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let pending: (() => void) | null = null;
 
   function cancel() {
     if (timer !== null) clearTimeout(timer);
     timer = null;
+    pending = null;
   }
 
   return {
     /** Field lost focus: commit after the current task unless cancelled. */
     blur(commit: () => void) {
       cancel();
+      pending = commit;
       timer = setTimeout(() => {
         timer = null;
+        pending = null;
         commit();
       }, 0);
     },
@@ -47,7 +51,14 @@ export function createFieldCommit() {
     isPending() {
       return timer !== null;
     },
-    /** RED stub (02-14 Task 2): does not send the pending commit yet. */
-    flush() {},
+    /**
+     * Field unmounting: send a pending commit now, once, so a card removed
+     * in the same task as its blur (filter change, re-scan merge) still saves.
+     */
+    flush() {
+      const commit = pending;
+      cancel();
+      commit?.();
+    },
   };
 }

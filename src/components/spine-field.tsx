@@ -5,6 +5,7 @@ import { Sparkles, TriangleAlert, Undo2 } from 'lucide-react';
 import {
   type ChangeEvent,
   type KeyboardEvent,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -126,6 +127,8 @@ export function SpineField({
   // One deferred blur commit per field; Escape cancels it in either event
   // order (G-02-5, D-08).
   const [fieldCommit] = useState(createFieldCommit);
+  // A save still pending when the card unmounts is sent, not dropped (D-08).
+  useEffect(() => () => fieldCommit.flush(), [fieldCommit]);
 
   const mutation = useMutation({
     mutationFn: (body: PatchBody) => patchField(spineId, body),
