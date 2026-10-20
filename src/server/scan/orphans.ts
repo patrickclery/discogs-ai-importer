@@ -14,13 +14,16 @@ import { getSpineDto, loadSpineDtos } from './queries';
 
 /**
  * A re-attach target for orphan `@orphanId`: an active spine of the same
- * photo, created by the photo's latest run, with no edited field. `t` is the
- * candidate spines row.
+ * photo, created by the photo's latest done run, with no edited field. `t` is
+ * the candidate spines row. The latest done run, not photos.latest_run_id
+ * (WR-01): a queued, running or failed re-scan moves latest_run_id but
+ * creates no spines, and would otherwise hide every candidate.
  */
 const CANDIDATE = `t.state = 'active'
   AND t.photo_id = (SELECT o.photo_id FROM spines o WHERE o.id = @orphanId)
-  AND t.created_run_id = (SELECT p.latest_run_id FROM photos p
-    WHERE p.id = t.photo_id)
+  AND t.created_run_id = (SELECT v.id FROM vision_runs v
+    WHERE v.photo_id = t.photo_id AND v.status = 'done'
+    ORDER BY v.run_no DESC LIMIT 1)
   AND NOT EXISTS (SELECT 1 FROM spine_fields f
     WHERE f.spine_id = t.id AND ${fieldEdited('f.value', 'f.ai_value')})`;
 

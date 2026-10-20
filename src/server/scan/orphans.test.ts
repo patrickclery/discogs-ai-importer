@@ -115,6 +115,35 @@ describe('orphaned spines', () => {
     });
   });
 
+  it('keeps the candidates while a re-scan is queued or after it fails (WR-01)', async () => {
+    const { orphanId, vId } = await orphanScenario();
+    const db = getDb().$client;
+    const { photo_id: photoId } = db
+      .prepare('SELECT photo_id FROM spines WHERE id = ?')
+      .get(orphanId) as { photo_id: string };
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO vision_runs (id, photo_id, run_no, status, prompt_version,
+         schema_version, created_at, updated_at)
+       VALUES ('run-next', ?, 99, 'queued', 1, 1, ?, ?)`,
+    ).run(photoId, now, now);
+    db.prepare("UPDATE photos SET latest_run_id = 'run-next' WHERE id = ?").run(
+      photoId,
+    );
+    for (const status of ['queued', 'error']) {
+      db.prepare("UPDATE vision_runs SET status = ? WHERE id = 'run-next'").run(
+        status,
+      );
+      const result = listReattachCandidates(orphanId);
+      expect(result.status, status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(
+        result.value.map((s) => s.id),
+        status,
+      ).toContain(vId);
+    }
+  });
+
   it('re-attach to a target created by an older run is a conflict', async () => {
     const { orphanId, spineIds } = await orphanScenario();
     const before = spineTables();
