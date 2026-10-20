@@ -1,6 +1,8 @@
 // Client upload helpers (RESEARCH Pattern 1, D-12). Pure and client-safe:
 // one POST per File, the UI-SPEC upload-error copy, and a small FIFO queue.
 import {
+  type PhotoDto,
+  type PhotoStatus,
   UPLOAD_ERROR_CODES,
   type UploadErrorCode,
   type UploadResponse,
@@ -118,4 +120,20 @@ export function createUploadQueue<T>({
       pump();
     },
   };
+}
+
+export type PhotoSnapshot = Pick<
+  PhotoDto,
+  'id' | 'filename' | 'status' | 'spineCount'
+>;
+
+/**
+ * Live-region lines for photos that reached done or error since the last
+ * poll (UI-SPEC live region, A-12). Only terminal transitions are announced.
+ */
+export function terminalAnnouncements(
+  _previous: ReadonlyMap<string, PhotoStatus>,
+  _photos: readonly PhotoSnapshot[],
+): string[] {
+  return [];
 }
