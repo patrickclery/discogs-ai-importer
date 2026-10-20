@@ -96,3 +96,10 @@ export function photosRefetchInterval(
 ): number | false {
   return photos?.some((p) => isActiveStatus(p.status)) ? ACTIVE_POLL_MS : false;
 }
+
+/** Tooltip for the "May be incomplete" badge (UI-SPEC truncation copy). */
+export function incompleteTooltip(
+  _photo: Pick<PhotoDto, 'spineCountEstimate' | 'detectedCount' | 'spineCount'>,
+): string {
+  return '';
+}
