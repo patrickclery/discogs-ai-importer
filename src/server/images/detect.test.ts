@@ -32,6 +32,12 @@ describe('detectImageKind (D-06 magic bytes)', () => {
     expect(detectImageKind(ftyp('isom', ['avif', 'heix']))).toBe('heic');
   });
 
+  it('refuses AVIF, which lists the generic HEIF brands too (IN-02)', () => {
+    expect(detectImageKind(ftyp('avif', ['avif', 'mif1', 'miaf']))).toBeNull();
+    expect(detectImageKind(ftyp('avis', ['avis', 'msf1', 'miaf']))).toBeNull();
+    expect(detectImageKind(ftyp('mif1', ['avif', 'mif1']))).toBeNull();
+  });
+
   it('accepts every HEIC/HEIF brand as the major brand', () => {
     for (const brand of ['heic', 'heix', 'hevc', 'mif1', 'msf1', 'heif']) {
       expect(detectImageKind(ftyp(brand)), brand).toBe('heic');
