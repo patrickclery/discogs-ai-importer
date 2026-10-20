@@ -1,8 +1,8 @@
 ---
 phase: 02-shelf-scan
-verified: 2026-10-20T05:51:15Z
+verified: 2026-10-20T08:39:37Z
 status: human_needed
-score: 5/5 must-haves verified
+score: 15/15 must-haves verified
 covered_files:
   - ".planning/phases/02-shelf-scan/02-01-PLAN.md"
   - ".planning/phases/02-shelf-scan/02-01-SUMMARY.md"
@@ -28,6 +28,10 @@ covered_files:
   - ".planning/phases/02-shelf-scan/02-11-SUMMARY.md"
   - ".planning/phases/02-shelf-scan/02-12-PLAN.md"
   - ".planning/phases/02-shelf-scan/02-12-SUMMARY.md"
+  - ".planning/phases/02-shelf-scan/02-13-PLAN.md"
+  - ".planning/phases/02-shelf-scan/02-13-SUMMARY.md"
+  - ".planning/phases/02-shelf-scan/02-14-PLAN.md"
+  - ".planning/phases/02-shelf-scan/02-14-SUMMARY.md"
   - "drizzle/0001_shelf_scan.sql"
   - "drizzle/meta/0001_snapshot.json"
   - "drizzle/meta/_journal.json"
@@ -79,6 +83,9 @@ covered_files:
   - "src/components/upload-view.tsx"
   - "src/components/worst-field-badge.tsx"
   - "src/lib/failure-reason.ts"
+  - "src/lib/field-commit.test.ts"
+  - "src/lib/field-commit.ts"
+  - "src/lib/photo-polling.test.ts"
   - "src/lib/photo-status.test.ts"
   - "src/lib/photo-status.ts"
   - "src/lib/scan-types.ts"
@@ -186,129 +193,146 @@ covered_files:
   - "test/fixtures/vision/synthetic-shelf.mjs"
   - "test/fixtures/vision/vision-schema.frozen.json"
   - "test/helpers/scan-runs.ts"
-covered_digest: "v3:sha256:b20e80e8133a24939433d92119fdfb437c64a98d0df6cfa7b9fa019dcf77d111"
+covered_digest: "v3:sha256:318161fec897fe5ac08ae15739520631b32cb7abff8e6942a55364b6862d3878"
 behavior_unverified: 0
 overrides_applied: 1
 overrides:
   - must_have: "INGEST-05: Photos are EXIF-rotated and resized locally before analysis so the image sent to Claude is the same image crops are cut from"
-    reason: "Owner chose freeze-master at the 02-04 freeze checkpoint. Crops are cut from the full-resolution upright image. The vision JPEG sent to Claude is a pure resize of that same image (same frame, no crop), and boxes are scaled exactly (floor/ceil outward). The geometry matches, and crops come out about 3x sharper. Live calibration recorded a median corner error of 0.02-0.03% of the short edge, against a 1.5% bar."
+    reason: "Owner chose freeze-master at the 02-04 freeze checkpoint. Crops are cut from the full-resolution upright image. The vision JPEG sent to Claude is a pure resize of that same image (same frame, no crop), and boxes are scaled exactly (floor/ceil outward). Live calibration recorded a median corner error of 0.02-0.03% of the short edge, against a 1.5% bar."
     accepted_by: "Patrick Clery (02-04 freeze checkpoint, recorded in 02-04-SUMMARY.md key-decisions)"
     accepted_at: "2026-10-20T03:47:26Z"
+re_verification:
+  previous_status: human_needed
+  previous_score: 5/5
+  gaps_closed:
+    - "G-02-3 (UAT 3): the Couldn't refresh alert clears on the next successful poll when every photo is Done (in code, test-proven; browser re-run pending)"
+    - "G-02-5 (UAT 5): Escape restores the saved value without saving, in either blur/keydown order, and no stale flag drops a later save (in code, test-proven; browser re-run pending)"
+  gaps_remaining: []
+  regressions: []
+advisory:
+  - finding: "WR-01: a save sent by the unmount flush reports failure only through the hook-level onError (silent cache rollback); the per-call onError/toast never runs after unmount"
+    category: other
+    reason: "Mechanism confirmed in installed @tanstack/query-core 5.104.2 (mutationObserver.js:158 gates per-call callbacks on hasListeners()). The trigger needs a card to unmount between a blur and its setTimeout 0 AND the PATCH to fail. The PATCH is still sent, so the 02-14 truth holds. Any in-flight save on a card that unmounts had the same silent-failure path before 02-14. Fix: mutateAsync + toast in the flush path, or an unmountedRef checked by the hook-level onError."
+    evidence_status: "mechanism read in library source; no reproduction of a lost edit"
+  - finding: "WR-02: the deferred blur commit is not flushed on pagehide/visibilitychange, so a blur caused by hiding the tab, followed by closing it inside the background-timer throttle window (~1 s), can lose the edit"
+    category: other
+    reason: "New window introduced by 02-14 (the old onBlur saved synchronously), but no test or reproduction shows a lost edit. Fix: flush on visibilitychange:hidden and pagehide as well as on unmount."
+    evidence_status: "none provided"
 human_verification:
-  - test: "Run the end-to-end fake-CLI proofs after the review fixes: node scripts/verify-scan.ts, node scripts/verify-scan-recovery.ts, node scripts/verify-rescan.ts"
-    expected: "Each one ends with its OK line. verify-scan-recovery shows exactly one -p invocation after the kill -9."
-    why_human: "These start a Next server, which the verifier may not do. 02-REVIEW-FIX.md reports only typecheck, lint and unit tests after CR-02 added a CLI readiness check right before the spawn."
-  - test: "On /upload, drag several real shelf photos at once (include an iPhone HEIC), and also drop a PDF, a duplicate photo and a file of about 70 MB"
-    expected: "Each photo goes Waiting to upload, then Uploading, then Queued, then Analyzing with a ticking m:ss timer, then Done with its spine count. The PDF and the 70 MB file become failed rows with their copy and are never sent. The duplicate shows the 'already uploaded... no new Claude call' toast and an 'Already uploaded' badge."
-    why_human: "Real browser drag-and-drop, react-dropzone MIME and extension handling, and the live polling transitions can't be exercised by unit tests."
-  - test: "Stop the server while /upload or /spines is open, then start it again"
-    expected: "The last data stays under a 'Couldn't refresh' alert, and the alert clears on the next successful poll. Retry upload works after the restart."
-    why_human: "This is a live-session polling error state."
-  - test: "Open /spines for real shelf photos (portrait, landscape, and an EXIF-rotated phone JPEG). Also count misreads on fixtures/spike/out/*/compare.html."
-    expected: "Every crop is horizontal, reads left to right, and frames its real spine. Artist, title, format, label, catalog number and raw text sit under it. The misread rate is acceptable, which confirms freeze-master and no tiling."
-    why_human: "Alignment against real spines and misread counting need human ground truth (A-02). HEIC irot/imir was never exercised, because all 10 spike HEICs had angle 0 (A-03 still unverified)."
-  - test: "Edit a title on /spines, click away, then reload"
-    expected: "The new value persists with an 'Edited' badge and 'Edited · 1' in the card header. Revert restores Claude's read. 'Undo revert' restores the edit. Escape restores the saved value. Typing while a scan polls never makes the text jump."
-    why_human: "Focus and blur behavior, toasts and polling-versus-draft behavior need a browser. resolveDisplayedValue is unit-tested only as a pure function."
-  - test: "Hover the low-confidence field icon, the density badges (Retake closer / May be incomplete) and the disabled Re-scan trigger"
-    expected: "Each tooltip shows its documented copy, for example 'Claude is {pct}% sure of this. Check it against the crop.'"
-    why_human: "Tooltip rendering is visual."
-  - test: "Re-scan a photo from /spines and from an error row on /upload"
-    expected: "A confirm dialog opens with the quota copy. While it is analyzing, the existing cards stay visible and editable. After it finishes, the merged cards keep their edits and keys. Below 640px the trigger is a 36px icon button, and it is disabled with a tooltip while analyzing."
-    why_human: "This is an interactive multi-step flow with visual state."
-  - test: "After a re-scan that orphans an edited spine, use Re-attach spine... and Dismiss spine"
+  - test: "UAT 3 re-run (G-02-3). Prod build (corepack pnpm build && corepack pnpm start). Open /upload with every photo Done, stop the server, refocus the tab so 'Couldn't refresh' appears with the last data kept. Start the server and keep the tab focused. Repeat on /spines."
+    expected: "The alert clears by itself within roughly 3-10 s of the server coming back (the default retry: 3 backoff can delay the first error, then polls run every 3 s). No page interaction needed."
+    why_human: "Needs a real browser, a stopped and restarted server and tab refocus. photo-polling.test.ts proves the QueryObserver logic with retry: false only (IN-03)."
+  - test: "UAT 5 re-run (G-02-5) on /spines, prod build. First paste in the DevTools console: window.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.activeElement?.blur(); }, { capture: true }). On an unedited field type extra characters and press Escape; repeat on the same field; then type, click away and reload. Reload without the snippet and repeat. Also check Enter (Input), Ctrl/Cmd+Enter (Raw text), Revert and Undo revert."
+    expected: "Escape brings the saved value back with no Edited badge and no PATCH in the Network tab, both times. The click-away value persists after reload with Edited. Same results without the snippet. Enter, Ctrl/Cmd+Enter, Revert and Undo revert still work."
+    why_human: "Real DOM event order and React's event wiring are not exercised: field-commit.test.ts drives the controller through a hand-written fake input (IN-02); Vitest runs in node with no DOM library."
+  - test: "UAT 8 (skipped in UAT). After a re-scan that orphans an edited spine, use Re-attach spine... and Dismiss spine."
     expected: "The orphan shows under 'No longer detected (n)'. Re-attach moves the edits and toasts 'Edits moved to spine #n'. Dismiss toasts and moves focus to the next card's first field, or to the section's Re-scan button."
-    why_human: "Dialog flow and focus management after dismiss are browser behaviors."
-  - test: "On /spines, use the All / Needs review toggle and the photo Select, then reload. After a re-scan that changed an edited field's read, click 'Use new read'."
-    expected: "Both filters survive a reload, changing the photo scrolls to the top, and the counts match the list. 'Use new read' clears the 'Latest scan reads' hint and the Edited badge."
-    why_human: "URL-state and scroll behavior need a browser."
-  - test: "Check the layouts at 360px and 1280px: the CLI-not-ready alert, sticky photo headers with wrapping badges and truncated filenames, the Raw text textarea with 300 characters (grows to 6 rows, then scrolls), the Re-scan, Re-attach and Dismiss dialogs, the filter bar, and error reasons clamped to 3 lines"
-    expected: "No overflow at either width. Copy matches UI-SPEC."
-    why_human: "These are backstop (non-inferable) visual truths from plans 02-06, 02-08 to 02-12."
-  - test: "Render a 20:1 crop and a 4:1 crop, then scroll a list of about 500 spine cards"
-    expected: "Both crops render in full (object-contain, max-h-32/min-h-12), and scrolling stays responsive without virtualization."
-    why_human: "These are backstop visual and performance truths (02-08)."
-  - test: "Review the VIS-01 privacy prohibition (judgment tier): 'MUST NOT send a photo, crop or extracted text anywhere except the single local claude -p call per run, and MUST NOT let that call bill an API key'"
-    expected: "Owner agrees the only outbound path is runVisionCall (scan-photo.ts:414) with buildClaudeEnv scrubbing API-billing variables, and that the fresh isClaudeReady check before the spawn (scan-photo.ts:391) refuses API-billed logins."
-    why_human: "unverified-prohibition, human review recommended. The verifier's verdict (holds) is non-authoritative."
+    why_human: "Never exercised by a human: no orphaned edited spine occurred in the UAT re-scan. Dialog flow and focus management need a browser."
+  - test: "UAT 11 (skipped in UAT). Render a 20:1 crop and a 4:1 crop, then scroll about 500 spine cards."
+    expected: "Both crops render in full (object-contain, max-h-32/min-h-12) and scrolling stays responsive without virtualization."
+    why_human: "Backstop visual and performance truths from 02-08; skipped by the owner."
+  - test: "UAT 7 and 9 remainders. Re-scan from an /upload error row, the below-640px 36px icon trigger (disabled with a tooltip while analyzing), and 'Use new read' after a re-scan that changes an edited field's read."
+    expected: "Same confirm dialog and merge as on /spines. 'Use new read' clears the 'Latest scan reads' hint and the Edited badge."
+    why_human: "UAT recorded these sub-steps as not exercised (no failed photo, no changed re-read of an edited field)."
 ---
 
 # Phase 2: Shelf Scan Verification Report
 
 **Phase Goal:** User drops shelf photos and sees every detected spine as a horizontal crop next to the AI-extracted fields, which they can correct. Each photo costs exactly one Claude call.
-**Verified:** 2026-10-20T05:51:15Z
+**Verified:** 2026-10-20T08:39:37Z
 **Status:** human_needed
-**Re-verification:** No (initial verification)
+**Re-verification:** Yes. This follows gap-closure plans 02-13 (G-02-3) and 02-14 (G-02-5), which target UAT tests 3 and 5.
 
-## MVP Mode Note (format discrepancy, WARNING)
+## MVP Mode Note (WARNING, carried forward)
 
-ROADMAP.md marks Phase 2 as `**Mode:** mvp`, but the goal is not in user-story form. `user-story.validate` returns `valid: false`. The plans carry the story "As the owner cataloguing my CDs, I want to ... so that misreads are easy to see and fix and each photo costs exactly one Claude call." That also fails the canonical regex, because it says "As the" where the regex wants "As a". The orchestrator explicitly asked for verification, so I verified against the plans' story and the five roadmap success criteria. To make the goal canonical, run `/gsd-mvp-phase 2`.
+ROADMAP marks Phase 2 `**Mode:** mvp`, but the goal line is not in user-story form, and the plans' story begins "As the", not "As a". I verified against the five roadmap success criteria and the plans' story. To make it canonical, run `/gsd-mvp-phase 2`.
 
 ## User Flow Coverage
 
-User story (from the plans): "As the owner cataloguing my CDs, I want to drop shelf photos and see every detected spine as a horizontal crop next to the AI-extracted fields, which I can correct, so that misreads are easy to see and fix and each photo costs exactly one Claude call."
-
 | Step | Expected | Evidence | Status |
 |------|----------|----------|--------|
-| Open /upload | Dropzone shown, gated on CLI readiness | src/app/upload/page.tsx (isClaudeReady, Alert), src/components/dropzone.tsx | ✓ |
-| Drop photos | One POST per file, 2 at a time, each queued once | upload-view.tsx createUploadQueue concurrency 2; api/photos/route.ts; ingest.ts one run + one max_attempts 1 job in a transaction | ✓ |
-| Watch progress | Queued, then Analyzing, then Done, or Error with a reason | photo-status.ts statusView; photo-status-list refetchInterval 1.5 s; reasons.ts copy; scan-photo failure-mode tests | ✓ (live view: human) |
-| See spines | Horizontal crop above six fields per spine | spines/page.tsx → SpinesView → PhotoSection → SpineCard (SpineCrop + 6 SpineField); crop.ts ORIENTATION_ANGLE | ✓ (real alignment: human) |
-| Correct a field | Saves on blur, survives reload, AI value kept | spine-field.tsx PATCH → fields.ts (never writes ai_value); route.test "edit then revert leaves ai_value byte-identical" | ✓ |
-| Outcome: one call per photo | Exactly one recorded call, zero on re-upload, re-scan only on explicit action | scan-photo.test "makes one recorded call" (calls()===1), "never runs a run twice"; ingest.test duplicates; only ingest.ts and rescan.ts insert vision_runs | ✓ |
+| Drop photos | One POST per file, queued once | upload-view.tsx queue; api/photos/route.ts; ingest.ts | ✓ (UAT 2 passed) |
+| Watch progress | Queued, Analyzing, Done or Error with a reason; recovers after a failed poll | photo-status.ts statusView, error-aware photosRefetchInterval; photo-polling.test.ts | ✓ (UAT 3 re-run: human) |
+| See spines | Horizontal crop above the six fields | SpineCard → SpineCrop + SpineField; crop.ts | ✓ (UAT 4 passed) |
+| Correct a field | Saves on blur, Escape cancels, survives reload, AI value kept | spine-field.tsx + field-commit.ts; fields.ts never writes ai_value | ✓ (UAT 5 re-run: human) |
+| Outcome: one call per photo | Exactly one recorded call; zero on re-upload; re-scan only on request | scan-photo.test calls()===1; ingest dedupe; only ingest.ts and rescan.ts insert vision_runs | ✓ |
 
 ## Goal Achievement
 
-### Observable Truths (Roadmap Success Criteria)
+### Observable Truths
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Several photos move through queued, analyzing and done. A failure, including a truncated or refused response, shows as an error with a reason and is never silently dropped | ✓ VERIFIED | Run state machine with compare-and-set in scan-photo.ts. classifyVisionRun maps refused, error_max_turns, the 8 MB buffer, schema_invalid, timeout, aborted and missing CLI to typed kinds. reasonFor gives UI-SPEC copy. 14 failure-mode tests pass. reconcile.ts errors stuck runs ("never analyzing forever"). The UI polls /api/photos every 1.5 s while any photo is active. |
-| 2 | Every row shows its horizontal crop, aligned with the real spine (portrait and EXIF-rotated included), next to artist, title, format, label, catalog number, raw text and per-field confidence | ✓ VERIFIED | SpineCard renders SpineCrop and the 6 SpineFields. normalize.ts uses autoOrient (EXIF-6 test: 400x300 comes out 300x400). crop.ts rotation angles are tested for all four orientations. Live calibration in report.json gives a median corner error of 0.02-0.03% across portrait, landscape and >500 KB layouts. Confidence follows D-09: a warning border and tooltip with the percentage below the threshold, plus a worst-field badge. Real-photo alignment and HEIC irot go to human verification. |
-| 3 | Exactly one recorded Claude call per analyzed photo, raw response persisted, and re-upload makes zero calls and shows the existing spines | ✓ VERIFIED | afterSpawn writes raw.json before setRunStatus(parsing) and classify. The test asserts calls()===1, raw_path and the raw stdout. ingest.ts dedupes on sha256 with ON CONFLICT, and the concurrent-identical test passes. The client shows a duplicate toast and badge. reparse reads raw.json only and has no CLI path. |
-| 4 | User can edit any field; the edit survives a reload and the original AI value is kept | ✓ VERIFIED | fields.ts writes only value and edit_base_ai_value. The PATCH route is validated with zod. Route test: ai_value is byte-identical after edit and revert. CR-01 is fixed: field-sql.ts normalizes the comparison on both sides, and the client commit() is a no-op for an unchanged value. |
-| 5 | Explicit re-scan is the only way a photo goes back to Claude, and edits survive on spines that still match | ✓ VERIFIED | Only ingest.ts (run 1) and rescan.ts (run_no+1, IMMEDIATE transaction, 409 while active, CLI gate) insert vision_runs. Reconcile enqueues only `mode: 'reparse'`. The merge tests show an edited field keeps the owner's value, and an unmatched edited spine becomes orphaned. The match test pairs at least 85% on spike fixtures. |
+| 1 | SC1: photos move through queued, analyzing, done; failures show with a reason, never dropped | ✓ VERIFIED | Regression check: scan-photo failure-mode tests are in the green suite (500/500). G-02-3 strengthens the live view (see 6-8). |
+| 2 | SC2: horizontal crop aligned with the real spine, next to the six fields and per-field confidence | ✓ VERIFIED | Unchanged since the prior pass; UAT 4 passed with real photos. |
+| 3 | SC3: one recorded call per photo, raw response persisted, zero calls on re-upload | ✓ VERIFIED | Unchanged; scan-photo and ingest tests green. |
+| 4 | SC4: user can edit any field; the edit survives a reload; the AI value is kept | ✓ VERIFIED | UAT 5 confirmed persistence. The G-02-5 Escape defect is fixed in code (truths 11-15). The fields route test still holds ai_value byte-identical. |
+| 5 | SC5: explicit re-scan is the only path back to Claude; edits survive on matching spines | ✓ VERIFIED | Unchanged; merge, orphans and reconcile tests green. UAT 7 passed (merge kept edits). |
+| 6 | 02-13: /upload with every photo Done keeps polling after a failed poll, and the alert clears on the first success | ✓ VERIFIED | photo-status.ts:112-113 returns POLL_RETRY_MS (3000) when status is 'error'. Wired at photo-status-list.tsx:40-41 with `q.state.status`. "/upload: recovers from a failed poll with every photo done" passes (isError false after the retry). |
+| 7 | 02-13: the same recovery on /spines via photoOptions | ✓ VERIFIED | spines-view.tsx:160-161 passes `q.state.status`. The "/spines: recovers..." test passes. |
+| 8 | 02-13: no idle polling while polls succeed and nothing is active | ✓ VERIFIED | Returns false for success/pending with idle data. "does not poll while every photo is done..." passes (no fetch in 10 s). |
+| 9 | 02-13: polling stays at 1.5 s while any photo is active | ✓ VERIFIED | The ACTIVE_POLL_MS branch runs first and is independent of status. Unit cases cover both success and error. |
+| 10 | 02-13: UI-SPEC rule agrees with "retrying every few seconds" | ✓ VERIFIED | 02-UI-SPEC.md:183 now has "3000ms (`POLL_RETRY_MS`) while the last poll failed ... (corrected by G-02-3)"; :358 is unchanged. |
+| 11 | 02-14: Escape on an unedited field restores the saved value and sends no PATCH in either event order | ✓ VERIFIED | field-commit.ts: blur() defers with setTimeout 0, and escape() blurs, cancels and then resets. spine-field.tsx:243-266 wires onBlur → blur(commit) and Escape → escape(() => input.blur(), reset). There are 0 skipCommit references. The keydown-first and blur-first tests pass. The harness mirrors the component line for line. Real-DOM order goes to human (UAT 5 re-run). |
+| 12 | 02-14: a second Escape behaves the same | ✓ VERIFIED | "blur-first: a second Escape also saves nothing (attempts 2-3)" passes. |
+| 13 | 02-14: after any Escape, a click-away saves the typed value | ✓ VERIFIED | escape() leaves nothing armed (cancel nulls timer and pending). The attempt 4 tests pass in both orders. |
+| 14 | 02-14: click-away, Enter and Ctrl/Cmd+Enter save once; a save pending at unmount is still sent | ✓ VERIFIED | Enter branches call blur(), so they use the same deferred path. spine-field.tsx:131 has a `useEffect` cleanup that calls flush(). The flush tests pass. @tanstack/react-query's `mutate` executes after unmount (useMutation.js:181-183 does not guard on mount), so the PATCH is sent. Failure reporting in that path is silent (advisory WR-01). |
+| 15 | 02-14: polling never changes a focused or dirty field; the edit survives a reload with Edited | ✓ VERIFIED | resolveDisplayedValue is unchanged. After a blur, dirty stays true until the save succeeds, so the draft keeps showing. The spine-review and fields route tests are green. |
 
-**Score:** 5/5 truths verified (0 present, behavior-unverified)
+**Score:** 15/15 truths verified (0 present, behavior-unverified)
 
-Plan-level truths: 12 plans declare about 110 truths. All 62 declared artifacts pass `verify.artifacts`, and all 29 key links pass `verify.key-links`. The plan truths marked `verification: backstop` (visual and performance) are non-inferable. They are routed to Human Verification, not counted.
+### Deferred Items
+
+None from this verification. The UAT deferred follow-ups (deskewing tilted spines, a sticky filter bar) are already in ROADMAP backlog Phase 999.x. They are not phase-2 truths.
+
+### Advisory (New Scope, Unevidenced)
+
+| # | Finding | Category | Why Advisory |
+|---|---------|----------|--------------|
+| 1 | WR-01: a save from the unmount flush fails silently | other | The truth ("still sent") holds. The silent failure is narrow (the card must unmount between the blur and setTimeout 0, and the PATCH must fail) and existed before for any in-flight save. No lost edit reproduced. |
+| 2 | WR-02: no flush on pagehide/visibilitychange | other | New ~1 s window opened by 02-14; no test or reproduction shows a loss |
+
+Both are on files modified since the prior pass, so they are in scope. I rate them warnings, not blockers: neither falsifies a must-have truth, and neither has a reproduced failure. Recommend fixing both (each fix is small) before Phase 3, or recording them as `deferred` in 02-REVIEW-DISPOSITION.md.
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| 62 artifacts across 02-01..02-12 | Exist, substantive | ✓ VERIFIED | `verify.artifacts`: 8/8, 4/4, 7/7, 5/5, 4/4, 5/5, 4/4, 6/6, 4/4, 7/7, 5/5, 3/3 |
-| src/server/jobs/handlers/scan-photo.ts | Ledgered single call | ✓ VERIFIED | CLI gate + isCurrent + preparing→calling CAS before runVisionCall; nothing throws after the spawn |
-| test/fixtures/vision/vision-schema.frozen.json | Frozen schema | ✓ VERIFIED | All VIS-02 fields present; no min/max/minItems/maxItems/minLength/maxLength keys |
-| src/lib/vision-contract.ts | Frozen constants | ✓ VERIFIED | 2576/4784, effort high, threshold 0.6, density 90/33, CROP_SOURCE 'master' |
+| 02-01..02-12 declared artifacts | Exist, substantive | ✓ VERIFIED | verify.artifacts: 8/8, 4/4, 7/7, 5/5, 4/4, 5/5, 4/4, 6/6, 4/4, 7/7, 5/5, 3/3 (no regression) |
+| src/lib/photo-status.ts | photosRefetchInterval(photos, status), POLL_RETRY_MS, ACTIVE_POLL_MS | ✓ VERIFIED | 02-13 3/3 |
+| src/lib/photo-polling.test.ts | QueryObserver regression | ✓ VERIFIED | 3 tests, real QueryObserver + fake timers |
+| 02-UI-SPEC.md | Corrected line 183 | ✓ VERIFIED | |
+| src/lib/field-commit.ts | createFieldCommit | ✓ VERIFIED | 02-14 3/3; blur/escape/focus/flush/isPending |
+| src/lib/field-commit.test.ts | Ordering + flush regressions | ✓ VERIFIED | 13 tests |
+| src/components/spine-field.tsx | Wired to the controller, no skip flag | ✓ VERIFIED | `useState(createFieldCommit)`, 0 skipCommit |
 
 ### Key Link Verification
 
 | From | To | Via | Status |
-|------|----|----|--------|
-| 29 declared links | | | ✓ WIRED (29/29) |
-| upload-view.tsx | api/photos | uploadPhoto (always application/octet-stream since WR-04) | ✓ WIRED |
-| spine-card.tsx | SpineCrop, SpineField, Reattach, Dismiss | JSX render | ✓ WIRED |
-| photo-section.tsx, photo-status-row.tsx | RescanButton → /api/photos/{id}/rescan | fetch POST after confirm | ✓ WIRED |
+|------|----|-----|--------|
+| 02-01..02-12 (29 links) | | | ✓ WIRED 29/29 |
+| photo-status-list.tsx | photo-status.ts | `photosRefetchInterval(q.state.data?.photos, q.state.status)` | ✓ WIRED |
+| spines-view.tsx | photo-status.ts | `photosRefetchInterval(q.state.data?.photoOptions, q.state.status)` | ✓ WIRED |
+| spine-field.tsx | field-commit.ts | `createFieldCommit` (onFocus, onBlur, Escape, unmount flush) | ✓ WIRED |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data | Source | Real Data | Status |
 |----------|------|--------|-----------|--------|
-| SpinesView | spines/fields/crops | getSpines → loadSpineDtos (SELECT from spines, spine_fields) | Yes, rows written by persistRunResult | ✓ FLOWING |
-| PhotoStatusList | photo status/reason | listPhotos (vision_runs join) | Yes | ✓ FLOWING |
-| SpineCrop | crop url | crops/<photoId>/<detectionId>.webp via /api/files allowlist | Yes | ✓ FLOWING |
+| PhotoStatusList | photos, isError | GET /api/photos → listPhotos; status from TanStack query state | Yes | ✓ FLOWING |
+| SpinesView | spines, photoOptions, isError | GET /api/spines → getSpines | Yes | ✓ FLOWING |
+| SpineField | draft → PATCH | draftRef → commit() → save() → PATCH /api/spines/{id}/fields | Yes | ✓ FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Types and lint | `corepack pnpm typecheck && corepack pnpm lint` | exit 0, 178 files | ✓ PASS |
-| Full suite (run once) | `corepack pnpm test` | 478/479 pass; 1 failure: cli.test.ts "times out a sleeping child..." | ⚠️ see warning |
-| Flaky test alone | `vitest run src/server/claude/cli.test.ts -t "times out a sleeping child"` (x2) | passed both times | ✓ PASS (flaky under load) |
-| No owner data tracked | `git check-ignore` on secrets.json, fixtures/spike/*, data/ | all ignored | ✓ PASS |
-| Review-fix commits present | `git merge-base --is-ancestor` for the 10 fix commits | all ancestors of HEAD | ✓ PASS |
-| End-to-end verify scripts | verify-scan / verify-rescan / verify-scan-recovery | not run (they start a server) | ? SKIP → human |
+| Types | `corepack pnpm typecheck` | exit 0 | ✓ PASS |
+| Lint | `corepack pnpm lint` | 181 files, no issues | ✓ PASS |
+| Full suite (run once) | `corepack pnpm test` | 35 files, 500/500 | ✓ PASS (the flaky cli timeout test passed this run) |
+| Gap tests | `vitest run field-commit.test.ts photo-polling.test.ts photo-status.test.ts` | 37/37 | ✓ PASS |
+| WR-01 mechanism | grep query-core mutationObserver.js / react-query useMutation.js | per-call callbacks gated on hasListeners(); mutate unguarded | confirmed (advisory) |
+| Gap commits on HEAD | git log | 6af1592, 47fb985, 398691a, 0c81887, 7868087, 8101e06, 1876181 present | ✓ PASS |
 
 ### Probe Execution
 
@@ -318,68 +342,60 @@ None declared. No `scripts/*/tests/probe-*.sh` exist.
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| INGEST-01 | 03, 05, 07 | Drag and drop one or more photos | ✓ SATISFIED | dropzone multiple; per-file queue; route refusals tested |
-| INGEST-02 | 05, 06 | Per-photo status | ✓ SATISFIED | statusView mapping; polling; reconcile |
-| INGEST-03 | 03, 07 | Identical re-upload makes zero calls | ✓ SATISFIED | sha256 dedupe incl. concurrent; toast and badge |
-| INGEST-04 | 10, 11, 12 | Explicit re-scan only; edits preserved | ✓ SATISFIED | rescan.ts only path; merge/orphans tests |
-| INGEST-05 | 01, 02, 04 | EXIF-rotate and resize; sent image equals crop source | ✓ SATISFIED (override) | freeze-master: same frame, exact scale; see overrides |
-| VIS-01 | 01, 02, 04, 05 | One call returns every spine | ✓ SATISFIED | calls()===1; max_attempts 1; no throw after the spawn |
-| VIS-02 | 01, 02, 04 | All fields, bbox, confidence, orientation | ✓ SATISFIED | frozen schema keys |
-| VIS-03 | 04, 05 | Raw persisted first; truncated/refused surfaced | ✓ SATISFIED | raw.json before parse; failure-mode tests |
-| VIS-04 | 01, 02, 04 | Local crop with padding, rotated horizontal | ✓ SATISFIED | padBox, scaleBox, ORIENTATION_ANGLE; no extra AI call |
-| REV-01 | 04, 08, 12 | Crop next to fields on every row | ✓ SATISFIED | SpineCard |
-| REV-02 | 09 | Edits stored separately from AI output | ✓ SATISFIED | ai_value never written by fields.ts |
+| INGEST-01 | 03, 05, 07 | Drag and drop one or more photos | ✓ SATISFIED | UAT 2 passed |
+| INGEST-02 | 05, 06, 13 | Per-photo status | ✓ SATISFIED | statusView; error-aware polling (G-02-3) |
+| INGEST-03 | 03, 07 | Identical re-upload makes zero calls | ✓ SATISFIED | sha256 dedupe; UAT 2 duplicate passed |
+| INGEST-04 | 10, 11, 12 | Explicit re-scan only; edits preserved | ✓ SATISFIED | rescan.ts sole path; merge tests; UAT 7 |
+| INGEST-05 | 01, 02, 04 | EXIF-rotate/resize; sent image matches crop source | ✓ SATISFIED (override) | freeze-master override |
+| VIS-01 | 01, 02, 04, 05 | One call returns every spine | ✓ SATISFIED | calls()===1; UAT 12 owner-approved privacy prohibition |
+| VIS-02 | 01, 02, 04 | Fields, bbox, confidence, orientation | ✓ SATISFIED | frozen schema |
+| VIS-03 | 04, 05 | Raw persisted first; failures surfaced | ✓ SATISFIED | raw.json before parse |
+| VIS-04 | 01, 02, 04 | Local padded crop, rotated horizontal | ✓ SATISFIED | crop.ts; UAT 4 |
+| REV-01 | 04, 08, 12, 13 | Crop next to fields | ✓ SATISFIED | SpineCard; /spines recovery |
+| REV-02 | 09, 14 | Edits stored separately, AI value kept | ✓ SATISFIED | fields.ts; Escape-safe commit (G-02-5) |
 
-There are no orphaned requirements. REQUIREMENTS.md maps exactly these 11 IDs to Phase 2, and every one is claimed by at least one plan.
+There are no orphaned requirements. REQUIREMENTS.md maps exactly these 11 IDs to Phase 2, and every one is claimed by a plan.
 
 ### Prohibitions
 
 | Prohibition | Tier | Disposition |
 |-------------|------|-------------|
-| INGEST-04: never re-send without an explicit re-scan (02-05) | test | ✓ enforced: "never runs a run twice", reconcile "never enqueues anything but reparse jobs", "a reparse payload with no raw answer never spawns" |
-| VIS-03: never silently drop a failure or a returned spine (02-05) | test | ✓ enforced: failure-mode tests, "zero spines finishes as done", "CD detection with an unusable box is kept" |
-| REV-02: never overwrite Claude's read (02-09) | test | ✓ enforced: "edit then revert leaves ai_value byte-identical" |
-| VIS-01 privacy and billing (02-04) | judgment | ⚠️ unverified-prohibition, human review recommended. Non-authoritative LLM verdict: holds |
+| INGEST-04 never re-send without an explicit re-scan | test | ✓ enforced (tests green) |
+| VIS-03 never silently drop a failure or spine | test | ✓ enforced |
+| REV-02 never overwrite Claude's read | test | ✓ enforced |
+| VIS-01 privacy and billing | judgment | ✓ human-resolved: UAT 12 passed (owner review) |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| (156 phase-modified files) | n/a | TBD/FIXME/XXX/TODO/placeholder | none found | none |
-| src/server/claude/cli.test.ts | ~133 | Timing-sensitive test (process-group kill after timeout) | ⚠️ Warning | Failed in this full-suite run, passes alone. Phase 1 test, already noted in 02-REVIEW-FIX.md. The suite is not reliably green under load. |
-| src/app/api/photos/route.ts | 37-89 | Upload does not check CLI readiness | ℹ️ Info | By design (CR-02 note): the photo is stored and the handler fails the run as cli_unavailable without a call. The dropzone is gated in the UI. |
-| src/components/spine-field.tsx | 152-154 | Confidence shown only below the threshold | ℹ️ Info | This is the D-09 representation of SC2's "per-field confidence". A high-confidence field shows no score. |
+| 8 files touched by 02-13/02-14 | n/a | TBD/FIXME/XXX/TODO/HACK | none found | none |
+| src/components/spine-field.tsx | 131 | Unmount flush save fails silently (WR-01) | ⚠️ Warning / 📋 Advisory | Narrow silent-failure path |
+| src/lib/field-commit.ts | 28-36 | No flush on page hide (WR-02) | ⚠️ Warning / 📋 Advisory | Narrow loss window on tab hide + close |
+| src/lib/field-commit.ts | 51 | isPending() used only by tests (IN-01) | ℹ️ Info | API surface |
+| src/lib/photo-polling.test.ts | 36 | retry: false differs from production retry: 3 (IN-03) | ℹ️ Info | Alert takes about 7 s to appear; the human re-run covers it |
+| src/components/photo-status-list.tsx | 21-24 | Doc comment omits the 3 s retry (IN-04) | ℹ️ Info | Stale comment |
 
 ### Human Verification Required
 
-See the `human_verification` frontmatter for the full 12 items. In summary:
-
-1. **End-to-end fake-CLI proofs after the review fixes.** Run verify-scan, verify-scan-recovery and verify-rescan.
-2. **Real drag-and-drop.** Use multiple photos with a HEIC, a PDF, a duplicate and a 70 MB file, and watch them move from queued to done.
-3. **Poll-error state.** Stop and restart the server.
-4. **Real-photo crop alignment and misread count.** Check portrait, landscape and EXIF-rotated photos, and count misreads in compare.html. HEIC irot is untested.
-5. **Field editing.** Check the edit, reload, revert, undo, Escape, and typing during a poll.
-6. **Tooltips.** Check the low-confidence, density and disabled Re-scan tooltips.
-7. **Re-scan flow.** Run it from both pages and at 360px.
-8. **Orphans.** Check re-attach, dismiss, and focus after dismiss.
-9. **Filters.** Check the filter bar, reload persistence, scroll reset and "Use new read".
-10. **Layouts.** Check 360px and 1280px (backstop truths).
-11. **Extreme crops and scrolling.** Check 20:1 and 4:1 crops and scrolling 500 cards (backstop).
-12. **VIS-01 privacy prohibition.** Owner review of the judgment-tier prohibition.
+1. **UAT 3 re-run (G-02-3).** Use a prod build. Restart the server while the tab stays focused, on /upload and on /spines. The alert should clear by itself.
+2. **UAT 5 re-run (G-02-5).** Run it with the capture-phase blur snippet and again without it. Escape should send no PATCH, twice. A click-away after that should persist. Enter, Ctrl/Cmd+Enter, Revert and Undo revert should still work.
+3. **UAT 8 (never exercised).** Test orphan re-attach and dismiss, including where focus goes after a dismiss.
+4. **UAT 11 (skipped).** Check 20:1 and 4:1 crops, and scrolling about 500 cards.
+5. **UAT 7 and 9 remainders.** Re-scan from an /upload error row, check the below-640px icon trigger, and try "Use new read".
 
 ### Gaps Summary
 
-No blocking gaps. All five roadmap success criteria hold in the code. Each one is backed by tests that exercise the behavior: the single ledgered call, raw-first persistence, failure classification, dedup, the edit store that keeps ai_value, and the re-scan-only path with merge. All 10 review findings are fixed and their commits are on HEAD. INGEST-05 is met only through the owner's accepted freeze-master decision, recorded as an override.
+No blocking gaps. Both UAT failures have code fixes on HEAD:
 
-Three warnings are open:
+- **G-02-3.** The polling interval now branches on query status, and both call sites pass that status.
+- **G-02-5.** The order-dependent skipCommit flag is replaced by a deferred, cancellable commit, so a stale flag can no longer drop a save.
 
-- The ROADMAP goal is not in user-story format, even though the phase is in MVP mode.
-- A flaky Phase 1 timeout test failed once in this run.
-- The server-based end-to-end verify scripts were not re-run after the review fixes.
+Real-QueryObserver and controller-ordering tests prove each fix. Typecheck, lint and the full suite (500/500) are green. All 14 plans' artifacts and links pass, and the five roadmap criteria show no regression.
 
-What is left is browser and visual verification, which the plans deferred to the end of the phase.
+Two things remain open. First, both UAT failures need a real-browser re-run, because neither fix was exercised in a DOM. Second, two UAT tests (8 and 11) were never exercised. Review warnings WR-01 and WR-02 are real but narrow, and no loss has been reproduced. They are recorded as advisory, and I recommend closing or deferring them in 02-REVIEW-DISPOSITION.md.
 
 ---
 
-_Verified: 2026-10-20T05:51:15Z_
+_Verified: 2026-10-20T08:39:37Z_
 _Verifier: Claude (gsd-verifier)_
