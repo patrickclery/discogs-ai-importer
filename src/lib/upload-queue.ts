@@ -1,5 +1,7 @@
 // Client upload helpers (RESEARCH Pattern 1, D-12). Pure and client-safe:
 // one POST per File, the UI-SPEC upload-error copy, and a small FIFO queue.
+
+import { pluralize } from './photo-status';
 import {
   type PhotoDto,
   type PhotoStatus,
@@ -20,10 +22,23 @@ const NETWORK_MESSAGE =
 
 /** The documented copy for an upload failure (UI-SPEC upload errors). */
 export function uploadErrorMessage(
-  _code: UploadFailureCode,
-  _filename: string,
+  code: UploadFailureCode,
+  filename: string,
 ): string {
-  return NETWORK_MESSAGE;
+  switch (code) {
+    case 'unsupported_type':
+      return `${filename} isn't a supported photo. Use JPEG, PNG, WebP or HEIC.`;
+    case 'too_large':
+      return `${filename} is over 64 MB. Export a smaller JPEG and try again.`;
+    // A missing Content-Length is a transport fault, like a truncated body.
+    case 'cut_off':
+    case 'length_required':
+      return 'The upload was cut off before it finished. Retry the upload.';
+    case 'empty':
+      return "This file couldn't be read as an image. Export it again as JPEG and upload it.";
+    case 'network':
+      return NETWORK_MESSAGE;
+  }
 }
 
 function isUploadErrorCode(value: unknown): value is UploadErrorCode {
@@ -132,8 +147,24 @@ export type PhotoSnapshot = Pick<
  * poll (UI-SPEC live region, A-12). Only terminal transitions are announced.
  */
 export function terminalAnnouncements(
-  _previous: ReadonlyMap<string, PhotoStatus>,
-  _photos: readonly PhotoSnapshot[],
+  previous: ReadonlyMap<string, PhotoStatus>,
+  photos: readonly PhotoSnapshot[],
 ): string[] {
-  return [];
+  const lines: string[] = [];
+  for (const photo of photos) {
+    const before = previous.get(photo.id);
+    // Unseen photos (first poll, or a duplicate already finished) and photos
+    // that were already terminal stay quiet.
+    if (before === undefined || before === 'done' || before === 'error') {
+      continue;
+    }
+    if (photo.status === 'done') {
+      lines.push(
+        `${photo.filename}: done, ${pluralize(photo.spineCount, 'spine', 'spines')} found`,
+      );
+    } else if (photo.status === 'error') {
+      lines.push(`${photo.filename}: scan failed`);
+    }
+  }
+  return lines;
 }

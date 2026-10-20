@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, ImageIcon } from 'lucide-react';
+import { Copy, ImageIcon, X } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useState } from 'react';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
@@ -59,26 +59,56 @@ export function RowFilename({ name }: { name: string }) {
 
 /**
  * A dropped file the server has no row for yet (Plan 02-07): "Waiting to
- * upload" while queued behind the concurrency cap, then "Uploading…".
+ * upload" behind the concurrency cap, "Uploading…", or a client failure
+ * with its reason, "Retry upload" (same File) and "Remove from list".
  */
 export function ClientUploadRow({
   filename,
   status,
+  message,
+  onRetry,
+  onRemove,
 }: {
   filename: string;
-  status: 'waiting' | 'uploading';
+  status: 'waiting' | 'uploading' | 'failed';
+  /** Failure copy (uploadErrorMessage); shown when status is failed. */
+  message?: string;
+  /** Absent for files the dropzone refused: they were never sent. */
+  onRetry?: () => void;
+  onRemove?: () => void;
 }) {
   return (
     <li className="flex flex-wrap items-center gap-4 px-4 py-3 sm:flex-nowrap">
       <RowThumb url={null} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <RowFilename name={filename} />
-        <p className="text-xs text-muted-foreground">
-          {status === 'waiting' ? 'Waiting to upload' : 'Uploading…'}
-        </p>
+        {status === 'failed' ? (
+          // Copy interpolates the untrusted filename: text child only.
+          <p className="text-sm break-words text-destructive">{message}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {status === 'waiting' ? 'Waiting to upload' : 'Uploading…'}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <PhotoStatusBadge status={status} />
+        <PhotoStatusBadge status={status === 'failed' ? 'error' : status} />
+        {status === 'failed' && onRetry ? (
+          <Button type="button" variant="outline" onClick={onRetry}>
+            Retry upload
+          </Button>
+        ) : null}
+        {status === 'failed' && onRemove ? (
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label={`Remove ${filename} from the list`}
+            onClick={onRemove}
+          >
+            <X aria-hidden="true" />
+            Remove from list
+          </Button>
+        ) : null}
       </div>
     </li>
   );
