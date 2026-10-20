@@ -153,7 +153,9 @@ async function prepare(
     sourceH: image.upright.height,
     visionW: image.vision.width,
     visionH: image.vision.height,
-    maxEdge: VISION_MAX_EDGE,
+    // The edge actually used: smaller than VISION_MAX_EDGE when the JPEG had
+    // to shrink to fit VISION_JPEG_MAX_BYTES (WR-03).
+    maxEdge: image.vision.maxEdge,
     maxTokens: VISION_MAX_TOKENS,
     visionPath: visionRel,
   });

@@ -77,6 +77,35 @@ describe('normalizeImage', () => {
     expect([out.upright.width, out.upright.height]).toEqual([4000, 3000]);
   });
 
+  it('shrinks a vision JPEG that is over 500000 bytes even at quality 70 (WR-03)', async () => {
+    // Noise does not compress: about 0.4 bytes per pixel at quality 70, so
+    // 1600x1066 is well over the limit. A smaller tier keeps the test fast.
+    const tier = { maxEdge: 1624, maxTokens: TIER.maxTokens };
+    const [w, h] = resizedSize(1600, 1066, tier.maxEdge, tier.maxTokens);
+    const noise = Buffer.alloc(w * h * 3);
+    let seed = 1;
+    for (let i = 0; i < noise.length; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      noise[i] = seed >> 23;
+    }
+    const png = await sharp(noise, {
+      raw: { width: w, height: h, channels: 3 },
+    })
+      .png({ compressionLevel: 0 })
+      .toBuffer();
+    const out = await normalizeImage(png, 'png', tier);
+    expect(out.vision.jpeg.length).toBeLessThanOrEqual(VISION_JPEG_MAX_BYTES);
+    expect(out.vision.maxEdge).toBeLessThan(tier.maxEdge);
+    expect([out.vision.width, out.vision.height]).toEqual(
+      resizedSize(w, h, out.vision.maxEdge, tier.maxTokens),
+    );
+    const meta = await sharp(out.vision.jpeg).metadata();
+    expect([meta.width, meta.height]).toEqual([
+      out.vision.width,
+      out.vision.height,
+    ]);
+  }, 30_000);
+
   it('random bytes throw ImageDecodeError with kind image_unreadable', async () => {
     const junk = Buffer.from(
       Array.from({ length: 4096 }, (_, i) => (i * 7919) % 256),

@@ -40,12 +40,30 @@ export type RawImage = {
 
 export type NormalizedImage = {
   upright: RawImage;
-  vision: { jpeg: Buffer; width: number; height: number; quality: number };
+  vision: {
+    jpeg: Buffer;
+    width: number;
+    height: number;
+    quality: number;
+    /** The long-edge limit the size was computed with (WR-03). */
+    maxEdge: number;
+  };
   thumb: { webp: Buffer; width: number; height: number };
 };
 
 /** Decompression-bomb guard (RESEARCH Security). */
 const MAX_SOURCE_PIXELS = 100_000_000;
+
+/**
+ * WR-03: when even the lowest quality is over VISION_JPEG_MAX_BYTES, the
+ * vision image is made smaller rather than sent oversize. Bytes grow with the
+ * pixel count, so each step scales the long edge by the square root of the
+ * byte overshoot (with a margin, and at least 10% off), down to this long
+ * edge, below which the photo is refused.
+ */
+const VISION_SHRINK_MARGIN = 0.95;
+const VISION_SHRINK_MAX_FACTOR = 0.9;
+const VISION_MIN_EDGE = 512;
 
 function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -128,12 +146,16 @@ function fromRaw(src: RawImage): Sharp {
   });
 }
 
-/** Vision JPEG at the exact resized size, at most VISION_JPEG_MAX_BYTES. */
+/**
+ * Vision JPEG at the exact resized size, at the highest quality step that is
+ * at most VISION_JPEG_MAX_BYTES, else at VISION_JPEG_MIN_QUALITY (which the
+ * caller then checks).
+ */
 async function encodeVision(
   upright: RawImage,
   w: number,
   h: number,
-): Promise<NormalizedImage['vision']> {
+): Promise<Omit<NormalizedImage['vision'], 'maxEdge'>> {
   const resized = await fromRaw(upright)
     .resize(w, h, { fit: 'fill' })
     .raw()
@@ -163,13 +185,37 @@ export async function normalizeImage(
   opts: { maxEdge: number; maxTokens: number },
 ): Promise<NormalizedImage> {
   const upright = await materializeUpright(await openSource(input, kind));
-  const [w, h] = resizedSize(
-    upright.width,
-    upright.height,
-    opts.maxEdge,
-    opts.maxTokens,
-  );
-  const vision = await encodeVision(upright, w, h);
+  // The CLI Read tool re-encodes an image above VISION_JPEG_MAX_BYTES, and
+  // then Claude would not see the stored image.jpg (WR-03). Deterministic, so
+  // a reparse of the same original gets the same size.
+  let maxEdge = opts.maxEdge;
+  let vision: NormalizedImage['vision'];
+  for (;;) {
+    const [w, h] = resizedSize(
+      upright.width,
+      upright.height,
+      maxEdge,
+      opts.maxTokens,
+    );
+    vision = { ...(await encodeVision(upright, w, h)), maxEdge };
+    if (vision.jpeg.length <= VISION_JPEG_MAX_BYTES) break;
+    const factor = Math.min(
+      VISION_SHRINK_MAX_FACTOR,
+      Math.sqrt(VISION_JPEG_MAX_BYTES / vision.jpeg.length) *
+        VISION_SHRINK_MARGIN,
+    );
+    const next = Math.floor(Math.max(w, h) * factor);
+    if (next < VISION_MIN_EDGE) {
+      throw new ImageDecodeError(
+        'too_large',
+        `the vision image is over ${VISION_JPEG_MAX_BYTES} bytes even at ${w}x${h}`,
+      );
+    }
+    console.warn(
+      `normalizeImage: ${w}x${h} is ${vision.jpeg.length} bytes at quality ${vision.quality}; retrying with long edge ${next}`,
+    );
+    maxEdge = next;
+  }
 
   const { data: webp, info } = await fromRaw(upright)
     .resize(THUMB_LONG_EDGE, THUMB_LONG_EDGE, {
