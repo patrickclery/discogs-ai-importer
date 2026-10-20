@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 02-shelf-scan
 source: [02-VERIFICATION.md]
 started: 2026-10-20T05:55:08.198Z
@@ -94,8 +94,21 @@ blocked: 0
   reason: "User reported: it's not changing — after the server restarted, the Couldn't refresh alert stayed up despite saying 'retrying every few seconds' (all photos Done)."
   severity: major
   test: 3
-  artifacts: []
-  missing: []
+  root_cause: "photosRefetchInterval decides polling from the last data only and ignores query error state: with every photo Done it returns false, so after a failed refetch nothing reschedules a fetch and isError never resets. Spec gap: 02-UI-SPEC.md:183 mandates false when idle while :358 copy promises 'retrying every few seconds'."
+  artifacts:
+    - path: "src/lib/photo-status.ts"
+      issue: "photosRefetchInterval (lines 94-98) ignores error state"
+    - path: "src/components/photo-status-list.tsx"
+      issue: "/upload query (line 40) passes only q.state.data?.photos"
+    - path: "src/components/spines-view.tsx"
+      issue: "/spines query (line 160) has the same pattern"
+    - path: ".planning/phases/02-shelf-scan/02-UI-SPEC.md"
+      issue: "line 183 contradicts the alert copy at line 358"
+  missing:
+    - "Return a retry interval (a few seconds) from the refetch interval whenever query status is error, at both call sites"
+    - "Unit test for the error-with-idle-data case"
+    - "Update UI-SPEC line 183 to match"
+  debug_session: .planning/debug/couldnt-refresh-alert-never-clears.md
 
 - gap_id: G-02-5
   truth: "Escape restores the saved value (on an unedited field it cancels the draft without saving)."
@@ -103,5 +116,12 @@ blocked: 0
   reason: "User reported: When I first type it and hit escape, it momentarily changes back, then changes to the mutated version, then the edited button shows up. But if I click on it again and type, then hit escape, it goes back to what the previous mutation was."
   severity: major
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: "SpineField's Escape cancel assumes the input is still focused when onKeyDown runs. If focus leaves first (e.g. a browser extension that blurs on Escape), onBlur commits the draft before the reset, and onKeyDown then sets skipCommit=true with no blur to consume it — the stale flag swallows the next blur, so a later click-away save is silently dropped (data loss: field shows new text, server keeps old value)."
+  artifacts:
+    - path: "src/components/spine-field.tsx"
+      issue: "onBlur commits immediately; onKeyDown (lines 125, 236-260) sets skipCommit without guaranteeing a following blur, leaving a stale flag"
+  missing:
+    - "Defer the blur commit with setTimeout(0) held in a ref; Escape cancels the pending commit and resets the draft"
+    - "Clear any leftover skip state on focus"
+    - "Regression test: blur-before-Escape ordering — first Escape on unedited field, second Escape, and a normal click-away save after an Escape"
+  debug_session: .planning/debug/escape-saves-draft-on-first-edit.md
