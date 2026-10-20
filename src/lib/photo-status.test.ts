@@ -5,6 +5,7 @@ import {
   isActiveStatus,
   photosRefetchInterval,
   pluralize,
+  rowAction,
   statusView,
 } from './photo-status';
 import type { PhotoDto } from './scan-types';
@@ -143,5 +144,29 @@ describe('incompleteTooltip', () => {
     ).toBe(
       'Claude estimated 40 spines but returned 25. Re-scan, or photograph a narrower section.',
     );
+  });
+});
+
+describe('rowAction (/upload row actions, UI-SPEC E3)', () => {
+  it('View spines for a done photo with spines', () => {
+    expect(rowAction(photo({ status: 'done', spineCount: 2 }))).toBe(
+      'view_spines',
+    );
+  });
+
+  it('Re-scan for an error, or for done with 0 spines', () => {
+    expect(rowAction(photo({ status: 'error' }))).toBe('rescan');
+    expect(rowAction(photo({ status: 'done', spineCount: 0 }))).toBe('rescan');
+  });
+
+  it('no action while a run is queued or analyzing', () => {
+    for (const status of [
+      'queued',
+      'preparing',
+      'calling',
+      'parsing',
+    ] as const) {
+      expect(rowAction(photo({ status }))).toBeNull();
+    }
   });
 });

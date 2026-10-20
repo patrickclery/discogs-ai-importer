@@ -105,3 +105,13 @@ export function incompleteTooltip(
   const estimate = photo.spineCountEstimate ?? returned;
   return `Claude estimated ${estimate} spines but returned ${returned}. Re-scan, or photograph a narrower section.`;
 }
+
+/** The action an /upload server row offers (UI-SPEC E3). */
+export type RowAction = 'view_spines' | 'rescan' | null;
+
+/** Stub until the row-action rule lands (Plan 02-10 Task 3). */
+export function rowAction(
+  _photo: Pick<PhotoDto, 'status' | 'spineCount'>,
+): RowAction {
+  return null;
+}
