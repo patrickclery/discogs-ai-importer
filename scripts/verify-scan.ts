@@ -463,7 +463,14 @@ export async function stepSpinesPage(
     crops.length === TRACER.spines.length,
     `${crops.length} crop images on /spines, expected ${TRACER.spines.length}`,
   );
-  check(`${crops.length} crops under ${prefix}`);
+  // Plan 02-08: the sticky section header and the pluralized description.
+  assert(
+    html.includes('aria-label="Open full photo shelf.jpg"'),
+    '/spines lacks the section thumbnail link',
+  );
+  const desc = `${TRACER.spines.length} spines from 1 photo.`;
+  assert(html.includes(desc), `/spines lacks "${desc}"`);
+  check(`${crops.length} crops under ${prefix}; header and "${desc}"`);
   return crops[0];
 }
 
