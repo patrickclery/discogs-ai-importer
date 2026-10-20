@@ -53,19 +53,33 @@ function message(err: unknown): string {
 
 async function openSource(input: Buffer, kind: ImageKind): Promise<Sharp> {
   if (kind === 'heic') {
-    let decoded: Awaited<ReturnType<typeof decodeHeic>>;
+    // WR-02: read the primary image's size from the container and refuse a
+    // bomb before decode() allocates width x height x 4 bytes.
+    let images: Awaited<ReturnType<typeof decodeHeic.all>>;
     try {
-      decoded = await decodeHeic({ buffer: input });
+      images = await decodeHeic.all({ buffer: input });
     } catch (err) {
       throw new ImageDecodeError('heic_decode', message(err));
     }
-    const { width, height, data } = decoded;
-    if (width * height > MAX_SOURCE_PIXELS) {
-      throw new ImageDecodeError(
-        'too_large',
-        `${width}x${height} is too large`,
-      );
+    let decoded: Awaited<ReturnType<typeof decodeHeic>>;
+    try {
+      const first = images[0];
+      if (!first) throw new ImageDecodeError('heic_decode', 'no image found');
+      if (first.width * first.height > MAX_SOURCE_PIXELS) {
+        throw new ImageDecodeError(
+          'too_large',
+          `${first.width}x${first.height} is too large`,
+        );
+      }
+      try {
+        decoded = await first.decode();
+      } catch (err) {
+        throw new ImageDecodeError('heic_decode', message(err));
+      }
+    } finally {
+      images.dispose();
     }
+    const { width, height, data } = decoded;
     // D-05: raw RGBA straight into sharp, no intermediate JPEG. libheif has
     // already applied the container transforms, so there is no EXIF to apply.
     return sharp(Buffer.from(data.buffer, data.byteOffset, data.byteLength), {

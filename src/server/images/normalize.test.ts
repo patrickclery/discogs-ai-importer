@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import decodeHeic from 'heic-decode';
 import sharp from 'sharp';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   VISION_JPEG_MAX_BYTES,
   VISION_MAX_EDGE,
@@ -84,6 +84,27 @@ describe('normalizeImage', () => {
     const err = await normalizeImage(junk, 'jpeg', TIER).catch((e) => e);
     expect(err).toBeInstanceOf(ImageDecodeError);
     expect((err as ImageDecodeError).kind).toBe('image_unreadable');
+  });
+
+  it('a HEIC declaring too many pixels is too_large before any decode (WR-02)', async () => {
+    const decode = vi.fn();
+    const dispose = vi.fn();
+    const all = vi
+      .spyOn(decodeHeic, 'all')
+      .mockResolvedValue(
+        Object.assign([{ width: 20_000, height: 20_000, decode }], { dispose }),
+      );
+    try {
+      const err = await normalizeImage(Buffer.from('heic'), 'heic', TIER).catch(
+        (e) => e,
+      );
+      expect(err).toBeInstanceOf(ImageDecodeError);
+      expect((err as ImageDecodeError).kind).toBe('too_large');
+      expect(decode).not.toHaveBeenCalled();
+      expect(dispose).toHaveBeenCalledOnce();
+    } finally {
+      all.mockRestore();
+    }
   });
 
   it('random bytes declared as HEIC throw ImageDecodeError heic_decode', async () => {
