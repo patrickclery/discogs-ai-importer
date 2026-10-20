@@ -235,9 +235,16 @@ async function afterSpawn(
   }
 }
 
+/** Test seams; the job registry calls runScanPhoto with two arguments. */
+export type ScanPhotoDeps = {
+  /** Overrides the 10-minute vision call timeout. */
+  callTimeoutMs?: number;
+};
+
 export async function runScanPhoto(
   payload: unknown,
   ctx: JobContext,
+  deps: ScanPhotoDeps = {},
 ): Promise<void> {
   const { photoId, runId } = ScanPhotoPayload.parse(payload);
   const db = getDb().$client;
@@ -285,6 +292,7 @@ export async function runScanPhoto(
       model,
       effort,
       signal: ctx.signal,
+      timeoutMs: deps.callTimeoutMs,
     }),
   );
 }

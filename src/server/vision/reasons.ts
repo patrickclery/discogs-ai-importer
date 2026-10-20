@@ -1,4 +1,6 @@
 import 'server-only';
+import os from 'node:os';
+import { dataRoot } from '../storage/paths';
 import { VISION_ERROR_KINDS } from './parse';
 
 // Error-reason copy shown for a failed scan (UI-SPEC Copywriting Contract).
@@ -33,9 +35,35 @@ const FIXED: Partial<Record<ScanErrorKind, string>> = {
     "This file couldn't be read as an image. Export it again as JPEG and upload it.",
 };
 
-/** Whitespace collapsed, cut to 160 characters. */
+const ELLIPSIS = '…';
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Replaces every absolute path under the data root, the home directory or
+ * the temp directory with an ellipsis (T-02-12): CLI stderr is untrusted
+ * text that reaches the page. Longest root first, so a DATA_DIR inside the
+ * temp directory is matched whole.
+ */
+export function stripPaths(text: string): string {
+  const roots = [dataRoot(), os.homedir(), os.tmpdir()]
+    .filter((r) => r && r.length > 1)
+    .sort((a, b) => b.length - a.length);
+  let out = text;
+  for (const root of roots) {
+    const re = new RegExp(`${escapeRegExp(root)}[^\\s'"\`,;)]*`, 'g');
+    out = out.replace(re, ELLIPSIS);
+  }
+  return out;
+}
+
+/** Paths stripped, whitespace collapsed, cut to 160 characters. */
 export function shortReason(detail: string | undefined): string {
-  const t = (detail ?? '').replace(/\s+/g, ' ').trim();
+  const t = stripPaths(detail ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return Array.from(t).slice(0, SHORT_REASON_MAX).join('');
 }
 

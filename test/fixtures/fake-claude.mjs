@@ -2,11 +2,18 @@
 // Stand-in for the Claude Code CLI, used by unit tests and verify-claude-cli.
 // Never contacts anything. Behavior is chosen by FAKE_CLAUDE_MODE:
 //   ok (default) | logged-out | api-key | status-hang | login-error | error |
-//   hang | bad-json | vision
+//   hang | bad-json | vision | vision-refused | vision-max-turns |
+//   vision-invalid | vision-retries
 // vision: requires --json-schema, --effort and exactly one --add-dir holding
 // image.jpg whose absolute path is in the -p prompt, then prints a success
 // envelope whose structured_output is the JSON file named by
 // FAKE_CLAUDE_VISION_FIXTURE. Any missing piece exits 2 with the reason.
+// The vision-* failure modes run the same argv checks, then answer with:
+//   vision-refused    success, a prose result and no structured_output
+//   vision-max-turns  is_error, subtype error_max_turns, exit 1
+//   vision-invalid    success with structured_output { spines: 'nope' }
+//   vision-retries    is_error, subtype error_max_structured_output_retries
+// FAKE_CLAUDE_STDERR, when set, is written to stderr by every -p call.
 // When FAKE_CLAUDE_LOG is set, one JSON line per invocation is appended to
 // that file recording argv, cwd, pid and which sensitive variables the
 // process received (presence only, never values).
@@ -72,21 +79,8 @@ function refuse(reason) {
   process.exit(2);
 }
 
-function visionCall(model) {
-  if (flag('--json-schema') === undefined) refuse('missing --json-schema');
-  if (flag('--effort') === undefined) refuse('missing --effort');
-  const dirs = args.flatMap((a, i) => (a === '--add-dir' ? [args[i + 1]] : []));
-  if (dirs.length !== 1) refuse(`expected one --add-dir, got ${dirs.length}`);
-  const image = path.join(dirs[0], 'image.jpg');
-  if (!fs.existsSync(dirs[0])) refuse(`--add-dir ${dirs[0]} does not exist`);
-  if (!fs.existsSync(image)) refuse(`no image.jpg in ${dirs[0]}`);
-  if (!(flag('-p') || '').includes(image)) {
-    refuse(`the prompt does not name ${image}`);
-  }
-  const fixture = process.env.FAKE_CLAUDE_VISION_FIXTURE;
-  if (!fixture) refuse('FAKE_CLAUDE_VISION_FIXTURE is not set');
-  const structured = JSON.parse(fs.readFileSync(fixture, 'utf8'));
-  print({
+function visionEnvelope(model, fields) {
+  return {
     type: 'result',
     subtype: 'success',
     is_error: false,
@@ -99,9 +93,60 @@ function visionCall(model) {
     modelUsage: {
       [model]: { inputTokens: 2000, outputTokens: 800, costUSD: 0.0456 },
     },
-    structured_output: structured,
-  });
-  process.exit(0);
+    ...fields,
+  };
+}
+
+function visionCall(model, variant) {
+  if (flag('--json-schema') === undefined) refuse('missing --json-schema');
+  if (flag('--effort') === undefined) refuse('missing --effort');
+  const dirs = args.flatMap((a, i) => (a === '--add-dir' ? [args[i + 1]] : []));
+  if (dirs.length !== 1) refuse(`expected one --add-dir, got ${dirs.length}`);
+  const image = path.join(dirs[0], 'image.jpg');
+  if (!fs.existsSync(dirs[0])) refuse(`--add-dir ${dirs[0]} does not exist`);
+  if (!fs.existsSync(image)) refuse(`no image.jpg in ${dirs[0]}`);
+  if (!(flag('-p') || '').includes(image)) {
+    refuse(`the prompt does not name ${image}`);
+  }
+  if (variant === 'vision-refused') {
+    print(
+      visionEnvelope(model, {
+        result: "I'm not able to help with reading this image.",
+      }),
+    );
+    process.exit(0);
+  }
+  if (variant === 'vision-max-turns') {
+    print(
+      visionEnvelope(model, {
+        subtype: 'error_max_turns',
+        is_error: true,
+        num_turns: 6,
+      }),
+    );
+    process.exit(1);
+  }
+  if (variant === 'vision-invalid') {
+    print(visionEnvelope(model, { structured_output: { spines: 'nope' } }));
+    process.exit(0);
+  }
+  if (variant === 'vision-retries') {
+    print(
+      visionEnvelope(model, {
+        subtype: 'error_max_structured_output_retries',
+        is_error: true,
+      }),
+    );
+    process.exit(1);
+  }
+  const fixture = process.env.FAKE_CLAUDE_VISION_FIXTURE;
+  if (!fixture) refuse('FAKE_CLAUDE_VISION_FIXTURE is not set');
+  const structured = JSON.parse(fs.readFileSync(fixture, 'utf8'));
+  // Write and exit only once stdout has drained (large fixtures).
+  process.stdout.write(
+    `${JSON.stringify(visionEnvelope(model, { structured_output: structured }))}\n`,
+    () => process.exit(0),
+  );
 }
 
 if (args[0] === '--version') {
@@ -132,10 +177,13 @@ if (args[0] === 'auth' && args[1] === 'status') {
   }
 } else if (args[0] === '-p') {
   const model = flag('--model') || 'claude-opus-5-5';
+  if (process.env.FAKE_CLAUDE_STDERR) {
+    process.stderr.write(`${process.env.FAKE_CLAUDE_STDERR}\n`);
+  }
   if (mode === 'hang') {
     hang();
-  } else if (mode === 'vision') {
-    visionCall(model);
+  } else if (mode === 'vision' || mode.startsWith('vision-')) {
+    visionCall(model, mode);
   } else if (mode === 'bad-json') {
     process.stdout.write('not json\n');
     process.exit(0);

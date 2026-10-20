@@ -1,5 +1,7 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -10,8 +12,10 @@ import {
 import { useTempDataDir } from '../../../../test/helpers/temp-data-dir';
 import { getDb } from '../../db/client';
 import type { JobRow } from '../../db/schema';
+import type { ImageKind } from '../../images/normalize';
 import { ingestUpload } from '../../scan/ingest';
 import { listSpines } from '../../scan/queries';
+import { reasonFor, type ScanErrorKind } from '../../vision/reasons';
 import type { JobContext } from '../types';
 import { runScanPhoto } from './scan-photo';
 
@@ -28,6 +32,7 @@ const ENV_KEYS = [
   'FAKE_CLAUDE_MODE',
   'FAKE_CLAUDE_LOG',
   'FAKE_CLAUDE_VISION_FIXTURE',
+  'FAKE_CLAUDE_STDERR',
 ] as const;
 const layout = LAYOUTS.tracerShelf;
 const saved: Partial<Record<(typeof ENV_KEYS)[number], string>> = {};
@@ -49,16 +54,24 @@ type RunDb = {
   detected_count: number | null;
 };
 
-function ctx(current = true): JobContext {
+function ctx(
+  current = true,
+  signal = new AbortController().signal,
+): JobContext {
   return {
     job: { id: 'job', attempts: 1 } as JobRow,
-    signal: new AbortController().signal,
+    signal,
     isCurrent: () => current,
   };
 }
 
-function runRow(): RunDb {
-  return getDb().$client.prepare('SELECT * FROM vision_runs').get() as RunDb;
+function runRow(id?: string): RunDb {
+  const db = getDb().$client;
+  return (
+    id
+      ? db.prepare('SELECT * FROM vision_runs WHERE id = ?').get(id)
+      : db.prepare('SELECT * FROM vision_runs').get()
+  ) as RunDb;
 }
 
 function calls(): number {
@@ -178,5 +191,255 @@ describe('runScanPhoto', () => {
     expect(run.error_kind).toBe('image_unreadable');
     expect(run.spawned_at).toBeNull();
     expect(calls()).toBe(0);
+  });
+});
+
+type Structured = ReturnType<typeof structuredOutputFor>;
+
+/** A PNG header that claims width x height, with a valid IHDR CRC. */
+function pngClaiming(width: number, height: number): Buffer {
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(zlib.crc32(body));
+    return Buffer.concat([len, body, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr.writeUInt8(8, 8); // bit depth
+  ihdr.writeUInt8(2, 9); // RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(Buffer.alloc(16))),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+// Every failure kind in the UI-SPEC copy table, end to end through the real
+// handler and the fake CLI (D-04, VIS-03): the run ends in error with its
+// reason, raw.json exists for every failure after the spawn, and no case
+// costs more than one call.
+describe('runScanPhoto failure modes', () => {
+  const dataDir = useTempDataDir();
+
+  beforeEach(() => {
+    for (const k of ENV_KEYS) saved[k] = process.env[k];
+    const dir = dataDir();
+    process.env.CLAUDE_BIN = FAKE;
+    process.env.FAKE_CLAUDE_MODE = 'vision';
+    process.env.FAKE_CLAUDE_LOG = path.join(dir, 'log.jsonl');
+    delete process.env.FAKE_CLAUDE_STDERR;
+    writeFixture(structuredOutputFor(layout));
+  });
+
+  afterEach(() => {
+    for (const k of ENV_KEYS) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  function writeFixture(structured: unknown): void {
+    const file = path.join(dataDir(), 'structured.json');
+    fs.writeFileSync(file, JSON.stringify(structured));
+    process.env.FAKE_CLAUDE_VISION_FIXTURE = file;
+  }
+
+  async function upload(
+    bytes?: Uint8Array,
+    kind: ImageKind = 'jpeg',
+  ): Promise<{ photoId: string; runId: string }> {
+    const data =
+      bytes ?? new Uint8Array((await makeSyntheticShelf(layout)).jpeg);
+    const { photoId } = await ingestUpload({
+      bytes: data,
+      kind,
+      filename: `case.${kind}`,
+    });
+    const run = getDb()
+      .$client.prepare('SELECT id FROM vision_runs WHERE photo_id = ?')
+      .get(photoId) as { id: string };
+    return { photoId, runId: run.id };
+  }
+
+  function rawExists(run: RunDb): boolean {
+    return (
+      run.raw_path !== null && fs.existsSync(path.join(dataDir(), run.raw_path))
+    );
+  }
+
+  async function expectError(
+    kind: ScanErrorKind,
+    opts: { deps?: { callTimeoutMs?: number }; signal?: AbortSignal } = {},
+  ): Promise<RunDb> {
+    const { photoId, runId } = await upload();
+    await expect(
+      runScanPhoto({ photoId, runId }, ctx(true, opts.signal), opts.deps),
+    ).resolves.toBe(undefined);
+    const run = runRow(runId);
+    expect(run.status).toBe('error');
+    expect(run.error_kind).toBe(kind);
+    expect(run.error_reason).toBe(reasonFor(kind));
+    expect(run.spawned_at).toBeTypeOf('number');
+    expect(rawExists(run)).toBe(true);
+    expect(calls()).toBe(1);
+    return run;
+  }
+
+  it('a refused answer (success without structured_output) is refused', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'vision-refused';
+    const run = await expectError('refused');
+    expect(run.error_reason).toBe(
+      'Claude declined to read this photo. Re-scan to try again, or upload a different photo.',
+    );
+  });
+
+  it('error_max_turns is truncated', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'vision-max-turns';
+    await expectError('truncated');
+  });
+
+  it('stdout reaching the 8 MB buffer is truncated', async () => {
+    const big: Structured = structuredOutputFor(layout);
+    big.spines[0].raw_text.value = 'x'.repeat(8_100_000);
+    writeFixture(big);
+    const run = await expectError('truncated');
+    expect(run.error_reason).toBe(
+      "Claude's answer was cut off before every spine was returned. Photograph a narrower section, or re-scan.",
+    );
+  });
+
+  it('a schema-invalid structured_output is schema_invalid', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'vision-invalid';
+    await expectError('schema_invalid');
+  });
+
+  it('error_max_structured_output_retries is schema_invalid', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'vision-retries';
+    await expectError('schema_invalid');
+  });
+
+  it('a call over its timeout is timeout', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'hang';
+    await expectError('timeout', { deps: { callTimeoutMs: 300 } });
+  });
+
+  it('an aborted call is interrupted', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'hang';
+    const ac = new AbortController();
+    setTimeout(() => ac.abort(), 200);
+    await expectError('interrupted', { signal: ac.signal });
+  });
+
+  it('a missing CLI is cli_unavailable, with raw.json from the one spawn attempt', async () => {
+    process.env.CLAUDE_BIN = path.join(dataDir(), 'no-such-claude');
+    const { photoId, runId } = await upload();
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = runRow(runId);
+    expect(run.status).toBe('error');
+    expect(run.error_kind).toBe('cli_unavailable');
+    expect(run.error_reason).toBe(reasonFor('cli_unavailable'));
+    expect(rawExists(run)).toBe(true);
+    const raw = JSON.parse(
+      fs.readFileSync(path.join(dataDir(), run.raw_path as string), 'utf8'),
+    ) as { run: { spawnError?: { code: string } } };
+    expect(raw.run.spawnError?.code).toBe('ENOENT');
+  });
+
+  it('an undecodable HEIC is heic_decode with zero calls', async () => {
+    const bytes = Buffer.concat([
+      Buffer.from([0, 0, 0, 0x18]),
+      Buffer.from('ftypheic', 'ascii'),
+      Buffer.from('\0\0\0\0mif1heic', 'ascii'),
+      Buffer.from('garbage '.repeat(64), 'ascii'),
+    ]);
+    const { photoId, runId } = await upload(new Uint8Array(bytes), 'heic');
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = runRow(runId);
+    expect(run.status).toBe('error');
+    expect(run.error_kind).toBe('heic_decode');
+    expect(run.error_reason).toBe(reasonFor('heic_decode'));
+    expect(run.spawned_at).toBeNull();
+    expect(calls()).toBe(0);
+  });
+
+  it('FF D8 FF plus garbage is image_unreadable with zero calls', async () => {
+    const bytes = Buffer.concat([
+      Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+      Buffer.from('garbage '.repeat(64), 'ascii'),
+    ]);
+    const { photoId, runId } = await upload(new Uint8Array(bytes));
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = runRow(runId);
+    expect(run.status).toBe('error');
+    expect(run.error_kind).toBe('image_unreadable');
+    expect(run.error_reason).toBe(reasonFor('image_unreadable'));
+    expect(calls()).toBe(0);
+  });
+
+  it('an image over 100 MP is too_large with zero calls', async () => {
+    const { photoId, runId } = await upload(
+      new Uint8Array(pngClaiming(20_000, 10_000)),
+      'png',
+    );
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = runRow(runId);
+    expect(run.status).toBe('error');
+    expect(run.error_kind).toBe('too_large');
+    expect(run.error_reason).toBe(
+      'Scan failed: 20000x10000 is too large. Re-scan to try again.',
+    );
+    expect(calls()).toBe(0);
+  });
+
+  it('zero spines finishes the run as done with 0 spines and no error', async () => {
+    writeFixture({ ...structuredOutputFor(layout), spines: [] });
+    const { photoId, runId } = await upload();
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = runRow(runId);
+    expect(run.status).toBe('done');
+    expect(run.error_kind).toBeNull();
+    expect(run.detected_count).toBe(0);
+    expect(run.cd_count).toBe(0);
+    expect(listSpines()).toHaveLength(0);
+    expect(calls()).toBe(1);
+  });
+
+  it('a CD detection with an unusable box is kept as a spine with no crop', async () => {
+    const one: Structured = structuredOutputFor(layout);
+    one.spines = [{ ...one.spines[0], bbox: [10, 20, 30] as never }];
+    writeFixture(one);
+    const { photoId, runId } = await upload();
+    await runScanPhoto({ photoId, runId }, ctx());
+    expect(runRow(runId).status).toBe('done');
+    const spines = listSpines();
+    expect(spines).toHaveLength(1);
+    expect(spines[0].crop).toBeNull();
+  });
+
+  it('a fallback reason from stderr shows no absolute path and at most 160 characters of detail', async () => {
+    process.env.FAKE_CLAUDE_MODE = 'bad-json';
+    process.env.FAKE_CLAUDE_STDERR = `boom reading ${path.join(dataDir(), 'vision', 'x', 'image.jpg')} and ${path.join(os.homedir(), '.claude', 'secret.json')} ${'y'.repeat(300)}`;
+    const { photoId, runId } = await upload();
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = runRow(runId);
+    expect(run.status).toBe('error');
+    expect(run.error_kind).toBe('failed');
+    const reason = run.error_reason as string;
+    expect(reason).not.toContain(dataDir());
+    expect(reason).not.toContain(os.homedir());
+    expect(reason).toMatch(
+      /^Scan failed: boom reading … and … y+\. Re-scan to try again\.$/,
+    );
+    const detail = reason
+      .replace(/^Scan failed: /, '')
+      .replace(/\. Re-scan to try again\.$/, '');
+    expect(Array.from(detail).length).toBeLessThanOrEqual(160);
+    expect(rawExists(run)).toBe(true);
+    expect(calls()).toBe(1);
   });
 });
