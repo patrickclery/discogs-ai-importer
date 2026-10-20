@@ -129,7 +129,7 @@ status: complete
 ## Task Commits
 
 1. **Task 1: Tracer, Needs review filter**: `051f975` (feat)
-2. **Task 2: Photo filter and empty state, needsReview tests**: `4453154` (test)
+2. **Task 2: Photo filter and empty state, needsReview tests**: `0733647` (test)
 3. **Task 3: Latest-scan hint**: `8408309` (test, RED), `6f06e00` (feat, GREEN)
 
 ## Files Created/Modified

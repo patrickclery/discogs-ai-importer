@@ -63,7 +63,7 @@ Plans:
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
 
-**Plans:** 11/12 plans executed
+**Plans:** 12/12 plans executed
 
 Plans:
 **Wave 1**
@@ -94,7 +94,7 @@ Plans:
 - [x] 02-11-PLAN.md — Orphaned spines: re-attach to a new spine or dismiss (wave 8)
 
 **Wave 9** *(blocked on Wave 8 completion)*
-- [ ] 02-12-PLAN.md — Needs review / photo filter bar and the "Latest scan reads" hint (wave 9)
+- [x] 02-12-PLAN.md — Needs review / photo filter bar and the "Latest scan reads" hint (wave 9)
 
 **UI hint**: yes
 
@@ -138,6 +138,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
-| 2. Shelf Scan | 11/12 | In Progress | - |
+| 2. Shelf Scan | 12/12 | In Progress | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |

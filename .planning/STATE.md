@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
-status: executing
-stopped_at: Completed 02-11-PLAN.md
-last_updated: "2026-10-20T05:15:17.617Z"
+status: verifying
+stopped_at: Completed 02-12-PLAN.md
+last_updated: "2026-10-20T05:22:31.610Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 908feaf056edcd3a1d4930a3d8cafda1b8ec40c1
+state_head: b9485092aa77a1f774573a0c8979bfa38d0c9795
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 17
+  completed_plans: 18
   percent: 25
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 
 Phase: 2 (Shelf Scan) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-19 — Phase 2 execution started
 
 Progress: [███░░░░░░░] 25%
@@ -73,6 +73,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P09 | 8 min | 2 tasks | 13 files |
 | Phase 02 P10 | 13min | 3 tasks | 19 files |
 | Phase 02 P11 | 10min | 2 tasks | 17 files |
+| Phase 02 P12 | 5min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,9 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-11: on re-attach an edited field keeps its existing edit_base_ai_value (fallback previous ai_value), matching the 02-10 merge
 - [Phase 02]: 02-11: getSpines lists orphans after active spines (orphanedRunNo = first done run after its detection's run); counts.all includes them
 - [Phase 02]: 02-11: re-attach candidates use query key reattach-candidates, never a spines-prefixed key (SpineField rewrites those)
+- [Phase 02]: 02-12: Needs review counts cover the photo filter and ignore the review filter, so both toggle counts stay visible
+- [Phase 02]: 02-12: SpinesResponse.photoOptions lists every photo for the Select, the not-found check and polling
+- [Phase 02]: 02-12: rescanHint shows no hint when the latest read is empty (A-18)
 
 ### Pending Todos
 
@@ -149,6 +153,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T05:15:17.528Z
-Stopped at: Completed 02-11-PLAN.md
+Last session: 2026-10-20T05:22:31.521Z
+Stopped at: Completed 02-12-PLAN.md
 Resume file: None
