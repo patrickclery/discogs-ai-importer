@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-10-PLAN.md
-last_updated: "2026-10-20T05:01:53.117Z"
+stopped_at: Completed 02-11-PLAN.md
+last_updated: "2026-10-20T05:15:17.617Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: cb632908e256d401125e7bc9077f7a8924b1e0ba
+state_head: 908feaf056edcd3a1d4930a3d8cafda1b8ec40c1
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -72,6 +72,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P08 | 7 min | 2 tasks | 11 files |
 | Phase 02 P09 | 8 min | 2 tasks | 13 files |
 | Phase 02 P10 | 13min | 3 tasks | 19 files |
+| Phase 02 P11 | 10min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,10 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-10: MATCH_CUTOFF tuned 0.5 to 0.6 on spike fixtures (rejects a cross-model wrong pair at 0.54); weights stay 0.8 geometry / 0.2 text
 - [Phase 02]: 02-10: Re-scan detections are inserted unlinked and mergeRunIntoSpines links them in persistRunResult's immediate transaction; earlier runs are never touched
 - [Phase 02]: 02-10: Edited fields keep edit_base_ai_value across a re-scan, cleared only when the value equals the new read
+- [Phase 02]: 02-11: re-attach keeps the orphan id, takes the target detection and supersedes the target; detection rows untouched
+- [Phase 02]: 02-11: on re-attach an edited field keeps its existing edit_base_ai_value (fallback previous ai_value), matching the 02-10 merge
+- [Phase 02]: 02-11: getSpines lists orphans after active spines (orphanedRunNo = first done run after its detection's run); counts.all includes them
+- [Phase 02]: 02-11: re-attach candidates use query key reattach-candidates, never a spines-prefixed key (SpineField rewrites those)
 
 ### Pending Todos
 
@@ -144,6 +149,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T05:01:53.036Z
-Stopped at: Completed 02-10-PLAN.md
+Last session: 2026-10-20T05:15:17.528Z
+Stopped at: Completed 02-11-PLAN.md
 Resume file: None
