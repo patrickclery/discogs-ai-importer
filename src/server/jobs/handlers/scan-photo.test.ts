@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import sharp from 'sharp';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   LAYOUTS,
   makeSyntheticShelf,
@@ -419,6 +419,58 @@ describe('runScanPhoto failure modes', () => {
     const spines = listSpines();
     expect(spines).toHaveLength(1);
     expect(spines[0].crop).toBeNull();
+  });
+
+  it('stores density flags and keeps two overlapping boxes as two spines', async () => {
+    const two: Structured = structuredOutputFor(layout);
+    const [a] = two.spines;
+    const [x1, y1, x2, y2] = a.bbox;
+    const shift = Math.round((y2 - y1) / 4);
+    two.spines = [
+      a,
+      { ...a, index: 1, bbox: [x1, y1 + shift, x2, y2 + shift] },
+    ];
+    writeFixture(two);
+    const { photoId, runId } = await upload();
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = getDb()
+      .$client.prepare(
+        'SELECT status, density_flags, detected_count FROM vision_runs WHERE id = ?',
+      )
+      .get(runId) as {
+      status: string;
+      density_flags: string;
+      detected_count: number;
+    };
+    expect(run.status).toBe('done');
+    expect(JSON.parse(run.density_flags)).toEqual(['overlapping']);
+    expect(run.detected_count).toBe(2);
+    expect(listSpines()).toHaveLength(2);
+  });
+
+  it('a clean shelf stores no density flags', async () => {
+    const { photoId, runId } = await upload();
+    await runScanPhoto({ photoId, runId }, ctx());
+    const run = getDb()
+      .$client.prepare('SELECT density_flags FROM vision_runs WHERE id = ?')
+      .get(runId) as { density_flags: string };
+    expect(JSON.parse(run.density_flags)).toEqual([]);
+  });
+
+  it('a reported image size off by more than 2% only logs a warning', async () => {
+    writeFixture({
+      ...structuredOutputFor(layout),
+      image_width: Math.round(layout.width * 1.05),
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { photoId, runId } = await upload();
+      await runScanPhoto({ photoId, runId }, ctx());
+      expect(runRow(runId).status).toBe('done');
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining(runId));
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('a fallback reason from stderr shows no absolute path and at most 160 characters of detail', async () => {

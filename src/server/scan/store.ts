@@ -1,5 +1,5 @@
 import 'server-only';
-import type { PhotoStatus } from '@/lib/scan-types';
+import type { DensityFlag, PhotoStatus } from '@/lib/scan-types';
 import {
   type MediaKind,
   SPINE_FIELDS,
@@ -132,8 +132,11 @@ export function persistRunResult(input: {
   detections: PreparedDetection[];
   result: VisionResult;
   envelope: CliEnvelope;
+  /** D-03 warnings; stored as a JSON array, never used to drop a spine. */
+  densityFlags?: DensityFlag[];
 }): { spineCount: number } {
   const { runId, detections, result, envelope } = input;
+  const densityFlags = input.densityFlags ?? [];
   const db = getDb().$client;
   const tx = db.transaction((): { spineCount: number } => {
     const run = db
@@ -207,7 +210,7 @@ export function persistRunResult(input: {
          SET status = 'done', finished_at = ?, updated_at = ?,
            duration_ms = ?, cost_usd = ?, usage_json = ?,
            spine_count_estimate = ?, reported_w = ?, reported_h = ?,
-           detected_count = ?, cd_count = ?
+           detected_count = ?, cd_count = ?, density_flags = ?
          WHERE id = ? AND status = 'parsing'`,
       )
       .run(
@@ -221,6 +224,7 @@ export function persistRunResult(input: {
         Math.round(result.image_height),
         detections.length,
         spineCount,
+        JSON.stringify(densityFlags),
         runId,
       );
     if (done.changes !== 1) {

@@ -29,8 +29,13 @@ import {
   setRunStatus,
   updateRunWhile,
 } from '../../scan/store';
-import { getVisionEffort, getVisionModel } from '../../settings';
+import {
+  getDensityThresholds,
+  getVisionEffort,
+  getVisionModel,
+} from '../../settings';
 import { resolveData } from '../../storage/paths';
+import { computeDensityFlags } from '../../vision/density';
 import { classifyVisionRun } from '../../vision/parse';
 import { runVisionCall } from '../../vision/run';
 import type { VisionResult } from '../../vision/schema';
@@ -222,12 +227,36 @@ async function settleParsed(
     return;
   }
   const detections = await cropDetections(photoId, image, outcome.result);
+  warnOnSizeDrift(run.id, outcome.result, image);
   persistRunResult({
     runId: run.id,
     detections,
     result: outcome.result,
     envelope: outcome.envelope,
+    densityFlags: computeDensityFlags(detections, getDensityThresholds()),
   });
+}
+
+/** Above this relative difference, Claude's reported size has drifted. */
+const SIZE_DRIFT = 0.02;
+
+/**
+ * RESEARCH A6: Claude's self-reported image size is informative only. A
+ * drift is logged, never an error; boxes are still read in the sent size.
+ */
+function warnOnSizeDrift(
+  runId: string,
+  result: VisionResult,
+  image: NormalizedImage,
+): void {
+  const { width, height } = image.vision;
+  const drift = (reported: number, actual: number) =>
+    Math.abs(reported - actual) / actual > SIZE_DRIFT;
+  if (drift(result.image_width, width) || drift(result.image_height, height)) {
+    console.warn(
+      `[scan] run ${runId}: Claude reported ${result.image_width}x${result.image_height} for a ${width}x${height} image`,
+    );
+  }
 }
 
 function recordFailure(runId: string, err: unknown): void {
