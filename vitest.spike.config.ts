@@ -11,5 +11,8 @@ export default defineConfig({
     testTimeout: 3_600_000,
     hookTimeout: 3_600_000,
     fileParallelism: false,
+    // The spike's console output is its report; keep it even when Vitest
+    // auto-selects a quieter reporter (for example under an AI agent).
+    reporters: ['default'],
   },
 });
