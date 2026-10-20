@@ -46,8 +46,12 @@ function parseJson(text: string): unknown {
   }
 }
 
+/**
+ * null, '' and whitespace-only become null; any other value is kept exactly
+ * as returned (no trim, no case change). Confidence is clamped to [0, 1].
+ */
 function normalizeField(f: FieldRead): FieldRead {
-  const value = f.value?.trim() ? f.value.trim() : null;
+  const value = f.value?.trim() ? f.value : null;
   const confidence = Number.isFinite(f.confidence)
     ? Math.min(1, Math.max(0, f.confidence))
     : 0;
@@ -63,9 +67,36 @@ const FIELD_KEYS = [
   'catalog_number',
 ] as const;
 
+/**
+ * A non-number confidence (NaN, a string, null) becomes 0 before validation,
+ * so one odd confidence does not reject the whole photo.
+ */
+function sanitizeConfidences(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const spines = (raw as { spines?: unknown }).spines;
+  if (!Array.isArray(spines)) return raw;
+  return {
+    ...raw,
+    spines: spines.map((s) => {
+      if (!s || typeof s !== 'object') return s;
+      const out: Record<string, unknown> = { ...s };
+      for (const k of FIELD_KEYS) {
+        const f = out[k];
+        if (f && typeof f === 'object' && 'confidence' in f) {
+          const c = (f as { confidence: unknown }).confidence;
+          if (typeof c !== 'number' || !Number.isFinite(c)) {
+            out[k] = { ...f, confidence: 0 };
+          }
+        }
+      }
+      return out;
+    }),
+  };
+}
+
 /** Validated and normalized structured output, or null. */
 export function parseVisionResult(raw: unknown): VisionResult | null {
-  const parsed = VisionResult.safeParse(raw);
+  const parsed = VisionResult.safeParse(sanitizeConfidences(raw));
   if (!parsed.success) return null;
   return {
     ...parsed.data,
