@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { DismissSpineButton } from '@/components/dismiss-spine-button';
 import { ReattachDialog } from '@/components/reattach-dialog';
 import { SpineCrop } from '@/components/spine-crop';
 import { SpineField } from '@/components/spine-field';
@@ -34,6 +35,7 @@ function OrphanFooter({ spine }: { spine: SpineDto }) {
       </p>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <ReattachDialog spine={spine} />
+        <DismissSpineButton spine={spine} />
       </div>
     </div>
   );

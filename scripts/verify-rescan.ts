@@ -5,6 +5,8 @@
 // (409), then check that every spine found again kept its id and the
 // owner's edits, the missing ones are superseded or orphaned, the new one is
 // active, run 1 is untouched and the fake CLI saw exactly two -p calls.
+// Plan 02-11 adds the D-16 orphan steps: Y is re-attached to V (i), then a
+// third run orphans an edited spine Q, which is dismissed (j).
 // Run: node scripts/verify-rescan.ts   (VERIFY_SKIP_BUILD=1 reuses .next)
 // Each step is a named, exported function so Plan 02-11 can extend it.
 import { createHash } from 'node:crypto';
@@ -586,12 +588,79 @@ export async function stepReattach(
   check("Y active with its edit and V's crop; V superseded; 409 on repeat");
 }
 
-// (h) one call per run: exactly two -p invocations.
-export function stepTwoCalls(ctx: Ctx): void {
-  step('(h) the fake CLI saw exactly two -p calls');
+const Q_OWNER_TITLE = 'Paper Lanterns (owner fix)';
+
+/** Run 3's answer: run 2's read without the spine at run 2 index 0 (Q). */
+export function thirdRead(): ReturnType<typeof structuredOutputFor> {
+  const second = secondRead();
+  const spines = second.spines
+    .filter((s) => s.index !== 0)
+    .map((s, i) => ({ ...s, index: i }));
+  return { ...second, spine_count_estimate: spines.length, spines };
+}
+
+// (j) D-16 dismiss: edit Q, re-scan without it, dismiss the orphan.
+export async function stepDismiss(
+  ctx: Ctx,
+  photoId: string,
+  before: SpineApi[],
+): Promise<void> {
+  step('(j) edit Q, re-scan without it, dismiss the orphaned Q');
+  const qId = before[0].id;
+  await patchField(ctx, qId, 'title', Q_OWNER_TITLE);
+  const active = await postJson(ctx, `/api/spines/${qId}/dismiss`, {});
+  assert(
+    active.status === 409 && active.body.error === 'conflict',
+    `dismissing active Q returned ${active.status}`,
+  );
+
+  fs.writeFileSync(ctx.fixture, JSON.stringify(thirdRead()));
+  const rescan = await postRescan(ctx, photoId);
+  assert(
+    rescan.status === 201 && rescan.body.runNo === 3,
+    `rescan returned ${rescan.status} ${JSON.stringify(rescan.body)}`,
+  );
+  await waitRunDone(ctx, photoId, 3);
+  const listed = await getSpines(ctx, photoId);
+  const q = listed.find((s) => s.id === qId);
+  assert(q?.state === 'orphaned', `Q is ${q?.state}, expected orphaned`);
+
+  const plain = await postJson(
+    ctx,
+    `/api/spines/${qId}/dismiss`,
+    {},
+    'text/plain',
+  );
+  assert(plain.status === 415, `text/plain dismiss returned ${plain.status}`);
+  const ok = await postJson(ctx, `/api/spines/${qId}/dismiss`, {});
+  assert(ok.status === 200, `dismiss returned ${ok.status}`);
+  const after = await getSpines(ctx, photoId);
+  assert(!after.some((s) => s.id === qId), 'Q is still listed');
+  withDb(ctx, (db) => {
+    const row = db
+      .prepare('SELECT state FROM spines WHERE id = ?')
+      .get(qId) as {
+      state: string;
+    };
+    assert(row.state === 'dismissed', `Q is ${row.state}, expected dismissed`);
+    const fields = db
+      .prepare('SELECT field, value FROM spine_fields WHERE spine_id = ?')
+      .all(qId) as { field: string; value: string | null }[];
+    assert(fields.length === 6, `Q has ${fields.length} field rows`);
+    const title = fields.find((f) => f.field === 'title');
+    assert(title?.value === Q_OWNER_TITLE, `Q title ${title?.value}`);
+  });
+  const again = await postJson(ctx, `/api/spines/${qId}/dismiss`, {});
+  assert(again.status === 409, `second dismiss returned ${again.status}`);
+  check('Q orphaned by run 3, dismissed (200, edits stored), 409 on repeat');
+}
+
+// (h) one call per run: exactly one -p invocation per run.
+export function stepCalls(ctx: Ctx, runs: number): void {
+  step(`(h) the fake CLI saw exactly ${runs} -p calls`);
   const n = visionCalls(ctx);
-  assert(n === 2, `${n} -p invocations, expected 2`);
-  check('two calls for two runs; the refused requests made none');
+  assert(n === runs, `${n} -p invocations, expected ${runs}`);
+  check(`${runs} calls for ${runs} runs; the refused requests made none`);
 }
 
 runMain('verify-rescan', async (onCleanup) => {
@@ -640,7 +709,8 @@ runMain('verify-rescan', async (onCleanup) => {
   stepStatesAndHistory(ctx, photoId, spines, snapshot);
   await stepSpinesPage(ctx);
   await stepReattach(ctx, photoId, spines, v);
-  stepTwoCalls(ctx);
+  await stepDismiss(ctx, photoId, spines);
+  stepCalls(ctx, 3);
 
   step('stop');
   await server.stop('SIGTERM');

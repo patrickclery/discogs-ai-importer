@@ -117,7 +117,19 @@ export function reattachSpine(
 
 export type DismissResult = 'ok' | 'not_found' | 'conflict';
 
-/** Dismisses an orphaned spine (D-16). Not implemented yet (RED stub). */
-export function dismissSpine(_id: string): DismissResult {
-  return 'not_found';
+/**
+ * Dismisses an orphaned spine (D-16, A-21): only its state changes, so its
+ * spine_fields rows stay stored but it is no longer listed or counted
+ * (T-02-27). Any other state is a conflict.
+ */
+export function dismissSpine(id: string): DismissResult {
+  const db = getDb().$client;
+  const changed = db
+    .prepare(
+      `UPDATE spines SET state = 'dismissed', updated_at = @now
+       WHERE id = @id AND state = 'orphaned'`,
+    )
+    .run({ id, now: Date.now() }).changes;
+  if (changed === 1) return 'ok';
+  return spineState(id) === null ? 'not_found' : 'conflict';
 }

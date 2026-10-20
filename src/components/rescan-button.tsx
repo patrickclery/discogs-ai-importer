@@ -62,6 +62,7 @@ export function RescanButton({
           <span
             // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users reach the disabled reason
             tabIndex={0}
+            data-rescan-trigger
             className="inline-flex rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             <Button
@@ -125,6 +126,7 @@ export function RescanButton({
     <AlertDialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
       <Button
         ref={wideRef}
+        data-rescan-trigger
         type="button"
         variant="outline"
         className={cn(compactOnMobile && 'max-sm:hidden')}
@@ -136,6 +138,7 @@ export function RescanButton({
       {compactOnMobile ? (
         <Button
           ref={compactRef}
+          data-rescan-trigger
           type="button"
           variant="outline"
           size="icon"
