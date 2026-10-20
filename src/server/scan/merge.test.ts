@@ -10,6 +10,7 @@ import { newId } from '../ids';
 import type { CliEnvelope, VisionResult } from '../vision/schema';
 import { updateSpineField } from './fields';
 import { ingestUpload } from './ingest';
+import { getPhoto } from './queries';
 import { type PreparedDetection, persistRunResult } from './store';
 
 // D-13..D-16 merge rules through persistRunResult: run 1 is stored, the
@@ -243,6 +244,25 @@ describe('mergeRunIntoSpines via persistRunResult (run_no > 1)', () => {
       rescanOutput((s) => (s.index === 4 ? null : s)),
     );
     expect(spine(spineIds[4]).state).toBe('superseded');
+  });
+
+  it("the photo's full image stays the done run's after a failed re-scan (IN-03)", async () => {
+    const { photoId, run1 } = await firstRun();
+    const db = getDb().$client;
+    const setVision = db.prepare(
+      'UPDATE vision_runs SET vision_path = ?, status = ? WHERE id = ?',
+    );
+    setVision.run(`vision/${photoId}/run-1/image.jpg`, 'done', run1);
+    const run2 = parsingRun(photoId, 2);
+    setVision.run(`vision/${photoId}/run-2/image.jpg`, 'error', run2);
+    expect(getPhoto(photoId)?.visionUrl).toBe(
+      `/api/files/vision/${photoId}/run-1/image.jpg`,
+    );
+    // With no done run, the newest image is still shown.
+    setVision.run(`vision/${photoId}/run-1/image.jpg`, 'error', run1);
+    expect(getPhoto(photoId)?.visionUrl).toBe(
+      `/api/files/vision/${photoId}/run-2/image.jpg`,
+    );
   });
 
   it('an unmatched new detection becomes an active spine created by the run', async () => {

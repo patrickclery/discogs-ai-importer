@@ -96,6 +96,8 @@ function toPhotoDto(r: PhotoListRow): PhotoDto {
   };
 }
 
+// vision_path: the newest done run's image, the one the spine crops come
+// from; a failed or running re-scan's image only when no run is done (IN-03).
 const PHOTO_SELECT = `
   SELECT p.id, p.original_name, p.thumb_path, p.created_at,
     r.status, r.run_no, r.model, r.spawned_at, r.finished_at, r.error_reason,
@@ -104,7 +106,7 @@ const PHOTO_SELECT = `
       WHERE s.photo_id = p.id AND s.state = 'active') AS spine_count,
     (SELECT v.vision_path FROM vision_runs v
       WHERE v.photo_id = p.id AND v.vision_path IS NOT NULL
-      ORDER BY v.run_no DESC LIMIT 1) AS vision_path,
+      ORDER BY v.status = 'done' DESC, v.run_no DESC LIMIT 1) AS vision_path,
     EXISTS (SELECT 1 FROM vision_runs e
       WHERE e.photo_id = p.id AND e.status = 'done'
         AND e.run_no < COALESCE(r.run_no, 0)) AS has_earlier_scan
