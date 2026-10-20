@@ -3,6 +3,7 @@ import {
   formatElapsed,
   incompleteTooltip,
   isActiveStatus,
+  POLL_RETRY_MS,
   photosRefetchInterval,
   pluralize,
   rowAction,
@@ -132,6 +133,32 @@ describe('photosRefetchInterval', () => {
       photosRefetchInterval([photo(), photo({ status: 'error' })], 'success'),
     ).toBe(false);
     expect(photosRefetchInterval(undefined, 'success')).toBe(false);
+  });
+
+  it('keeps polling every 1.5 s for an active photo, even after a failed poll', () => {
+    const photos = [photo(), photo({ status: 'parsing' })];
+    expect(photosRefetchInterval(photos, 'success')).toBe(1500);
+    expect(photosRefetchInterval(photos, 'error')).toBe(1500);
+  });
+
+  it('retries every 3 s after a failed poll when no photo is active', () => {
+    const photos = [photo(), photo({ status: 'error' })];
+    expect(POLL_RETRY_MS).toBe(3000);
+    expect(photosRefetchInterval(photos, 'error')).toBe(POLL_RETRY_MS);
+  });
+
+  it('retries every 3 s after a failed poll with no data', () => {
+    expect(photosRefetchInterval(undefined, 'error')).toBe(POLL_RETRY_MS);
+  });
+
+  it('does not poll while idle and the last poll succeeded', () => {
+    const photos = [photo(), photo({ status: 'error' })];
+    expect(photosRefetchInterval(photos, 'success')).toBe(false);
+    expect(photosRefetchInterval(undefined, 'success')).toBe(false);
+  });
+
+  it('does not poll before the first fetch settles with no data', () => {
+    expect(photosRefetchInterval(undefined, 'pending')).toBe(false);
   });
 });
 

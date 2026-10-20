@@ -180,7 +180,7 @@ Contrast: every text pair meets WCAG AA (4.5:1). Accent `#4f46e5` on `#ffffff` i
 ### Shared: data loading and polling
 - `src/app/providers.tsx` (`'use client'`) wraps the app in `QueryClientProvider` and nuqs's `NuqsAdapter` (`nuqs/adapters/next/app`), inside the existing `ThemeProvider` / `TooltipProvider`.
 - `useQuery(['photos'])` → `GET /api/photos`. `useQuery(['spines', {photo, review}])` → `GET /api/spines`.
-- Both use `refetchInterval` as a function: **1500ms while any photo is `queued`, `preparing`, `calling` or `parsing`, otherwise `false`** (02-RESEARCH Pattern 7). `refetchOnWindowFocus: true`. After an upload or re-scan request succeeds, invalidate both queries and dispatch the existing `app:status-refresh` window event so the header indicator updates at once.
+- Both use `refetchInterval` as a function: **1500ms while any photo is `queued`, `preparing`, `calling` or `parsing`; 3000ms (`POLL_RETRY_MS`) while the last poll failed, so the "Couldn't refresh" alert clears on the next successful poll; otherwise `false`** (02-RESEARCH Pattern 7) (corrected by G-02-3). `refetchOnWindowFocus: true`. After an upload or re-scan request succeeds, invalidate both queries and dispatch the existing `app:status-refresh` window event so the header indicator updates at once.
 - UI status mapping from `vision_runs.status` (one place, `PhotoStatusBadge`):
 
 | Run status | Badge (all `variant="outline"`) | Sub-line (Caption, muted) |
