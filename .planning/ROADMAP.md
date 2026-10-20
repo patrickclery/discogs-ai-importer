@@ -63,7 +63,7 @@ Plans:
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
 
-**Plans:** 12/12 plans executed
+**Plans:** 12/14 plans executed (2 gap closure)
 
 Plans:
 **Wave 1**
@@ -95,6 +95,10 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 - [x] 02-12-PLAN.md — Needs review / photo filter bar and the "Latest scan reads" hint (wave 9)
+
+**Gap closure (UAT)** *(wave 1, parallel)*
+- [ ] 02-13-PLAN.md — G-02-3: error-aware refetch interval so the "Couldn't refresh" alert clears after a restart; UI-SPEC line 183 corrected
+- [ ] 02-14-PLAN.md — G-02-5: SpineField Escape cancel independent of blur/keydown order; no stale skip flag, unmount flush
 
 **UI hint**: yes
 
