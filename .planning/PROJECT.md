@@ -12,22 +12,22 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ User can drag and drop one or more shelf/spine photos into the web UI — Phase 2
+- ✓ Each uploaded photo is processed with exactly ONE Claude vision API call that returns all spines in the photo as structured JSON (artist, title, format, catalog number / label if visible, bounding box per spine) — Phase 2
+- ✓ Each detected spine is cropped locally (sharp) from its bounding box and stored as its own image — no additional AI calls for cropping — Phase 2
+- ✓ Duplicate uploads are detected by image hash and not re-sent to Claude; re-scanning a photo only happens on explicit user action — Phase 2
+- ✓ All photos, spine crops, and extracted data are stored locally (SQLite + files on disk) so the whole thing is portable — Phase 2
+- ✓ Every item in the list shows its spine crop next to the extracted text — Phase 2
+- ✓ User can edit/correct the extracted fields, with the AI read kept alongside — Phase 2
 
 ### Active
 
-- [ ] User can drag and drop one or more shelf/spine photos into the web UI
-- [ ] Each uploaded photo is processed with exactly ONE Claude vision API call that returns all spines in the photo as structured JSON (artist, title, format, catalog number / label if visible, bounding box per spine)
-- [ ] Each detected spine is cropped locally (sharp) from its bounding box and stored as its own image — no additional AI calls for cropping
-- [ ] Duplicate uploads are detected by image hash and not re-sent to Claude; re-scanning a photo only happens on explicit user action
-- [ ] All photos, spine crops, and extracted data are stored locally (SQLite + files on disk) so the whole thing is portable
 - [ ] User can connect their Discogs account via OAuth 1.0a
 - [ ] For each spine, the app searches Discogs and proposes candidate releases (with cover thumbnails) for the user to confirm
 - [ ] Discogs requests are queued/throttled to respect the 60 req/min authenticated rate limit
 - [ ] User can confirm a match and add the release to their Discogs collection
 - [ ] User sees a list of all spines with status: pending, matched, imported, not found, failed
-- [ ] Every item in the list shows its spine crop next to the extracted text
-- [ ] User can edit/correct the extracted fields and re-run the Discogs search for that spine
+- [ ] User can re-run the Discogs search for a spine after correcting it (field editing itself shipped in Phase 2)
 - [ ] Items with no Discogs match can be flagged "not on Discogs"
 - [ ] User can configure their Discogs app credentials locally; Claude access uses their existing Claude subscription via the local Claude Code CLI (no API key)
 
@@ -60,12 +60,13 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| SQLite (via Drizzle) over Postgres | Portability; single-user local tool | — Pending |
-| Claude vision, one call per photo returning all spines + bounding boxes | Avoid N calls per photo; cost control | — Pending |
-| Local cropping with sharp from AI bounding boxes | Spine images for review without extra AI calls | — Pending |
+| SQLite (via Drizzle) over Postgres | Portability; single-user local tool | ✓ Good (Phase 2) |
+| Claude vision, one call per photo returning all spines + bounding boxes | Avoid N calls per photo; cost control | ✓ Good (Phase 2) |
+| Local cropping with sharp from AI bounding boxes | Spine images for review without extra AI calls | ✓ Good (Phase 2) |
 | Human confirms Discogs match before adding to collection | OCR + search is fuzzy; avoid polluting collection | — Pending |
-| Use Claude subscription via headless `claude -p` CLI instead of API key | User doesn't want to pay for API credits | — Pending |
-| Image-hash dedup; re-scan only on explicit action | Prevent accidental repeat API spend | — Pending |
+| Use Claude subscription via headless `claude -p` CLI instead of API key | User doesn't want to pay for API credits | ✓ Good (Phase 2) |
+| Image-hash dedup; re-scan only on explicit action | Prevent accidental repeat API spend | ✓ Good (Phase 2) |
+| Re-scan merges into existing spines: edited values kept, unmatched edited spines become orphans (re-attach or dismiss), never deleted | Owner edits must survive a re-read | ✓ Good (Phase 2) |
 | CDs only — no DVD/film handling, no music/film `kind` field; Discogs search uses `format=CD` (supersedes research notes on DVDs) | User has no music DVDs; movie DVDs aren't on Discogs (2026-10-19) | — Pending |
 
 ## Evolution
@@ -87,3 +88,6 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 *Last updated: 2026-10-18 after initialization*
+
+---
+*Last updated: 2026-10-20 after Phase 2*

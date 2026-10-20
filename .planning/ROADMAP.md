@@ -13,7 +13,7 @@ The build starts with a local, portable app shell: settings, a SQLite data folde
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Local one-command app with settings, a portable data folder and a restart-safe job queue (completed 2026-10-19)
-- [ ] **Phase 2: Shelf Scan** - Drop photos, one Claude call each, review horizontal spine crops next to editable AI-read fields
+- [x] **Phase 2: Shelf Scan** - Drop photos, one Claude call each, review horizontal spine crops next to editable AI-read fields (completed 2026-10-20)
 - [ ] **Phase 3: Discogs Match** - Connect Discogs via OAuth and get throttled candidate releases per spine, with manual search and paste-ID
 - [ ] **Phase 4: Import & Review Queue** - Confirm a candidate to add it to the collection exactly once; filter, retry and resolve every spine
 
@@ -63,7 +63,7 @@ Plans:
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
 
-**Plans:** 14/14 plans executed (2 gap closure)
+**Plans:** 14/14 plans complete (2 gap closure)
 
 Plans:
 **Wave 1**
@@ -142,7 +142,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
-| 2. Shelf Scan | 14/14 | In Progress | - |
+| 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
 
