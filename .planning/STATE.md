@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-10-20T02:54:02.245Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-10-20T03:33:01.715Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 0dbe7902d1fa046006ccdea19e9fc1ac0851fff7
+state_head: 7763d71bd0b47faefd893fa020c7aafb4af21be9
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 7
+  completed_plans: 8
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -63,6 +63,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01 P03 | 5min | 2 tasks | 9 files |
 | Phase 01 P04 | 7min | 3 tasks | 15 files |
 | Phase 02 P01 | 12min | 2 tasks | 15 files |
+| Phase 02 P02 | 34min | 3 tasks | 58 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-01: VISION_MAX_TURNS stays 6 (CLI 2.1.289 accepts --max-turns)
 - [Phase 02]: Plan 02-01: buildClaudeEnv strips inherited Claude Code session vars (CLAUDECODE, CLAUDE_EFFORT, CLAUDE_PID, CLAUDE_CODE_* except CLAUDE_CODE_OAUTH_TOKEN)
 - [Phase 02]: Plan 02-01: git.allow_default_branch_commits true (owner chose to commit on master)
+- [Phase 02]: Plan 02-02: calibration confirms 1:1 CLI pixel space at 2576/4784 incl. >500 KB JPEG (median error 0.02-0.03%)
+- [Phase 02]: Plan 02-02: proposed freeze opus-5-5 high, N 90, W 33 px, confidence 0.6, max output tokens 32000, crop source master, tiling not needed (owner count pending)
+- [Phase 02]: Plan 02-02: parseVisionResult keeps non-empty values exactly; non-number confidence becomes 0
 
 ### Pending Todos
 
@@ -112,6 +116,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T02:54:02.184Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-10-20T03:33:01.649Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
