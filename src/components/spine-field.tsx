@@ -21,6 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { createFieldCommit } from '@/lib/field-commit';
 import type { SpineFieldDto, SpinesResponse } from '@/lib/scan-types';
 import {
   confidencePct,
@@ -122,7 +123,9 @@ export function SpineField({
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const draftRef = useRef(draft);
-  const skipCommit = useRef(false);
+  // One deferred blur commit per field; Escape cancels it in either event
+  // order (G-02-5, D-08).
+  const [fieldCommit] = useState(createFieldCommit);
 
   const mutation = useMutation({
     mutationFn: (body: PatchBody) => patchField(spineId, body),
@@ -229,17 +232,14 @@ export function SpineField({
   }
 
   function onFocus() {
+    fieldCommit.focus();
     if (!dirty) setDraftValue(f.value ?? '');
     setFocused(true);
   }
 
   function onBlur() {
     setFocused(false);
-    if (skipCommit.current) {
-      skipCommit.current = false;
-      return;
-    }
-    commit();
+    fieldCommit.blur(commit);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -251,11 +251,15 @@ export function SpineField({
       e.currentTarget.blur();
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      setDraftValue(f.value ?? '');
-      setDirty(false);
-      setError(null);
-      skipCommit.current = true;
-      e.currentTarget.blur();
+      const input = e.currentTarget;
+      fieldCommit.escape(
+        () => input.blur(),
+        () => {
+          setDraftValue(f.value ?? '');
+          setDirty(false);
+          setError(null);
+        },
+      );
     }
   }
 
