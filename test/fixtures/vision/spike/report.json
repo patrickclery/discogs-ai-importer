@@ -1,0 +1,2303 @@
+{
+  "generatedAt": "2026-10-20T03:30:47.845Z",
+  "runs": [
+    {
+      "photo": "cd-spines",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 481377
+      },
+      "source": {
+        "w": 4536,
+        "h": 8064
+      },
+      "heic": {
+        "available": true,
+        "width": 4536,
+        "height": 8064,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4536,
+        "decodedH": 8064,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 61,
+      "cdSpines": 61,
+      "estimate": 61,
+      "ratio": 1,
+      "legibility": {
+        "clear": 42,
+        "partial": 15,
+        "illegible": 4
+      },
+      "medianShortSidePx": 52,
+      "maxPairIoU": 0.06,
+      "durationMs": 122760,
+      "costUsd": 0.3744934,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 60,
+        "agreed": 52,
+        "rate": 0.867,
+        "coverage": 0.984
+      }
+    },
+    {
+      "photo": "cd-spines",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 481377
+      },
+      "source": {
+        "w": 4536,
+        "h": 8064
+      },
+      "heic": {
+        "available": true,
+        "width": 4536,
+        "height": 8064,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4536,
+        "decodedH": 8064,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 61,
+      "cdSpines": 61,
+      "estimate": 61,
+      "ratio": 1,
+      "legibility": {
+        "clear": 43,
+        "partial": 14,
+        "illegible": 4
+      },
+      "medianShortSidePx": 54,
+      "maxPairIoU": 0,
+      "durationMs": 114751,
+      "costUsd": 0.3863408000000001,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 60,
+        "agreed": 53,
+        "rate": 0.883,
+        "coverage": 0.984
+      }
+    },
+    {
+      "photo": "cd-spines",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 481377
+      },
+      "source": {
+        "w": 4536,
+        "h": 8064
+      },
+      "heic": {
+        "available": true,
+        "width": 4536,
+        "height": 8064,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4536,
+        "decodedH": 8064,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 60,
+      "cdSpines": 60,
+      "estimate": 60,
+      "ratio": 1,
+      "legibility": {
+        "clear": 39,
+        "partial": 18,
+        "illegible": 3
+      },
+      "medianShortSidePx": 52,
+      "maxPairIoU": 0.221,
+      "durationMs": 79089,
+      "costUsd": 0.175261,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 60,
+        "agreed": 52,
+        "rate": 0.867,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "cd-spines",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 481377
+      },
+      "source": {
+        "w": 4536,
+        "h": 8064
+      },
+      "heic": {
+        "available": true,
+        "width": 4536,
+        "height": 8064,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4536,
+        "decodedH": 8064,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 60,
+      "cdSpines": 60,
+      "estimate": 60,
+      "ratio": 1,
+      "legibility": {
+        "clear": 40,
+        "partial": 17,
+        "illegible": 3
+      },
+      "medianShortSidePx": 51,
+      "maxPairIoU": 0.284,
+      "durationMs": 118686,
+      "costUsd": 0.32455959999999995,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 60,
+        "agreed": 53,
+        "rate": 0.883,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3554",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 455912
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 30,
+      "cdSpines": 30,
+      "estimate": 30,
+      "ratio": 1,
+      "legibility": {
+        "clear": 26,
+        "partial": 3,
+        "illegible": 1
+      },
+      "medianShortSidePx": 97,
+      "maxPairIoU": 0.241,
+      "durationMs": 63590,
+      "costUsd": 0.20850080000000001,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 29,
+        "agreed": 22,
+        "rate": 0.759,
+        "coverage": 0.967
+      }
+    },
+    {
+      "photo": "img-3554",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 455912
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 30,
+      "cdSpines": 30,
+      "estimate": 30,
+      "ratio": 1,
+      "legibility": {
+        "clear": 27,
+        "illegible": 1,
+        "partial": 2
+      },
+      "medianShortSidePx": 93.5,
+      "maxPairIoU": 0.1,
+      "durationMs": 58438,
+      "costUsd": 0.19592520000000002,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 29,
+        "agreed": 26,
+        "rate": 0.897,
+        "coverage": 0.967
+      }
+    },
+    {
+      "photo": "img-3554",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 455912
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 29,
+      "cdSpines": 29,
+      "estimate": 29,
+      "ratio": 1,
+      "legibility": {
+        "clear": 27,
+        "partial": 2
+      },
+      "medianShortSidePx": 97,
+      "maxPairIoU": 0.217,
+      "durationMs": 81563,
+      "costUsd": 0.21274720000000003,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 29,
+        "agreed": 22,
+        "rate": 0.759,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3554",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 455912
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 29,
+      "cdSpines": 29,
+      "estimate": 29,
+      "ratio": 1,
+      "legibility": {
+        "clear": 24,
+        "partial": 5
+      },
+      "medianShortSidePx": 101,
+      "maxPairIoU": 0.21,
+      "durationMs": 67400,
+      "costUsd": 0.1902942,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 29,
+        "agreed": 26,
+        "rate": 0.897,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3555",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 386961
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 77,
+      "cdSpines": 77,
+      "estimate": 77,
+      "ratio": 1,
+      "legibility": {
+        "partial": 25,
+        "illegible": 27,
+        "clear": 25
+      },
+      "medianShortSidePx": 46,
+      "maxPairIoU": 0,
+      "durationMs": 131894,
+      "costUsd": 0.40876080000000004,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 73,
+        "agreed": 62,
+        "rate": 0.849,
+        "coverage": 0.948
+      }
+    },
+    {
+      "photo": "img-3555",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 386961
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 79,
+      "cdSpines": 79,
+      "estimate": 79,
+      "ratio": 1,
+      "legibility": {
+        "partial": 27,
+        "illegible": 28,
+        "clear": 24
+      },
+      "medianShortSidePx": 44,
+      "maxPairIoU": 0.157,
+      "durationMs": 124460,
+      "costUsd": 0.39702519999999997,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 39,
+        "agreed": 36,
+        "rate": 0.923,
+        "coverage": 0.494
+      }
+    },
+    {
+      "photo": "img-3555",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 386961
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 74,
+      "cdSpines": 74,
+      "estimate": 74,
+      "ratio": 1,
+      "legibility": {
+        "partial": 23,
+        "illegible": 25,
+        "clear": 26
+      },
+      "medianShortSidePx": 47,
+      "maxPairIoU": 0.188,
+      "durationMs": 159072,
+      "costUsd": 0.42010120000000006,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 73,
+        "agreed": 62,
+        "rate": 0.849,
+        "coverage": 0.986
+      }
+    },
+    {
+      "photo": "img-3555",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 386961
+      },
+      "source": {
+        "w": 3213,
+        "h": 5712
+      },
+      "heic": {
+        "available": true,
+        "width": 3213,
+        "height": 5712,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 3213,
+        "decodedH": 5712,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 39,
+      "cdSpines": 39,
+      "estimate": 85,
+      "ratio": 0.459,
+      "legibility": {
+        "clear": 26,
+        "partial": 13
+      },
+      "medianShortSidePx": 46,
+      "maxPairIoU": 0.078,
+      "durationMs": 83846,
+      "costUsd": 0.2359662,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 39,
+        "agreed": 36,
+        "rate": 0.923,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3556",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 430528
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 77,
+      "cdSpines": 77,
+      "estimate": 77,
+      "ratio": 1,
+      "legibility": {
+        "partial": 25,
+        "illegible": 5,
+        "clear": 47
+      },
+      "medianShortSidePx": 43,
+      "maxPairIoU": 0.032,
+      "durationMs": 136135,
+      "costUsd": 0.4286608,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 76,
+        "agreed": 71,
+        "rate": 0.934,
+        "coverage": 0.987
+      }
+    },
+    {
+      "photo": "img-3556",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 430528
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 80,
+      "cdSpines": 80,
+      "estimate": 80,
+      "ratio": 1,
+      "legibility": {
+        "partial": 27,
+        "clear": 46,
+        "illegible": 7
+      },
+      "medianShortSidePx": 43,
+      "maxPairIoU": 0,
+      "durationMs": 136329,
+      "costUsd": 0.4348252,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 50,
+        "agreed": 47,
+        "rate": 0.94,
+        "coverage": 0.625
+      }
+    },
+    {
+      "photo": "img-3556",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 430528
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 76,
+      "cdSpines": 76,
+      "estimate": 76,
+      "ratio": 1,
+      "legibility": {
+        "partial": 24,
+        "clear": 49,
+        "illegible": 3
+      },
+      "medianShortSidePx": 45,
+      "maxPairIoU": 0.306,
+      "durationMs": 181730,
+      "costUsd": 0.4807032000000001,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 76,
+        "agreed": 71,
+        "rate": 0.934,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3556",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 430528
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 50,
+      "cdSpines": 50,
+      "estimate": 75,
+      "ratio": 0.667,
+      "legibility": {
+        "partial": 10,
+        "illegible": 4,
+        "clear": 36
+      },
+      "medianShortSidePx": 43,
+      "maxPairIoU": 0,
+      "durationMs": 102965,
+      "costUsd": 0.2926122,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 50,
+        "agreed": 47,
+        "rate": 0.94,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3557",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 435332
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 69,
+      "cdSpines": 69,
+      "estimate": 69,
+      "ratio": 1,
+      "legibility": {
+        "partial": 23,
+        "clear": 44,
+        "illegible": 2
+      },
+      "medianShortSidePx": 33,
+      "maxPairIoU": 0,
+      "durationMs": 130259,
+      "costUsd": 0.4118008,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 69,
+        "agreed": 56,
+        "rate": 0.812,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3557",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 435332
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 69,
+      "cdSpines": 69,
+      "estimate": 69,
+      "ratio": 1,
+      "legibility": {
+        "partial": 22,
+        "clear": 45,
+        "illegible": 2
+      },
+      "medianShortSidePx": 41,
+      "maxPairIoU": 0.175,
+      "durationMs": 113259,
+      "costUsd": 0.3624852,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 68,
+        "agreed": 54,
+        "rate": 0.794,
+        "coverage": 0.986
+      }
+    },
+    {
+      "photo": "img-3557",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 435332
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 69,
+      "cdSpines": 69,
+      "estimate": 69,
+      "ratio": 1,
+      "legibility": {
+        "partial": 19,
+        "clear": 48,
+        "illegible": 2
+      },
+      "medianShortSidePx": 44,
+      "maxPairIoU": 0.239,
+      "durationMs": 158307,
+      "costUsd": 0.4229552000000001,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 69,
+        "agreed": 56,
+        "rate": 0.812,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3557",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 435332
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 68,
+      "cdSpines": 68,
+      "estimate": 68,
+      "ratio": 1,
+      "legibility": {
+        "partial": 19,
+        "clear": 48,
+        "illegible": 1
+      },
+      "medianShortSidePx": 37.5,
+      "maxPairIoU": 0.134,
+      "durationMs": 136452,
+      "costUsd": 0.37203620000000004,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 68,
+        "agreed": 54,
+        "rate": 0.794,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3558",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 437293
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 43,
+      "cdSpines": 39,
+      "estimate": 43,
+      "ratio": 1,
+      "legibility": {
+        "clear": 34,
+        "illegible": 2,
+        "partial": 7
+      },
+      "medianShortSidePx": 52,
+      "maxPairIoU": 0,
+      "durationMs": 96753,
+      "costUsd": 0.30298080000000005,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 38,
+        "agreed": 37,
+        "rate": 0.974,
+        "coverage": 0.974
+      }
+    },
+    {
+      "photo": "img-3558",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 437293
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 42,
+      "cdSpines": 42,
+      "estimate": 43,
+      "ratio": 0.977,
+      "legibility": {
+        "clear": 35,
+        "illegible": 3,
+        "partial": 4
+      },
+      "medianShortSidePx": 52,
+      "maxPairIoU": 0,
+      "durationMs": 76538,
+      "costUsd": 0.2517052,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 41,
+        "agreed": 36,
+        "rate": 0.878,
+        "coverage": 0.976
+      }
+    },
+    {
+      "photo": "img-3558",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 437293
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 43,
+      "cdSpines": 42,
+      "estimate": 43,
+      "ratio": 1,
+      "legibility": {
+        "clear": 35,
+        "illegible": 3,
+        "partial": 5
+      },
+      "medianShortSidePx": 51.5,
+      "maxPairIoU": 0.033,
+      "durationMs": 99994,
+      "costUsd": 0.2741152,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 38,
+        "agreed": 37,
+        "rate": 0.974,
+        "coverage": 0.905
+      }
+    },
+    {
+      "photo": "img-3558",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 437293
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 43,
+      "cdSpines": 42,
+      "estimate": 43,
+      "ratio": 1,
+      "legibility": {
+        "clear": 37,
+        "illegible": 2,
+        "partial": 4
+      },
+      "medianShortSidePx": 51,
+      "maxPairIoU": 0,
+      "durationMs": 90118,
+      "costUsd": 0.2585562,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 41,
+        "agreed": 36,
+        "rate": 0.878,
+        "coverage": 0.976
+      }
+    },
+    {
+      "photo": "img-3559",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 469845
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 27,
+      "cdSpines": 25,
+      "estimate": 27,
+      "ratio": 1,
+      "legibility": {
+        "clear": 9,
+        "partial": 7,
+        "illegible": 11
+      },
+      "medianShortSidePx": 219,
+      "maxPairIoU": 0.811,
+      "durationMs": 56158,
+      "costUsd": 0.1839008,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 22,
+        "agreed": 11,
+        "rate": 0.5,
+        "coverage": 0.88
+      }
+    },
+    {
+      "photo": "img-3559",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 469845
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 26,
+      "cdSpines": 25,
+      "estimate": 26,
+      "ratio": 1,
+      "legibility": {
+        "clear": 8,
+        "partial": 8,
+        "illegible": 10
+      },
+      "medianShortSidePx": 220,
+      "maxPairIoU": 0.7,
+      "durationMs": 51049,
+      "costUsd": 0.1672452,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 21,
+        "agreed": 13,
+        "rate": 0.619,
+        "coverage": 0.84
+      }
+    },
+    {
+      "photo": "img-3559",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 469845
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 23,
+      "cdSpines": 22,
+      "estimate": 24,
+      "ratio": 0.958,
+      "legibility": {
+        "clear": 6,
+        "partial": 9,
+        "illegible": 8
+      },
+      "medianShortSidePx": 225.5,
+      "maxPairIoU": 0.679,
+      "durationMs": 61319,
+      "costUsd": 0.16156120000000002,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 22,
+        "agreed": 11,
+        "rate": 0.5,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3559",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 469845
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 22,
+      "cdSpines": 21,
+      "estimate": 22,
+      "ratio": 1,
+      "legibility": {
+        "clear": 7,
+        "partial": 9,
+        "illegible": 6
+      },
+      "medianShortSidePx": 220,
+      "maxPairIoU": 0.644,
+      "durationMs": 48586,
+      "costUsd": 0.13583820000000002,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 21,
+        "agreed": 13,
+        "rate": 0.619,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3560",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 447560
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 38,
+      "cdSpines": 38,
+      "estimate": 38,
+      "ratio": 1,
+      "legibility": {
+        "clear": 13,
+        "illegible": 12,
+        "partial": 13
+      },
+      "medianShortSidePx": 41,
+      "maxPairIoU": 0.705,
+      "durationMs": 79729,
+      "costUsd": 0.24010900000000002,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 32,
+        "agreed": 27,
+        "rate": 0.844,
+        "coverage": 0.842
+      }
+    },
+    {
+      "photo": "img-3560",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 447560
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 35,
+      "cdSpines": 35,
+      "estimate": 36,
+      "ratio": 0.972,
+      "legibility": {
+        "clear": 12,
+        "partial": 14,
+        "illegible": 9
+      },
+      "medianShortSidePx": 39,
+      "maxPairIoU": 0.254,
+      "durationMs": 59944,
+      "costUsd": 0.1972134,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 30,
+        "agreed": 25,
+        "rate": 0.833,
+        "coverage": 0.857
+      }
+    },
+    {
+      "photo": "img-3560",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 447560
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 32,
+      "cdSpines": 32,
+      "estimate": 32,
+      "ratio": 1,
+      "legibility": {
+        "clear": 13,
+        "partial": 12,
+        "illegible": 7
+      },
+      "medianShortSidePx": 45,
+      "maxPairIoU": 0.272,
+      "durationMs": 73158,
+      "costUsd": 0.19421960000000002,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 32,
+        "agreed": 27,
+        "rate": 0.844,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3560",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 447560
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 30,
+      "cdSpines": 30,
+      "estimate": 30,
+      "ratio": 1,
+      "legibility": {
+        "clear": 11,
+        "partial": 13,
+        "illegible": 6
+      },
+      "medianShortSidePx": 47.5,
+      "maxPairIoU": 0.209,
+      "durationMs": 62009,
+      "costUsd": 0.1711686,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 30,
+        "agreed": 25,
+        "rate": 0.833,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3561",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 470435
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 137,
+      "cdSpines": 114,
+      "estimate": 140,
+      "ratio": 0.979,
+      "legibility": {
+        "illegible": 39,
+        "partial": 53,
+        "clear": 45
+      },
+      "medianShortSidePx": 28,
+      "maxPairIoU": 0.191,
+      "durationMs": 238933,
+      "costUsd": 0.702629,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 57,
+        "agreed": 26,
+        "rate": 0.456,
+        "coverage": 0.5
+      }
+    },
+    {
+      "photo": "img-3561",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 470435
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 92,
+      "cdSpines": 72,
+      "estimate": 190,
+      "ratio": 0.484,
+      "legibility": {
+        "partial": 42,
+        "clear": 46,
+        "illegible": 4
+      },
+      "medianShortSidePx": 29,
+      "maxPairIoU": 0.054,
+      "durationMs": 149676,
+      "costUsd": 0.4612934,
+      "numTurns": 4,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 27,
+        "agreed": 19,
+        "rate": 0.704,
+        "coverage": 0.375
+      }
+    },
+    {
+      "photo": "img-3561",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 470435
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 74,
+      "cdSpines": 60,
+      "estimate": 125,
+      "ratio": 0.592,
+      "legibility": {
+        "partial": 34,
+        "clear": 40
+      },
+      "medianShortSidePx": 30,
+      "maxPairIoU": 0.155,
+      "durationMs": 156462,
+      "costUsd": 0.41703160000000006,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 57,
+        "agreed": 26,
+        "rate": 0.456,
+        "coverage": 0.95
+      }
+    },
+    {
+      "photo": "img-3561",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 1449,
+        "h": 2576,
+        "bytes": 470435
+      },
+      "source": {
+        "w": 2268,
+        "h": 4032
+      },
+      "heic": {
+        "available": true,
+        "width": 2268,
+        "height": 4032,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 2268,
+        "decodedH": 4032,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 42,
+      "cdSpines": 34,
+      "estimate": 120,
+      "ratio": 0.35,
+      "legibility": {
+        "partial": 13,
+        "clear": 29
+      },
+      "medianShortSidePx": 35,
+      "maxPairIoU": 0.429,
+      "durationMs": 94286,
+      "costUsd": 0.26078460000000003,
+      "numTurns": 5,
+      "reported": {
+        "w": 1449,
+        "h": 2576
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 27,
+        "agreed": 19,
+        "rate": 0.704,
+        "coverage": 0.794
+      }
+    },
+    {
+      "photo": "img-3562",
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 2576,
+        "h": 1449,
+        "bytes": 454704
+      },
+      "source": {
+        "w": 4032,
+        "h": 2268
+      },
+      "heic": {
+        "available": true,
+        "width": 4032,
+        "height": 2268,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4032,
+        "decodedH": 2268,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 87,
+      "cdSpines": 87,
+      "estimate": 87,
+      "ratio": 1,
+      "legibility": {
+        "clear": 64,
+        "partial": 22,
+        "illegible": 1
+      },
+      "medianShortSidePx": 41,
+      "maxPairIoU": 0.078,
+      "durationMs": 176188,
+      "costUsd": 0.539329,
+      "numTurns": 4,
+      "reported": {
+        "w": 2576,
+        "h": 1449
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 86,
+        "agreed": 80,
+        "rate": 0.93,
+        "coverage": 0.989
+      }
+    },
+    {
+      "photo": "img-3562",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 2576,
+        "h": 1449,
+        "bytes": 454704
+      },
+      "source": {
+        "w": 4032,
+        "h": 2268
+      },
+      "heic": {
+        "available": true,
+        "width": 4032,
+        "height": 2268,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4032,
+        "decodedH": 2268,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 88,
+      "cdSpines": 88,
+      "estimate": 88,
+      "ratio": 1,
+      "legibility": {
+        "clear": 67,
+        "partial": 19,
+        "illegible": 2
+      },
+      "medianShortSidePx": 39,
+      "maxPairIoU": 0.046,
+      "durationMs": 169558,
+      "costUsd": 0.5028534,
+      "numTurns": 4,
+      "reported": {
+        "w": 2576,
+        "h": 1449
+      },
+      "agreement": {
+        "otherModel": "claude-sonnet-5-5",
+        "matched": 85,
+        "agreed": 75,
+        "rate": 0.882,
+        "coverage": 0.966
+      }
+    },
+    {
+      "photo": "img-3562",
+      "model": "claude-sonnet-5-5",
+      "effort": "high",
+      "sent": {
+        "w": 2576,
+        "h": 1449,
+        "bytes": 454704
+      },
+      "source": {
+        "w": 4032,
+        "h": 2268
+      },
+      "heic": {
+        "available": true,
+        "width": 4032,
+        "height": 2268,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4032,
+        "decodedH": 2268,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 86,
+      "cdSpines": 86,
+      "estimate": 86,
+      "ratio": 1,
+      "legibility": {
+        "clear": 70,
+        "partial": 16
+      },
+      "medianShortSidePx": 42,
+      "maxPairIoU": 0.189,
+      "durationMs": 191152,
+      "costUsd": 0.5373496,
+      "numTurns": 5,
+      "reported": {
+        "w": 2576,
+        "h": 1449
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 86,
+        "agreed": 80,
+        "rate": 0.93,
+        "coverage": 1
+      }
+    },
+    {
+      "photo": "img-3562",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "sent": {
+        "w": 2576,
+        "h": 1449,
+        "bytes": 454704
+      },
+      "source": {
+        "w": 4032,
+        "h": 2268
+      },
+      "heic": {
+        "available": true,
+        "width": 4032,
+        "height": 2268,
+        "angleCcw": 0,
+        "mirror": null,
+        "decodedW": 4032,
+        "decodedH": 2268,
+        "match": true
+      },
+      "outcome": "ok",
+      "spines": 86,
+      "cdSpines": 86,
+      "estimate": 86,
+      "ratio": 1,
+      "legibility": {
+        "partial": 19,
+        "clear": 67
+      },
+      "medianShortSidePx": 42,
+      "maxPairIoU": 0.144,
+      "durationMs": 191407,
+      "costUsd": 0.5059386,
+      "numTurns": 5,
+      "reported": {
+        "w": 2576,
+        "h": 1449
+      },
+      "agreement": {
+        "otherModel": "claude-opus-5-5",
+        "matched": 85,
+        "agreed": 75,
+        "rate": 0.882,
+        "coverage": 0.988
+      }
+    }
+  ],
+  "calibration": [
+    {
+      "layout": "calibrationPortrait",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "maxEdge": 2576,
+      "sentBytes": 182835,
+      "outcome": "ok",
+      "metrics": {
+        "matched": 16,
+        "truth": 16,
+        "medianPct": 0.02,
+        "p90Pct": 0.05,
+        "scaleX": 0.9998,
+        "scaleY": 1,
+        "reported": {
+          "w": 1449,
+          "h": 2576
+        },
+        "sent": {
+          "w": 1449,
+          "h": 2576
+        },
+        "pass": true
+      }
+    },
+    {
+      "layout": "calibrationPortrait",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "maxEdge": 2576,
+      "sentBytes": 182835,
+      "outcome": "ok",
+      "metrics": {
+        "matched": 16,
+        "truth": 16,
+        "medianPct": 0.02,
+        "p90Pct": 0.02,
+        "scaleX": 0.9999,
+        "scaleY": 1,
+        "reported": {
+          "w": 1449,
+          "h": 2576
+        },
+        "sent": {
+          "w": 1449,
+          "h": 2576
+        },
+        "pass": true
+      }
+    },
+    {
+      "layout": "calibrationLandscape",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "maxEdge": 2576,
+      "sentBytes": 178371,
+      "outcome": "ok",
+      "metrics": {
+        "matched": 12,
+        "truth": 12,
+        "medianPct": 0.03,
+        "p90Pct": 0.05,
+        "scaleX": 0.9998,
+        "scaleY": 0.9993,
+        "reported": {
+          "w": 2212,
+          "h": 1659
+        },
+        "sent": {
+          "w": 2212,
+          "h": 1659
+        },
+        "pass": true
+      }
+    },
+    {
+      "layout": "calibrationLandscape",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "maxEdge": 2576,
+      "sentBytes": 178371,
+      "outcome": "ok",
+      "metrics": {
+        "matched": 12,
+        "truth": 12,
+        "medianPct": 0.03,
+        "p90Pct": 0.05,
+        "scaleX": 0.9998,
+        "scaleY": 0.9993,
+        "reported": {
+          "w": 2212,
+          "h": 1659
+        },
+        "sent": {
+          "w": 2212,
+          "h": 1659
+        },
+        "pass": true
+      }
+    },
+    {
+      "layout": "calibrationHeavy",
+      "model": "claude-opus-5-5",
+      "effort": "medium",
+      "maxEdge": 2576,
+      "sentBytes": 1232077,
+      "outcome": "ok",
+      "metrics": {
+        "matched": 16,
+        "truth": 16,
+        "medianPct": 0.02,
+        "p90Pct": 0.05,
+        "scaleX": 0.9998,
+        "scaleY": 0.9997,
+        "reported": {
+          "w": 1449,
+          "h": 2576
+        },
+        "sent": {
+          "w": 1449,
+          "h": 2576
+        },
+        "pass": true
+      }
+    },
+    {
+      "layout": "calibrationHeavy",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "maxEdge": 2576,
+      "sentBytes": 1232077,
+      "outcome": "ok",
+      "metrics": {
+        "matched": 16,
+        "truth": 16,
+        "medianPct": 0.02,
+        "p90Pct": 0.03,
+        "scaleX": 1,
+        "scaleY": 0.9998,
+        "reported": {
+          "w": 1449,
+          "h": 2576
+        },
+        "sent": {
+          "w": 1449,
+          "h": 2576
+        },
+        "pass": true
+      }
+    }
+  ],
+  "proposals": {
+    "maxEdge": 2576,
+    "maxTokens": 4784,
+    "defaultModel": "claude-opus-5-5",
+    "defaultEffort": "high",
+    "densityMaxSpines": 90,
+    "densityMinShortSidePx": 33,
+    "confidenceThreshold": 0.6,
+    "maxOutputTokens": 32000,
+    "cropSource": "master",
+    "tilingNeeded": false,
+    "evidence": {
+      "calibrationTierPass": true,
+      "calibrationFallbackPass": false,
+      "byModel": {
+        "claude-opus-5-5": {
+          "runs": 20,
+          "okRate": 1,
+          "ratio": 0.971,
+          "agreement": 0.814,
+          "clearShare": 0.577,
+          "costUsd": 0.358,
+          "durationMs": 114320.05
+        },
+        "claude-sonnet-5-5": {
+          "runs": 20,
+          "okRate": 1,
+          "ratio": 0.901,
+          "agreement": 0.814,
+          "clearShare": 0.636,
+          "costUsd": 0.302,
+          "durationMs": 111880.05
+        }
+      },
+      "byConfig": {
+        "claude-opus-5-5:high": {
+          "runs": 10,
+          "okRate": 1,
+          "ratio": 0.998,
+          "agreement": 0.793,
+          "clearShare": 0.566,
+          "costUsd": 0.38,
+          "durationMs": 123239.9
+        },
+        "claude-opus-5-5:medium": {
+          "runs": 10,
+          "okRate": 1,
+          "ratio": 0.943,
+          "agreement": 0.835,
+          "clearShare": 0.588,
+          "costUsd": 0.336,
+          "durationMs": 105400.2
+        },
+        "claude-sonnet-5-5:high": {
+          "runs": 10,
+          "okRate": 1,
+          "ratio": 0.955,
+          "agreement": 0.793,
+          "clearShare": 0.611,
+          "costUsd": 0.33,
+          "durationMs": 124184.6
+        },
+        "claude-sonnet-5-5:medium": {
+          "runs": 10,
+          "okRate": 1,
+          "ratio": 0.848,
+          "agreement": 0.835,
+          "clearShare": 0.66,
+          "costUsd": 0.275,
+          "durationMs": 99575.5
+        }
+      },
+      "perPhoto": [
+        {
+          "photo": "cd-spines",
+          "spines": 60.5,
+          "shortSide": 52,
+          "agreement": 0.867
+        },
+        {
+          "photo": "img-3554",
+          "spines": 29.5,
+          "shortSide": 97,
+          "agreement": 0.759
+        },
+        {
+          "photo": "img-3555",
+          "spines": 75.5,
+          "shortSide": 46.5,
+          "agreement": 0.849
+        },
+        {
+          "photo": "img-3556",
+          "spines": 76.5,
+          "shortSide": 44,
+          "agreement": 0.934
+        },
+        {
+          "photo": "img-3557",
+          "spines": 69,
+          "shortSide": 38.5,
+          "agreement": 0.812
+        },
+        {
+          "photo": "img-3558",
+          "spines": 40.5,
+          "shortSide": 51.75,
+          "agreement": 0.974
+        },
+        {
+          "photo": "img-3559",
+          "spines": 23.5,
+          "shortSide": 222.25,
+          "agreement": 0.5
+        },
+        {
+          "photo": "img-3560",
+          "spines": 35,
+          "shortSide": 43,
+          "agreement": 0.844
+        },
+        {
+          "photo": "img-3561",
+          "spines": 87,
+          "shortSide": 29,
+          "agreement": 0.456
+        },
+        {
+          "photo": "img-3562",
+          "spines": 86.5,
+          "shortSide": 41.5,
+          "agreement": 0.93
+        }
+      ],
+      "goodAgreement": 0.75,
+      "densePhotos": [
+        "img-3561"
+      ],
+      "excludedFromDensity": [
+        "img-3559"
+      ]
+    },
+    "rationale": {
+      "maxEdge": "Calibration passed at the 2576/4784 tier for both layouts and the >500 KB file: boxes are 1:1 with the sent image.",
+      "defaultModel": "Opus kept; Sonnet did not match it on ok rate, spines/estimate ratio or clear share.",
+      "defaultEffort": "High improved ok rate, agreement or completeness by more than 5 points over medium.",
+      "density": "Per photo at the default effort: a photo is good when cross-model raw_text agreement on matched spines is >= 0.75. N is the largest good spine count rounded up to 5; W sits between the smallest good median short side and the largest dense-failure short side. Bad photos that are neither crowded nor narrow are left out (img-3559). Defaults 40 / 30 px when no photo qualifies. A run returning under 80% of its own spine_count_estimate is a separate truncation signal.",
+      "confidenceThreshold": "Starting value (Claude discretion); self-reported confidences are uncalibrated (A6).",
+      "maxOutputTokens": "At least one run was truncated or returned fewer than 80% of its own estimate.",
+      "cropSource": "Master: same frame as the vision image by an exact scale and about 3x sharper (A5). Owner confirms at the freeze.",
+      "tilingNeeded": "Recommendation only (tiling is deferred). Stays false unless the owner counts a misread rate over 10-15% on the 30-50 spine photos in compare.html."
+    }
+  }
+}
