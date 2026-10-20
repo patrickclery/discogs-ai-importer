@@ -15,7 +15,9 @@
       "!build",
       "!.planning",
       "!.claude",
-      "!drizzle"
+      "!drizzle",
+      "!test/fixtures/vision/spike/*.json",
+      "!test/fixtures/vision/calibration/*.json"
     ]
   },
   "formatter": {
