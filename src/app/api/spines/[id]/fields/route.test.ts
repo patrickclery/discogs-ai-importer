@@ -103,6 +103,22 @@ describe('PATCH /api/spines/[id]/fields', () => {
     expect(row().edit_base_ai_value).toBeNull();
   });
 
+  it('saving the trimmed form of a padded AI read is not an edit (CR-01)', async () => {
+    const padded = ` ${AI_TITLE}\n`;
+    getDb()
+      .$client.prepare(
+        'UPDATE spine_fields SET ai_value = ?, value = ? WHERE spine_id = ?',
+      )
+      .run(padded, padded, SPINE);
+    const res = await patch({ field: 'title', value: AI_TITLE });
+    expect(res.status).toBe(200);
+    expect(row()).toMatchObject({
+      ai_value: padded,
+      value: padded,
+      edit_base_ai_value: null,
+    });
+  });
+
   it('stores an empty value as null (not read)', async () => {
     const res = await patch({ field: 'title', value: '   ' });
     expect(res.status).toBe(200);

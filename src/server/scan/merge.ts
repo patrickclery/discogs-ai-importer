@@ -2,6 +2,7 @@ import 'server-only';
 import type Database from 'better-sqlite3';
 import { SPINE_FIELDS, SPINE_MEDIA_KINDS } from '@/lib/vision-contract';
 import { newId } from '../ids';
+import { fieldEdited, fieldUnedited } from './field-sql';
 import { type MatchItem, matchDetections } from './match';
 import type { PreparedDetection } from './store';
 
@@ -136,16 +137,19 @@ export function mergeRunIntoSpines(
   );
   // SET expressions read the row as it was before the update, so every CASE
   // below compares the stored value with the stored (previous) AI read.
+  // "Edited" compares normalized values, like the client (CR-01).
+  const unedited = fieldUnedited('spine_fields.value', 'spine_fields.ai_value');
   const mergeField = db.prepare(
     `INSERT INTO spine_fields (spine_id, field, ai_value, value, confidence,
        edit_base_ai_value, updated_at)
      VALUES (@spineId, @field, @ai, @ai, @confidence, NULL, @now)
      ON CONFLICT (spine_id, field) DO UPDATE SET
-       value = CASE WHEN spine_fields.value IS spine_fields.ai_value
+       value = CASE WHEN ${unedited}
                     THEN excluded.ai_value ELSE spine_fields.value END,
        edit_base_ai_value = CASE
-         WHEN spine_fields.value IS spine_fields.ai_value THEN NULL
-         WHEN spine_fields.value IS excluded.ai_value THEN NULL
+         WHEN ${unedited} THEN NULL
+         WHEN ${fieldUnedited('spine_fields.value', 'excluded.ai_value')}
+           THEN NULL
          ELSE spine_fields.edit_base_ai_value END,
        ai_value = excluded.ai_value,
        confidence = excluded.confidence,
@@ -153,7 +157,8 @@ export function mergeRunIntoSpines(
   );
   const hasEdits = db.prepare(
     `SELECT EXISTS (SELECT 1 FROM spine_fields
-       WHERE spine_id = @spineId AND value IS NOT ai_value) AS edited`,
+       WHERE spine_id = @spineId AND ${fieldEdited('value', 'ai_value')})
+     AS edited`,
   );
   const retire = db.prepare(
     `UPDATE spines SET state = @state, updated_at = @now WHERE id = @spineId`,

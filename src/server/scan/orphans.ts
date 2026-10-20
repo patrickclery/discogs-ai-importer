@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SpineDto } from '@/lib/scan-types';
 import { getDb } from '../db/client';
+import { fieldEdited, fieldUnedited } from './field-sql';
 import { getSpineDto, loadSpineDtos } from './queries';
 
 // Orphaned spines (CONTEXT D-13, D-16): a re-scan no longer found them but
@@ -21,7 +22,7 @@ const CANDIDATE = `t.state = 'active'
   AND t.created_run_id = (SELECT p.latest_run_id FROM photos p
     WHERE p.id = t.photo_id)
   AND NOT EXISTS (SELECT 1 FROM spine_fields f
-    WHERE f.spine_id = t.id AND f.value IS NOT f.ai_value)`;
+    WHERE f.spine_id = t.id AND ${fieldEdited('f.value', 'f.ai_value')})`;
 
 export type OrphanResult<T> =
   | { status: 'ok'; value: T }
@@ -80,17 +81,23 @@ export function reattachSpine(
 
     const now = Date.now();
     // SET expressions read the orphan's row as it was before the update.
+    // "Edited" compares normalized values, like the client (CR-01).
+    const unedited = fieldUnedited(
+      'spine_fields.value',
+      'spine_fields.ai_value',
+    );
     db.prepare(
       `INSERT INTO spine_fields (spine_id, field, ai_value, value, confidence,
          edit_base_ai_value, updated_at)
        SELECT @orphanId, t.field, t.ai_value, t.value, t.confidence, NULL, @now
        FROM spine_fields t WHERE t.spine_id = @targetSpineId
        ON CONFLICT (spine_id, field) DO UPDATE SET
-         value = CASE WHEN spine_fields.value IS spine_fields.ai_value
+         value = CASE WHEN ${unedited}
                       THEN excluded.value ELSE spine_fields.value END,
          edit_base_ai_value = CASE
-           WHEN spine_fields.value IS spine_fields.ai_value THEN NULL
-           WHEN spine_fields.value IS excluded.ai_value THEN NULL
+           WHEN ${unedited} THEN NULL
+           WHEN ${fieldUnedited('spine_fields.value', 'excluded.ai_value')}
+             THEN NULL
            ELSE COALESCE(spine_fields.edit_base_ai_value,
                          spine_fields.ai_value) END,
          ai_value = excluded.ai_value,

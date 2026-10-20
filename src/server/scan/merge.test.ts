@@ -228,6 +228,23 @@ describe('mergeRunIntoSpines via persistRunResult (run_no > 1)', () => {
     expect(run1Rows.n).toBe(layout.spines.length);
   });
 
+  it('a value that only trims the AI read is not an edit (CR-01)', async () => {
+    const { photoId, spineIds } = await firstRun();
+    // A field saved trimmed against a padded read, before CR-01.
+    getDb()
+      .$client.prepare(
+        `UPDATE spine_fields SET ai_value = ' ' || value || ' ',
+           edit_base_ai_value = ' ' || value || ' '
+         WHERE spine_id = ? AND field = 'artist'`,
+      )
+      .run(spineIds[4]);
+    persist(
+      parsingRun(photoId, 2),
+      rescanOutput((s) => (s.index === 4 ? null : s)),
+    );
+    expect(spine(spineIds[4]).state).toBe('superseded');
+  });
+
   it('an unmatched new detection becomes an active spine created by the run', async () => {
     const { photoId, spineIds } = await firstRun();
     const base = structuredOutputFor(layout).spines[0];

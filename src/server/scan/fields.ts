@@ -2,6 +2,7 @@ import 'server-only';
 import type { SpineFieldDto } from '@/lib/scan-types';
 import type { SpineField } from '@/lib/vision-contract';
 import { getDb } from '../db/client';
+import { fieldUnedited } from './field-sql';
 
 // Owner edits to spine fields (REV-02, D-10). These statements write `value`,
 // `edit_base_ai_value` and `updated_at` only: `ai_value` is Claude's read and
@@ -23,6 +24,9 @@ type FieldRow = {
 /** Superseded and dismissed spines are read-only; orphaned stay editable. */
 const EDITABLE = `EXISTS (SELECT 1 FROM spines s
   WHERE s.id = spine_fields.spine_id AND s.state IN ('active', 'orphaned'))`;
+
+/** The new value equals Claude's read once both are normalized. */
+const UNEDITED = fieldUnedited('@value', 'ai_value');
 
 const RETURNING =
   'RETURNING field, ai_value, value, confidence, edit_base_ai_value';
@@ -52,7 +56,10 @@ function failure(spineId: string): FieldWriteResult {
 /**
  * Sets the owner's value (already normalized: trimmed, empty is null).
  * `edit_base_ai_value` records the AI read the edit was made against, and is
- * cleared when the value goes back to equal the AI read.
+ * cleared when the value goes back to equal the AI read. "Equal" compares
+ * both sides normalized (CR-01): Claude's read is stored untrimmed, so a value
+ * that only differs by surrounding whitespace is not an edit, and the stored
+ * value becomes ai_value again so `value IS ai_value` stays exact.
  */
 export function updateSpineField(
   spineId: string,
@@ -62,8 +69,8 @@ export function updateSpineField(
   const row = getDb()
     .$client.prepare(
       `UPDATE spine_fields
-         SET value = @value,
-             edit_base_ai_value = CASE WHEN @value IS ai_value THEN NULL
+         SET value = CASE WHEN ${UNEDITED} THEN ai_value ELSE @value END,
+             edit_base_ai_value = CASE WHEN ${UNEDITED} THEN NULL
                                        ELSE ai_value END,
              updated_at = @now
        WHERE spine_id = @spineId AND field = @field AND ${EDITABLE}

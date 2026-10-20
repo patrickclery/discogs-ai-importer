@@ -71,10 +71,13 @@ async function patchField(
 function optimistic(f: SpineFieldDto, body: PatchBody): SpineFieldDto {
   if ('revert' in body)
     return { ...f, value: f.aiValue, editBaseAiValue: null };
+  // Same rule as the server (CR-01): equal to Claude's read once both are
+  // normalized means unedited, and the value is Claude's read again.
+  const unedited = body.value === normalizeFieldInput(f.aiValue);
   return {
     ...f,
-    value: body.value,
-    editBaseAiValue: body.value === f.aiValue ? null : f.aiValue,
+    value: unedited ? f.aiValue : body.value,
+    editBaseAiValue: unedited ? null : f.aiValue,
   };
 }
 
@@ -167,7 +170,10 @@ export function SpineField({
       {
         onSuccess: (saved) => {
           setError(null);
-          if (normalizeFieldInput(draftRef.current) === saved.value) {
+          if (
+            normalizeFieldInput(draftRef.current) ===
+            normalizeFieldInput(saved.value)
+          ) {
             setDirty(false);
           }
         },
@@ -182,7 +188,9 @@ export function SpineField({
 
   function commit() {
     const next = normalizeFieldInput(draftRef.current);
-    if (next === f.value) {
+    // Compare normalized: Claude's read may carry surrounding whitespace, and
+    // focusing then leaving the field must not save an edit (CR-01).
+    if (next === normalizeFieldInput(f.value)) {
       setDirty(false);
       setError(null);
       return;
