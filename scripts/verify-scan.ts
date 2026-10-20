@@ -4,6 +4,7 @@
 // scan job against the fake CLI (one recorded call, raw output first, crops,
 // the file-route allowlist and the spines page). Plan 02-06: the /upload
 // Photos list server-renders the done photo with its View spines link.
+// Plan 02-08: GET /api/spines order, crops and the ?photo= filter.
 // Run: node scripts/verify-scan.ts   (VERIFY_SKIP_BUILD=1 reuses .next)
 // Each step is a named function so later plans (02-04, 02-06, 02-08, 02-09)
 // can extend this script.
@@ -466,6 +467,78 @@ export async function stepSpinesPage(
   return crops[0];
 }
 
+type SpinesApi = {
+  photos: { id: string; status: string }[];
+  spines: {
+    id: string;
+    photoId: string;
+    index: number;
+    crop: { url: string; width: number; height: number } | null;
+    fields: { field: string; value: string | null }[];
+  }[];
+  counts: { all: number; needsReview: number };
+};
+
+async function getSpinesApi(ctx: Ctx, qs = ''): Promise<SpinesApi> {
+  const res = await fetch(`${ctx.baseUrl}/api/spines${qs}`);
+  assert(res.status === 200, `GET /api/spines${qs} returned ${res.status}`);
+  return (await res.json()) as SpinesApi;
+}
+
+// (k2) Plan 02-08: GET /api/spines returns every CD spine in index order.
+export async function stepSpinesApi(ctx: Ctx, photoId: string) {
+  step('(k2) GET /api/spines lists every spine in index order with crops');
+  const body = await getSpinesApi(ctx);
+  const mine = body.spines.filter((s) => s.photoId === photoId);
+  assert(
+    mine.length === TRACER.spines.length,
+    `${mine.length} spines for the photo, expected ${TRACER.spines.length}`,
+  );
+  assert(
+    body.counts.all === body.spines.length,
+    `counts.all ${body.counts.all}, ${body.spines.length} spines`,
+  );
+  mine.forEach((s, i) => {
+    assert(s.index === i, `spine ${i} has index ${s.index}`);
+    const artist = s.fields.find((f) => f.field === 'artist')?.value;
+    assert(
+      artist === TRACER.spines[i].artist,
+      `spine ${i} artist ${artist}, expected ${TRACER.spines[i].artist}`,
+    );
+    assert(
+      s.crop?.url.startsWith(`/api/files/crops/${photoId}/`) &&
+        s.crop.width > s.crop.height,
+      `spine ${i} crop ${JSON.stringify(s.crop)}`,
+    );
+  });
+  check(
+    `${mine.length} spines, indexes 0..${mine.length - 1}, horizontal crops`,
+  );
+}
+
+// (o) Plan 02-08: ?photo= narrows the list; an unknown id lists nothing.
+export async function stepSpinesPhotoFilter(ctx: Ctx, photoId: string) {
+  step('(o) GET /api/spines?photo= lists only that photo');
+  const all = await getSpinesApi(ctx);
+  assert(all.photos.length >= 2, `${all.photos.length} photos, expected 2+`);
+  const one = await getSpinesApi(ctx, `?photo=${photoId}`);
+  assert(
+    one.photos.length === 1 && one.photos[0].id === photoId,
+    `?photo lists ${one.photos.map((p) => p.id).join(',')}`,
+  );
+  assert(
+    one.spines.length === TRACER.spines.length &&
+      one.spines.every((s) => s.photoId === photoId),
+    `?photo returned ${one.spines.length} spines`,
+  );
+  const none = await getSpinesApi(ctx, '?photo=no-such-photo');
+  assert(
+    none.photos.length === 0 && none.spines.length === 0,
+    'an unknown ?photo id still lists data',
+  );
+  check(`1 of ${all.photos.length} photos; unknown id lists nothing`);
+}
+
 // (l) a crop is served as a horizontal WebP.
 export async function stepServeCrop(ctx: Ctx, url: string): Promise<void> {
   step('(l) one crop through /api/files');
@@ -638,11 +711,13 @@ runMain('verify-scan', async (onCleanup) => {
   await stepRepeatDuplicate(ctx, photoId, jpeg);
   await stepRunRecorded(ctx, photoId);
   const cropUrl = await stepSpinesPage(ctx, photoId);
+  await stepSpinesApi(ctx, photoId);
   await stepServeCrop(ctx, cropUrl);
   await stepFileAllowlist(ctx, photoId, jpeg);
   stepOneCall(ctx);
   // After (n): the large upload queues a second scan (and a second call).
   await stepLargeUpload(ctx);
+  await stepSpinesPhotoFilter(ctx, photoId);
   await stepRefuseTextPlain(ctx);
   await stepRefuseNonImage(ctx);
 

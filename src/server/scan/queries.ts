@@ -7,7 +7,9 @@ import {
   type SpineDto,
   type SpineFieldDto,
   type SpineState,
+  type SpinesResponse,
 } from '@/lib/scan-types';
+import { needsReview } from '@/lib/spine-review';
 import {
   LEGIBILITY_LEVELS,
   type Legibility,
@@ -15,7 +17,11 @@ import {
   type SpineField,
 } from '@/lib/vision-contract';
 import { getDb } from '../db/client';
-import { VISION_MODELS } from '../settings';
+import {
+  getConfidenceThreshold,
+  getDensityThresholds,
+  VISION_MODELS,
+} from '../settings';
 
 // Read models for the scan UI. Raw SQL with single-quoted literals (DQS=0).
 
@@ -220,4 +226,29 @@ export function listSpines(opts: { photoId?: string } = {}): SpineDto[] {
       orphanedRunNo: null,
     };
   });
+}
+
+/**
+ * The /spines read model (REV-01): photos newest first (only `photoId` when
+ * given; an unknown id yields no photos), their active spines in detection
+ * order, and the counts the page shows. A-16: Needs review counts spines with
+ * a low-confidence field; 02-12 adds orphaned spines.
+ */
+export function getSpines(opts: { photoId?: string } = {}): SpinesResponse {
+  const photos = opts.photoId
+    ? [getPhoto(opts.photoId)].filter((p): p is PhotoDto => p !== null)
+    : listPhotos();
+  const spines = photos.length === 0 ? [] : listSpines(opts);
+  const confidenceThreshold = getConfidenceThreshold();
+  return {
+    photos,
+    spines,
+    counts: {
+      all: spines.length,
+      needsReview: spines.filter((s) => needsReview(s, confidenceThreshold))
+        .length,
+    },
+    confidenceThreshold,
+    densityMaxSpines: getDensityThresholds().maxSpines,
+  };
 }
