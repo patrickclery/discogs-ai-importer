@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-10-20T04:17:35.536Z"
+stopped_at: Completed 02-07-PLAN.md
+last_updated: "2026-10-20T04:26:31.162Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 9aad936faf99218e89c48ecb00fe55b121f8f1f8
+state_head: 95c209e4b6eb482a8fa236f5660c9fb5075174e3
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 12
+  completed_plans: 13
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 7 of 12
+Plan: 8 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -68,6 +68,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P04 | 7min | 2 tasks | 15 files |
 | Phase 02 P05 | 12 min | 3 tasks | 16 files |
 | Phase 02 P06 | 6 min | 2 tasks | 15 files |
+| Phase 02 P07 | 6min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-05: D-03 density flags are layout-agnostic warnings (count > N, median short side < W, pair IoU > 0.3, repeated or >20% scattered indexes); every detection kept
 - [Phase 02]: PhotoStatusBadge takes a status (server or client waiting/uploading); badgeFor() in src/lib/photo-status.ts is the single status-to-badge mapping reused by 02-07 and 02-08
 - [Phase 02]: /upload Photos rows are separated by divide-y so pendingRows can be any ReactNode; the incomplete tooltip counts detectedCount like PhotoDto.truncated
+- [Phase 02]: Plan 02-07: unknown non-2xx upload responses map to the network copy (retry is the only useful action)
+- [Phase 02]: Plan 02-07: Retry upload only for files actually sent; dropzone-refused files get Remove from list only
+- [Phase 02]: Plan 02-07: dropzone root uses role=group with aria-label (react-dropzone default role=presentation drops the label)
 
 ### Pending Todos
 
@@ -128,6 +132,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T04:17:35.455Z
-Stopped at: Completed 02-06-PLAN.md
+Last session: 2026-10-20T04:26:31.084Z
+Stopped at: Completed 02-07-PLAN.md
 Resume file: None

@@ -14,9 +14,9 @@
 
 ### Ingest
 
-- [ ] **INGEST-01**: User can drag and drop one or more photos into the upload page
+- [x] **INGEST-01**: User can drag and drop one or more photos into the upload page
 - [x] **INGEST-02**: User sees per-photo processing status (queued / analyzing / done / error)
-- [ ] **INGEST-03**: Re-uploading an identical photo (same SHA-256 hash) makes zero Claude calls and links to the existing result
+- [x] **INGEST-03**: Re-uploading an identical photo (same SHA-256 hash) makes zero Claude calls and links to the existing result
 - [ ] **INGEST-04**: User can explicitly re-scan a photo; re-scan is the only way a photo is sent to Claude again, and user edits are preserved where spines still match
 - [x] **INGEST-05**: Photos are EXIF-rotated and resized locally before analysis so the image sent to Claude is the same image crops are cut from
 
@@ -93,9 +93,9 @@
 | FOUND-02 | Phase 1 | Complete |
 | FOUND-03 | Phase 1 | Complete |
 | FOUND-04 | Phase 1 | Complete |
-| INGEST-01 | Phase 2 | Pending |
+| INGEST-01 | Phase 2 | Complete |
 | INGEST-02 | Phase 2 | Complete |
-| INGEST-03 | Phase 2 | Pending |
+| INGEST-03 | Phase 2 | Complete |
 | INGEST-04 | Phase 2 | Pending |
 | INGEST-05 | Phase 2 | Complete |
 | VIS-01 | Phase 2 | Complete |
