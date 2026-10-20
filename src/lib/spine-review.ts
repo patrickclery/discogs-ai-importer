@@ -84,3 +84,41 @@ export function formatRelativeTime(at: number, now: number): string {
   }
   return rtf.format(Math.round(diffSec / 60), 'minute');
 }
+
+/** Longest field value the PATCH route accepts (T-02-18). */
+export const MAX_FIELD_CHARS = 500;
+
+/**
+ * What a field input shows (RESEARCH Pitfall 6): the local draft while the
+ * field is focused or holds unsaved text, otherwise the server's value. A
+ * poll that brings a different server value never changes text being typed.
+ */
+export function resolveDisplayedValue(s: {
+  serverValue: string | null;
+  draft: string;
+  focused: boolean;
+  dirty: boolean;
+}): string {
+  return s.focused || s.dirty ? s.draft : (s.serverValue ?? '');
+}
+
+/**
+ * A /spines response with one spine field replaced (optimistic and settled
+ * PATCH results). Returns the same object when the spine is not in it.
+ */
+export function withSpineField<
+  T extends { spines: readonly SpineDto[] } | undefined,
+>(data: T, spineId: string, next: SpineFieldDto): T {
+  if (!data?.spines.some((s) => s.id === spineId)) return data;
+  return {
+    ...data,
+    spines: data.spines.map((s) =>
+      s.id === spineId
+        ? {
+            ...s,
+            fields: s.fields.map((f) => (f.field === next.field ? next : f)),
+          }
+        : s,
+    ),
+  };
+}

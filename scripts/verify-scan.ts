@@ -5,6 +5,7 @@
 // the file-route allowlist and the spines page). Plan 02-06: the /upload
 // Photos list server-renders the done photo with its View spines link.
 // Plan 02-08: GET /api/spines order, crops and the ?photo= filter.
+// Plan 02-09: PATCH /api/spines/{id}/fields edit, reload, revert, 415 gate.
 // Run: node scripts/verify-scan.ts   (VERIFY_SKIP_BUILD=1 reuses .next)
 // Each step is a named function so later plans (02-04, 02-06, 02-08, 02-09)
 // can extend this script.
@@ -481,7 +482,7 @@ type SpinesApi = {
     photoId: string;
     index: number;
     crop: { url: string; width: number; height: number } | null;
-    fields: { field: string; value: string | null }[];
+    fields: { field: string; value: string | null; aiValue: string | null }[];
   }[];
   counts: { all: number; needsReview: number };
 };
@@ -544,6 +545,95 @@ export async function stepSpinesPhotoFilter(ctx: Ctx, photoId: string) {
     'an unknown ?photo id still lists data',
   );
   check(`1 of ${all.photos.length} photos; unknown id lists nothing`);
+}
+
+type FieldDto = {
+  field: string;
+  aiValue: string | null;
+  value: string | null;
+  editBaseAiValue: string | null;
+};
+
+async function patchField(
+  ctx: Ctx,
+  spineId: string,
+  body: unknown,
+  contentType = 'application/json',
+): Promise<{ status: number; body: FieldDto & { error?: string } }> {
+  const res = await fetch(`${ctx.baseUrl}/api/spines/${spineId}/fields`, {
+    method: 'PATCH',
+    headers: { origin: ctx.origin, 'content-type': contentType },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let parsed: FieldDto & { error?: string };
+  try {
+    parsed = JSON.parse(text) as FieldDto & { error?: string };
+  } catch {
+    throw new Error(
+      `PATCH returned ${res.status} with a non-JSON body: ${text}`,
+    );
+  }
+  return { status: res.status, body: parsed };
+}
+
+// (p) Plan 02-09: an edit is stored beside Claude's read and survives a
+// reload; revert restores the read; text/plain is refused (T-02-18).
+export async function stepFieldEdit(ctx: Ctx, photoId: string) {
+  step('(p) PATCH /api/spines/{id}/fields edits, reloads and reverts');
+  const before = (await getSpinesApi(ctx, `?photo=${photoId}`)).spines[0];
+  assert(before, 'no spine to edit');
+  const title = before.fields.find((f) => f.field === 'title');
+  assert(title, 'the spine has no title field');
+  const ai = title.aiValue;
+  const edited = `${ai ?? ''} (edited)`.trim();
+
+  const edit = await patchField(ctx, before.id, {
+    field: 'title',
+    value: `  ${edited}  `,
+  });
+  assert(edit.status === 200, `edit returned ${edit.status}`);
+  assert(edit.body.value === edited, `edit stored ${edit.body.value}`);
+  assert(
+    edit.body.aiValue === ai,
+    `edit changed aiValue to ${edit.body.aiValue}`,
+  );
+  assert(edit.body.editBaseAiValue === ai, 'edit did not record its base');
+
+  const reloaded = (await getSpinesApi(ctx, `?photo=${photoId}`)).spines.find(
+    (s) => s.id === before.id,
+  );
+  const after = reloaded?.fields.find((f) => f.field === 'title');
+  assert(
+    after?.value === edited && after.aiValue === ai,
+    `reload shows ${JSON.stringify(after)}`,
+  );
+
+  const revert = await patchField(ctx, before.id, {
+    field: 'title',
+    revert: true,
+  });
+  assert(
+    revert.status === 200 &&
+      revert.body.value === ai &&
+      revert.body.aiValue === ai &&
+      revert.body.editBaseAiValue === null,
+    `revert returned ${revert.status} ${JSON.stringify(revert.body)}`,
+  );
+
+  const plain = await patchField(
+    ctx,
+    before.id,
+    { field: 'title', value: 'x' },
+    'text/plain',
+  );
+  assert(plain.status === 415, `text/plain returned ${plain.status}`);
+  const missing = await patchField(ctx, 'no-such-spine', {
+    field: 'title',
+    value: 'x',
+  });
+  assert(missing.status === 404, `unknown spine returned ${missing.status}`);
+  check('edit kept the AI read, survived a reload, reverted; 415 and 404');
 }
 
 // (l) a crop is served as a horizontal WebP.
@@ -719,6 +809,7 @@ runMain('verify-scan', async (onCleanup) => {
   await stepRunRecorded(ctx, photoId);
   const cropUrl = await stepSpinesPage(ctx, photoId);
   await stepSpinesApi(ctx, photoId);
+  await stepFieldEdit(ctx, photoId);
   await stepServeCrop(ctx, cropUrl);
   await stepFileAllowlist(ctx, photoId, jpeg);
   stepOneCall(ctx);
