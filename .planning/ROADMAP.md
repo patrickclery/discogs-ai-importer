@@ -63,7 +63,7 @@ Plans:
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
 
-**Plans:** 8/12 plans executed
+**Plans:** 9/12 plans executed
 
 Plans:
 **Wave 1**
@@ -85,7 +85,7 @@ Plans:
 - [x] 02-08-PLAN.md — /spines polled list: sticky photo sections, spine cards with the crop on top, section states (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 02-09-PLAN.md — Field editing: PATCH with ai_value kept, autosave on blur, revert, confidence warnings, polling guard (wave 6)
+- [x] 02-09-PLAN.md — Field editing: PATCH with ai_value kept, autosave on blur, revert, confidence warnings, polling guard (wave 6)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 - [ ] 02-10-PLAN.md — Explicit re-scan with D-14 matching and D-15/D-16 merge that keeps spine ids and edits; Re-scan on both pages (wave 7)
@@ -138,6 +138,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
-| 2. Shelf Scan | 8/12 | In Progress | - |
+| 2. Shelf Scan | 9/12 | In Progress | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |

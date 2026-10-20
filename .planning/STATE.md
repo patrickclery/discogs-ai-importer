@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-08-PLAN.md
-last_updated: "2026-10-20T04:35:34.238Z"
+stopped_at: Completed 02-09-PLAN.md
+last_updated: "2026-10-20T04:46:14.844Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 2f06a928ebc09593ba75f3358ece431358d5537b
+state_head: 01f89480315678da9abe60eba088f8249e5061c1
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -70,6 +70,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P06 | 6 min | 2 tasks | 15 files |
 | Phase 02 P07 | 6min | 3 tasks | 10 files |
 | Phase 02 P08 | 7 min | 2 tasks | 11 files |
+| Phase 02 P09 | 8 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,10 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-07: dropzone root uses role=group with aria-label (react-dropzone default role=presentation drops the label)
 - [Phase 02]: 02-08: /spines shows #(index+1); Claude's index is 0-based, use spineNumber() for all #n copy
 - [Phase 02]: 02-08: counts.all and the /spines description count the returned (photo-filtered) spines; Needs review = low-confidence spines only until 02-12
+- [Phase 02]: isEdited trims both sides and maps empty to null, then compares exactly (no case folding)
+- [Phase 02]: Orphaned spines stay editable; superseded and dismissed PATCH returns 409
+- [Phase 02]: A failed field save rolls back the query cache but keeps the draft dirty so the next blur retries
+- [Phase 02]: Hard to read shows for any illegible detection; Check {field} only when a field is below the threshold
 
 ### Pending Todos
 
@@ -135,6 +140,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T04:35:34.161Z
-Stopped at: Completed 02-08-PLAN.md
+Last session: 2026-10-20T04:46:14.773Z
+Stopped at: Completed 02-09-PLAN.md
 Resume file: None
