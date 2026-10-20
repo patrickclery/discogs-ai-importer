@@ -35,6 +35,8 @@ export function Dropzone({
       {...getRootProps({
         role: 'group',
         'aria-label': 'Upload shelf photos',
+        // CLI not ready (UI E12): dimmed, announced as disabled, drops ignored.
+        'aria-disabled': disabled ? 'true' : undefined,
         className: cn(
           'flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center outline-none transition-colors motion-reduce:transition-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
           accept
@@ -42,7 +44,7 @@ export function Dropzone({
             : reject
               ? 'border-destructive bg-destructive/5'
               : 'border-border bg-muted/40',
-          disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+          disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
         ),
       })}
     >

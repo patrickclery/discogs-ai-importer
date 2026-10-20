@@ -18,8 +18,8 @@ const FAKE = path.resolve('test/fixtures/fake-claude.mjs');
 const CANARY_API_KEY = 'sk-ant-CANARY-0123456789zz';
 const FAKE_EMAIL = 'fake-owner@example.invalid';
 const FAKE_ORG = 'Fake Org Name';
-// The empty Photos list; /upload renders it on an empty data folder.
-const ALREADY_SET_UP = 'Photos you drop appear here';
+// The idle dropzone heading; /upload renders it once the CLI is ready.
+const ALREADY_SET_UP = 'Drop shelf photos here';
 const NOT_READY = "The Claude CLI isn't ready";
 
 type LogEntry = {

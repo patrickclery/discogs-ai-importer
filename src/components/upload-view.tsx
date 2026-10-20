@@ -11,6 +11,7 @@ import {
 } from '@/components/photo-status-list';
 import { ClientUploadRow } from '@/components/photo-status-row';
 import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
+import { UploadTip } from '@/components/upload-tip';
 import type { PhotoDto, PhotoStatus, PhotosResponse } from '@/lib/scan-types';
 import {
   createUploadQueue,
@@ -49,6 +50,7 @@ function isPhotosKey(key: readonly unknown[]): boolean {
 export function UploadView({
   initialPhotos,
   cliReady,
+  densityMaxSpines,
 }: {
   initialPhotos: PhotoDto[];
   cliReady: boolean;
@@ -160,6 +162,7 @@ export function UploadView({
   return (
     <div className="flex flex-col gap-6">
       <Dropzone disabled={!cliReady} onDrop={onDrop} />
+      <UploadTip maxSpines={densityMaxSpines} />
       <PhotoStatusList
         initialPhotos={initialPhotos}
         duplicateIds={duplicateIds}
