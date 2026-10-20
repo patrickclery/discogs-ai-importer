@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
+import { VISION_EFFORTS, type VisionEffort } from '@/lib/vision-contract';
 import { runProcess } from '../proc/run';
 import { SECRET_ENV_NAMES } from '../secrets';
 
@@ -46,13 +47,33 @@ export function claudeBin(): string {
   return process.env.CLAUDE_BIN || 'claude';
 }
 
-/** Copy of the env without API-billing variables or any app secret. */
+/**
+ * Claude Code session variables a parent session leaks into child processes
+ * (for example CLAUDE_EFFORT or CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING when the
+ * app is started from a Claude Code terminal). They would silently change a
+ * headless call. Every CLAUDE_CODE_* name is dropped as well, except the
+ * subscription credential below. CLAUDE_CONFIG_DIR is kept.
+ */
+const SESSION_ENV = ['CLAUDECODE', 'CLAUDE_EFFORT', 'CLAUDE_PID'] as const;
+const SESSION_ENV_PREFIX = 'CLAUDE_CODE_';
+const KEEP_SESSION_ENV = new Set(['CLAUDE_CODE_OAUTH_TOKEN']);
+
+/**
+ * Copy of the env without API-billing variables, app secrets or inherited
+ * Claude Code session variables.
+ */
 export function buildClaudeEnv(
   base: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base };
   for (const name of API_BILLING_ENV) delete env[name];
   for (const name of Object.values(SECRET_ENV_NAMES)) delete env[name];
+  for (const name of SESSION_ENV) delete env[name];
+  for (const name of Object.keys(env)) {
+    if (name.startsWith(SESSION_ENV_PREFIX) && !KEEP_SESSION_ENV.has(name)) {
+      delete env[name];
+    }
+  }
   return env;
 }
 
@@ -261,8 +282,8 @@ export function isClaudeReady(s: ClaudeCliStatus): boolean {
 
 export const TEST_PROMPT = 'Reply with exactly the word OK and nothing else.';
 const TEST_TIMEOUT_MS = 60_000;
-const MODEL_ID = /^[a-z0-9][a-z0-9.-]*$/;
-const LOGIN_HINT = /log ?in|\/login|authenticat/i;
+export const MODEL_ID = /^[a-z0-9][a-z0-9.-]*$/;
+export const LOGIN_HINT = /log ?in|\/login|authenticat/i;
 
 export type ClaudeCallArgs = {
   prompt: string;
@@ -273,6 +294,11 @@ export type ClaudeCallArgs = {
    * file tools to the working dir plus these --add-dir entries.
    */
   readDirs?: string[];
+  /** JSON schema (string) for structured output (--json-schema). */
+  jsonSchema?: string;
+  effort?: VisionEffort;
+  /** --max-turns; null or omitted leaves the flag out. */
+  maxTurns?: number | null;
 };
 
 /**
@@ -305,6 +331,22 @@ export function buildClaudeArgs(opts: ClaudeCallArgs): string[] {
   } else {
     args.push('--tools', 'Read', '--allowedTools', 'Read');
     for (const dir of readDirs) args.push('--add-dir', dir);
+  }
+  if (opts.jsonSchema !== undefined) {
+    args.push('--json-schema', opts.jsonSchema);
+  }
+  if (opts.effort !== undefined) {
+    if (!(VISION_EFFORTS as readonly string[]).includes(opts.effort)) {
+      throw new Error('invalid effort');
+    }
+    args.push('--effort', opts.effort);
+  }
+  if (typeof opts.maxTurns === 'number') {
+    const n = opts.maxTurns;
+    if (!Number.isInteger(n) || n < 1 || n > 20) {
+      throw new Error('maxTurns must be an integer from 1 to 20');
+    }
+    args.push('--max-turns', String(n));
   }
   return args;
 }
