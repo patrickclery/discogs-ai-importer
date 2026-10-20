@@ -107,7 +107,7 @@ describe('uploadPhoto', () => {
     });
   });
 
-  it('sends the raw File with its type and the encoded name', async () => {
+  it('sends the raw File as octet-stream with the encoded name (WR-04)', async () => {
     const fetchMock = vi.fn(
       async (_url: string, _init: RequestInit) =>
         new Response(JSON.stringify({ photoId: 'p2', duplicate: false }), {
@@ -121,13 +121,15 @@ describe('uploadPhoto', () => {
     expect(init.method).toBe('POST');
     expect(init.body).toBe(file);
     expect(init.headers).toEqual({
-      'content-type': 'image/jpeg',
+      'content-type': 'application/octet-stream',
       'x-filename': 'my%20shelf%20%231.jpg',
     });
   });
 
-  it('falls back to application/octet-stream when the type is empty', async () => {
-    const heic = new File([new Uint8Array([1])], 'IMG_1.HEIC');
+  it('ignores a browser type the server would refuse (WR-04)', async () => {
+    const heic = new File([new Uint8Array([1])], 'IMG_1.HEIC', {
+      type: 'image/heic-sequence',
+    });
     const fetchMock = vi.fn(
       async (_url: string, _init: RequestInit) =>
         new Response(JSON.stringify({ photoId: 'p3', duplicate: false }), {

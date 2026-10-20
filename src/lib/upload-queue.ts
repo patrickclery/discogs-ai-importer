@@ -64,7 +64,12 @@ async function failureCode(res: Response): Promise<UploadFailureCode> {
   return 'network';
 }
 
-/** POST one File as the raw body to /api/photos (Plan 02-03 contract). */
+/**
+ * POST one File as the raw body to /api/photos (Plan 02-03 contract). Always
+ * application/octet-stream (WR-04): the browser's file.type varies
+ * (image/jpg, image/heic-sequence, empty) and the server detects the format
+ * from the magic bytes anyway. It still forces the CORS preflight.
+ */
 export async function uploadPhoto(file: File): Promise<UploadResult> {
   let res: Response;
   try {
@@ -72,7 +77,7 @@ export async function uploadPhoto(file: File): Promise<UploadResult> {
       method: 'POST',
       body: file,
       headers: {
-        'content-type': file.type || 'application/octet-stream',
+        'content-type': 'application/octet-stream',
         'x-filename': encodeURIComponent(file.name),
       },
     });
