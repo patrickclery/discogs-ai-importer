@@ -163,3 +163,19 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 **Deferred at:** 2026-10-20 during /gsd-verify-work 02 session completion
 **Follow-ups:**
 - [ ] Test 9: I can't change the image from here to make it scroll to the top. I have to scroll to the top first to get to the drop down. (filter bar / photo Select is not sticky, so it is unreachable once scrolled into a long list) (deferred 2026-10-20)
+
+### Phase 999.3: Follow-up — Phase 02 deferred UAT follow-up: Test 3 (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 02 verification
+**Source phase:** 02
+**Deferred at:** 2026-10-20 during /gsd-verify-work 02 session completion
+**Follow-ups:**
+- [ ] Test 3: Manually check orphan Re-attach spine... and Dismiss spine in the browser (automated coverage: scripts/verify-rescan.ts) (deferred 2026-10-20)
+
+### Phase 999.4: Follow-up — Phase 02 deferred UAT follow-up: Test 5 (BACKLOG)
+
+**Goal:** Resolve the UAT checkpoint deferred during Phase 02 verification
+**Source phase:** 02
+**Deferred at:** 2026-10-20 during /gsd-verify-work 02 session completion
+**Follow-ups:**
+- [ ] Test 5: Manually check Re-scan from a failed /upload row, the narrow-window Re-scan icon (greyed out + tooltip while analyzing), and Use new read after a re-scan (deferred 2026-10-20)

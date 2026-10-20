@@ -3,7 +3,7 @@ status: complete
 phase: 02-shelf-scan
 source: [02-VERIFICATION.md]
 started: 2026-10-20T08:41:15.000Z
-updated: 2026-10-20T23:25:40.395Z
+updated: 2026-10-20T18:40:00.000Z
 ---
 
 ## Current Test
@@ -24,7 +24,7 @@ result: pass
 ### 3. UAT 8 (skipped in UAT). After a re-scan that orphans an edited spine, use Re-attach spine... and Dismiss spine.
 expected: The orphan shows under 'No longer detected (n)'. Re-attach moves the edits and toasts 'Edits moved to spine #n'. Dismiss toasts and moves focus to the next card's first field, or to the section's Re-scan button.
 result: skipped
-reason: "No real orphan available (re-scans re-pair >=95% of spines); orphan Re-attach/Dismiss covered by scripts/verify-rescan.ts with the fake CLI"
+reason: "Deferred follow-up: No real orphan available (re-scans re-pair >=95% of spines); orphan Re-attach/Dismiss covered by scripts/verify-rescan.ts with the fake CLI"
 
 ### 4. UAT 11 (skipped in UAT). Render a 20:1 crop and a 4:1 crop, then scroll about 500 spine cards.
 expected: Both crops render in full (object-contain, max-h-32/min-h-12) and scrolling stays responsive without virtualization.
@@ -34,7 +34,7 @@ note: "Tested on ~230 spines (all owner photos), not 500"
 ### 5. UAT 7 and 9 remainders. Re-scan from an /upload error row, the below-640px 36px icon trigger (disabled with a tooltip while analyzing), and 'Use new read' after a re-scan that changes an edited field's read.
 expected: Same confirm dialog and merge as on /spines. 'Use new read' clears the 'Latest scan reads' hint and the Edited badge.
 result: skipped
-reason: "No failed photo to re-scan from /upload; owner skipped the narrow-icon and Use new read checks (each needs a paid re-scan)"
+reason: "Deferred follow-up: No failed photo to re-scan from /upload; owner skipped the narrow-icon and Use new read checks (each needs a paid re-scan)"
 
 ## Summary
 
@@ -58,3 +58,12 @@ blocked: 0
   missing:
     - "Re-run test 1 after a server restart on the current build and a hard reload of /upload and /spines"
   debug_session: .planning/debug/refresh-alert-never-clears.md
+
+## Deferred Follow-Ups
+
+- test: 3
+  idea: "Manually check orphan Re-attach spine... and Dismiss spine in the browser (automated coverage: scripts/verify-rescan.ts)"
+  deferred_at: 2026-10-20
+- test: 5
+  idea: "Manually check Re-scan from a failed /upload row, the narrow-window Re-scan icon (greyed out + tooltip while analyzing), and Use new read after a re-scan"
+  deferred_at: 2026-10-20
