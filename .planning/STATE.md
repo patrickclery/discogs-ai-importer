@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 2
+current_phase: 02
 current_phase_name: Shelf Scan
-status: verifying
-stopped_at: Completed 02-12-PLAN.md
-last_updated: "2026-10-20T05:22:31.610Z"
-last_activity: 2026-10-19
-last_activity_desc: Phase 2 execution started
-state_head: b9485092aa77a1f774573a0c8979bfa38d0c9795
+status: executing
+stopped_at: Completed 02-13-PLAN.md
+last_updated: "2026-10-20T08:27:27.385Z"
+last_activity: 2026-10-20
+last_activity_desc: Phase 02 execution started
+state_head: 398691a372de47e022eebb749b4a7b458a2df149
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 20
+  completed_plans: 19
   percent: 25
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-18)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 2 — Shelf Scan
+**Current focus:** Phase 02 — Shelf Scan
 
 ## Current Position
 
-Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 12 of 12
-Status: Phase complete — ready for verification
-Last activity: 2026-10-19 — Phase 2 execution started
+Phase: 02 (Shelf Scan) — EXECUTING
+Plan: 14 of 14
+Status: Ready to execute
+Last activity: 2026-10-20 — Phase 02 execution started
 
 Progress: [███░░░░░░░] 25%
 
@@ -74,6 +74,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P10 | 13min | 3 tasks | 19 files |
 | Phase 02 P11 | 10min | 2 tasks | 17 files |
 | Phase 02 P12 | 5min | 3 tasks | 14 files |
+| Phase 02 P13 | 2min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,8 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-12: Needs review counts cover the photo filter and ignore the review filter, so both toggle counts stay visible
 - [Phase 02]: 02-12: SpinesResponse.photoOptions lists every photo for the Select, the not-found check and polling
 - [Phase 02]: 02-12: rescanHint shows no hint when the latest read is empty (A-18)
+- [Phase 02]: Retry a failed poll every 3 s (POLL_RETRY_MS) when no photo is active; active polling stays 1.5 s (G-02-3)
+- [Phase 02]: photosRefetchInterval status parameter is required so typecheck catches non-error-aware call sites
 
 ### Pending Todos
 
@@ -153,6 +156,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T05:22:31.521Z
-Stopped at: Completed 02-12-PLAN.md
+Last session: 2026-10-20T08:27:27.247Z
+Stopped at: Completed 02-13-PLAN.md
 Resume file: None
