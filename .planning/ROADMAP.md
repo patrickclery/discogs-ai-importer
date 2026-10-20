@@ -63,7 +63,7 @@ Plans:
   4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
   5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
 
-**Plans:** 2/12 plans executed
+**Plans:** 3/12 plans executed
 
 Plans:
 **Wave 1**
@@ -71,7 +71,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 02-02-PLAN.md — D-01 spike measurement: calibration grid, Opus/Sonnet x effort matrix, report.json, fixture-only geometry and parsing tests (wave 2)
-- [ ] 02-03-PLAN.md — Ingest tracer: Phase 2 schema and migration, upload route with magic bytes and dedup, one queued non-retryable scan job per photo, photo list (wave 2)
+- [x] 02-03-PLAN.md — Ingest tracer: Phase 2 schema and migration, upload route with magic bytes and dedup, one queued non-retryable scan job per photo, photo list (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 02-04-PLAN.md — Freeze the vision contract and crop source (decision), then the scan tracer: ledgered single call, raw first, crops, file route, /spines list (wave 3)
@@ -138,6 +138,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
-| 2. Shelf Scan | 2/12 | In Progress | - |
+| 2. Shelf Scan | 3/12 | In Progress | - |
 | 3. Discogs Match | 0/TBD | Not started | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |

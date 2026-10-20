@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-10-20T03:33:01.715Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-10-20T03:40:56.250Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 7763d71bd0b47faefd893fa020c7aafb4af21be9
+state_head: 91e1c81b20a6db29103e4b05d33770311b2a045b
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 8
+  completed_plans: 9
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -64,6 +64,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01 P04 | 7min | 3 tasks | 15 files |
 | Phase 02 P01 | 12min | 2 tasks | 15 files |
 | Phase 02 P02 | 34min | 3 tasks | 58 files |
+| Phase 02 P03 | 7min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Plan 02-02: calibration confirms 1:1 CLI pixel space at 2576/4784 incl. >500 KB JPEG (median error 0.02-0.03%)
 - [Phase 02]: Plan 02-02: proposed freeze opus-5-5 high, N 90, W 33 px, confidence 0.6, max output tokens 32000, crop source master, tiling not needed (owner count pending)
 - [Phase 02]: Plan 02-02: parseVisionResult keeps non-empty values exactly; non-number confidence becomes 0
+- [Phase 02]: Plan 02-03: scan_photo jobs are enqueued with maxAttempts 1 and dedupe scan:<photoId>:<runNo> in the same transaction as the photo and run
+- [Phase 02]: Plan 02-03: photos.latest_run_id and spines.current_detection_id carry no FK (circular); hasEarlierScan means an earlier run is done
 
 ### Pending Todos
 
@@ -116,6 +119,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:33:01.649Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-10-20T03:40:56.182Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
