@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Shelf Scan
 status: executing
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-10-20T04:46:14.844Z"
+stopped_at: Completed 02-10-PLAN.md
+last_updated: "2026-10-20T05:01:53.117Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 2 execution started
-state_head: 01f89480315678da9abe60eba088f8249e5061c1
+state_head: cb632908e256d401125e7bc9077f7a8924b1e0ba
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 2 (Shelf Scan) — EXECUTING
-Plan: 10 of 12
+Plan: 11 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 2 execution started
 
@@ -71,6 +71,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P07 | 6min | 3 tasks | 10 files |
 | Phase 02 P08 | 7 min | 2 tasks | 11 files |
 | Phase 02 P09 | 8 min | 2 tasks | 13 files |
+| Phase 02 P10 | 13min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Orphaned spines stay editable; superseded and dismissed PATCH returns 409
 - [Phase 02]: A failed field save rolls back the query cache but keeps the draft dirty so the next blur retries
 - [Phase 02]: Hard to read shows for any illegible detection; Check {field} only when a field is below the threshold
+- [Phase 02]: 02-10: MATCH_CUTOFF tuned 0.5 to 0.6 on spike fixtures (rejects a cross-model wrong pair at 0.54); weights stay 0.8 geometry / 0.2 text
+- [Phase 02]: 02-10: Re-scan detections are inserted unlinked and mergeRunIntoSpines links them in persistRunResult's immediate transaction; earlier runs are never touched
+- [Phase 02]: 02-10: Edited fields keep edit_base_ai_value across a re-scan, cleared only when the value equals the new read
 
 ### Pending Todos
 
@@ -140,6 +144,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T04:46:14.773Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-10-20T05:01:53.036Z
+Stopped at: Completed 02-10-PLAN.md
 Resume file: None
