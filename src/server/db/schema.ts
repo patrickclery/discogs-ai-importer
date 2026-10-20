@@ -145,6 +145,13 @@ export const spineDetections = sqliteTable(
     cropPath: text('crop_path'),
     cropW: integer('crop_w'),
     cropH: integer('crop_h'),
+    /**
+     * The spine this detection was linked to when its run was stored (new or
+     * matched). Never moved afterwards: a re-attach (orphans.ts) leaves it on
+     * the superseded target. The spine a detection belongs to now is the one
+     * whose spines.current_detection_id names it; resolve through that, not
+     * through this column (IN-04).
+     */
     spineId: text('spine_id'),
     createdAt: integer('created_at').notNull(),
   },

@@ -9,8 +9,10 @@ import { getSpineDto, loadSpineDtos } from './queries';
 // either re-attaches one to a spine the latest run newly found, or dismisses
 // it. Spine ids are what later phases attach Discogs matches and imports to,
 // so re-attach keeps the orphan's id and retires the new spine instead
-// (A-20). Detection rows are never modified. Named parameters only
-// (better-sqlite3 rejects ?1).
+// (A-20). Detection rows are never modified, so after a re-attach the
+// detection's spine_id still names the superseded target: the owning spine
+// is the one whose current_detection_id points at it (IN-04, schema.ts).
+// Named parameters only (better-sqlite3 rejects ?1).
 
 /**
  * A re-attach target for orphan `@orphanId`: an active spine of the same
