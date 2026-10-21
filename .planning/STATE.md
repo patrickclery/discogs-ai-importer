@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Discogs Match
 status: executing
-stopped_at: Completed 03-11-PLAN.md
-last_updated: "2026-10-21T05:42:52.991Z"
+stopped_at: Completed 03-12-PLAN.md
+last_updated: "2026-10-21T05:53:11.973Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 3 execution started
-state_head: f060bbd71f4c8cf31050907fa206f0ed9826c4f3
+state_head: f4017a569bd4d7f8fc4a595684b8d811043f6f5b
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 31
+  completed_plans: 32
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 3 (Discogs Match) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 3 execution started
 
@@ -88,6 +88,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P09 | 6min | 3 tasks | 12 files |
 | Phase 03 P10 | 6min | 2 tasks | 9 files |
 | Phase 03 P11 | 8 min | 2 tasks | 16 files |
+| Phase 03 P12 | 8min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Explicit searches (Search again/Retry) use dedupe key search:{searchId}; busy and state checks run inside the same IMMEDIATE transaction
 - [Phase 03]: search_spine never replaces auto candidates for a manual search; manual inputs carry only rawText until Plan 03-12's manual branch
 - [Phase 03]: addManualCandidate copies from the spine's own done manual/release search results and upserts on (spine, manual, release) so re-adding moves it to the top
+- [Phase 03]: A manual dialog search sends one CD-only GET /database/search of 25 and never writes discogs_candidates; an empty stored query fails without a request
+- [Phase 03]: Dialog result covers resolve their URL from the search's stored results_json (manual and release searches only), never the request
+- [Phase 03]: The dialog's polite status announces only done ('{n} results') and no_match; not-found and failed are visible text
 
 ### Pending Todos
 
@@ -197,6 +201,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T05:42:52.851Z
-Stopped at: Completed 03-11-PLAN.md
+Last session: 2026-10-21T05:53:11.830Z
+Stopped at: Completed 03-12-PLAN.md
 Resume file: None

@@ -42,7 +42,7 @@
 - [x] **DISC-03**: After extraction, each music spine is searched on Discogs automatically (catalog number first, then artist + title + format, then free text)
 - [x] **DISC-04**: User sees candidate releases with cover thumbnail, year, country, label, catalog number and format
 - [x] **DISC-05**: Editing a spine's fields lets the user re-run the Discogs search for that spine
-- [ ] **DISC-06**: User can manually search Discogs or paste a Discogs release URL/ID for any spine
+- [x] **DISC-06**: User can manually search Discogs or paste a Discogs release URL/ID for any spine
 
 ### Import
 
@@ -112,7 +112,7 @@
 | DISC-03 | Phase 3 | Complete |
 | DISC-04 | Phase 3 | Complete |
 | DISC-05 | Phase 3 | Complete |
-| DISC-06 | Phase 3 | Pending |
+| DISC-06 | Phase 3 | Complete |
 | IMP-01 | Phase 4 | Pending |
 | IMP-02 | Phase 4 | Pending |
 | IMP-03 | Phase 4 | Pending |

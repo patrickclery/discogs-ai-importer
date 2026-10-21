@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 4
+open_count: 2
 waived_count: 0
-fixed_count: 0
+fixed_count: 2
 total_count: 4
-last_updated: 2026-10-21T05:42:00.375Z
+last_updated: 2026-10-21T05:51:14.084Z
 ---
 
 # Broken Windows Ledger
@@ -17,8 +17,8 @@ last_updated: 2026-10-21T05:42:00.375Z
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 03 | stub | src/components/discogs-matches.tsx |  | DiscogsMatches accepts pausedUntil but does not render the paused line yet (Plan 03-09) | open |  | 2026-10-21T02:18:10.184Z |  |
 | 2 | 03 | stub | src/components/discogs-matches.tsx |  | DiscogsMatches header action group is empty (Plans 03-10 and 03-11 add Search again, Retry, Search Discogs…) | open |  | 2026-10-21T02:18:10.288Z |  |
-| 3 | 3 | stub | src/components/discogs-search-dialog.tsx | 61 | Dialog shows a neutral 'Nothing to add from this search.' for no_match, not_found and failed; Plan 03-12 adds the UI-SPEC copy | open |  | 2026-10-21T05:42:00.274Z |  |
-| 4 | 3 | stub | src/components/discogs-search-dialog.tsx | 220 | Dialog result covers point at /api/discogs/searches/{id}/thumb/{releaseId}, which Plan 03-12 adds; until then the Disc3 placeholder shows | open |  | 2026-10-21T05:42:00.375Z |  |
+| 3 | 3 | stub | src/components/discogs-search-dialog.tsx | 61 | Dialog shows a neutral 'Nothing to add from this search.' for no_match, not_found and failed; Plan 03-12 adds the UI-SPEC copy | fixed |  | 2026-10-21T05:42:00.274Z | 2026-10-21T05:51:13.990Z |
+| 4 | 3 | stub | src/components/discogs-search-dialog.tsx | 220 | Dialog result covers point at /api/discogs/searches/{id}/thumb/{releaseId}, which Plan 03-12 adds; until then the Disc3 placeholder shows | fixed |  | 2026-10-21T05:42:00.375Z | 2026-10-21T05:51:14.084Z |
 
 ````json
 [
@@ -55,10 +55,10 @@ last_updated: 2026-10-21T05:42:00.375Z
     "file": "src/components/discogs-search-dialog.tsx",
     "line": 61,
     "description": "Dialog shows a neutral 'Nothing to add from this search.' for no_match, not_found and failed; Plan 03-12 adds the UI-SPEC copy",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-10-21T05:42:00.274Z",
-    "resolved_at": null,
+    "resolved_at": "2026-10-21T05:51:13.990Z",
     "milestone": null
   },
   {
@@ -68,10 +68,10 @@ last_updated: 2026-10-21T05:42:00.375Z
     "file": "src/components/discogs-search-dialog.tsx",
     "line": 220,
     "description": "Dialog result covers point at /api/discogs/searches/{id}/thumb/{releaseId}, which Plan 03-12 adds; until then the Disc3 placeholder shows",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-10-21T05:42:00.375Z",
-    "resolved_at": null,
+    "resolved_at": "2026-10-21T05:51:14.084Z",
     "milestone": null
   }
 ]
