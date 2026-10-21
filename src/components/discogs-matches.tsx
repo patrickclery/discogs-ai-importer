@@ -88,7 +88,13 @@ function Body({ spine, connected }: { spine: SpineDto; connected: boolean }) {
   const discogs = spine.discogs;
   const state = discogs?.state ?? 'not_searched';
   const candidates = discogs?.topCandidates ?? [];
-  const list = <CandidateList candidates={candidates} />;
+  const list = (
+    <CandidateList
+      spineId={spine.id}
+      candidates={candidates}
+      total={discogs?.candidateCount ?? candidates.length}
+    />
+  );
   if (candidates.length > 0 && state !== 'no_match') return list;
   switch (state) {
     case 'queued':

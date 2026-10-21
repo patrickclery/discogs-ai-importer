@@ -11,6 +11,8 @@
 // their steps before it.
 // Plan 03-08: (c2) /api/spines and /spines show each spine's lookup state
 // and its top three candidates.
+// Plan 03-09: (c3) GET /api/spines/{id}/candidates lists every candidate
+// in the inline order, and an unknown spine is a 404.
 // Plans 03-05, 03-08, 03-09, 03-10, 03-11 and 03-12 add their own named
 // steps here; step letters are stable across plans.
 // Run: node scripts/verify-discogs-search.ts   (VERIFY_SKIP_BUILD=1 reuses
@@ -461,6 +463,59 @@ async function stepSpinesReadModel(ctx: Ctx, photoId: string): Promise<void> {
   );
 }
 
+// (c3) Plan 03-09: GET /api/spines/{id}/candidates (Show all) lists every
+// stored candidate in the same D-10 order as the inline ones.
+async function stepShowAll(ctx: Ctx, photoId: string): Promise<void> {
+  step(
+    '(c3) /api/spines/{id}/candidates keeps the inline order; unknown id 404',
+  );
+  const res = await fetch(
+    `${ctx.baseUrl}/api/spines?photo=${encodeURIComponent(photoId)}`,
+    { cache: 'no-store' },
+  );
+  assert(res.status === 200, `GET /api/spines returned ${res.status}`);
+  const { spines } = (await res.json()) as { spines: ApiSpine[] };
+  const value = (s: ApiSpine, field: string) =>
+    s.fields.find((f) => f.field === field)?.value ?? null;
+  const all = async (id: string) => {
+    const r = await fetch(
+      `${ctx.baseUrl}/api/spines/${encodeURIComponent(id)}/candidates`,
+      { cache: 'no-store' },
+    );
+    assert(r.status === 200, `GET candidates for ${id} returned ${r.status}`);
+    return ((await r.json()) as { candidates: { releaseId: number }[] })
+      .candidates;
+  };
+  const juniper = spines.find((s) => value(s, 'catalog_number') === 'TR-203');
+  assert(juniper?.discogs, 'no TR-203 (Juniper Vale) spine in /api/spines');
+  const juniperAll = (await all(juniper.id)).map((c) => c.releaseId);
+  const juniperTop = juniper.discogs.topCandidates.map((c) => c.releaseId);
+  assert(
+    JSON.stringify(juniperAll) === JSON.stringify(juniperTop) &&
+      juniperAll.length === 3,
+    `Juniper Vale candidates ${JSON.stringify(juniperAll)}, inline ${JSON.stringify(juniperTop)}`,
+  );
+  const tr200 = spines.find((s) => value(s, 'catalog_number') === 'TR-200');
+  assert(tr200, 'no TR-200 spine in /api/spines');
+  const tr200All = await all(tr200.id);
+  assert(
+    tr200All[0]?.releaseId === 1001,
+    `TR-200 candidates start with ${tr200All[0]?.releaseId}, expected 1001`,
+  );
+  const missing = await fetch(
+    `${ctx.baseUrl}/api/spines/no-such-spine/candidates`,
+    { cache: 'no-store' },
+  );
+  const missingBody = (await missing.json()) as { error?: string };
+  assert(
+    missing.status === 404 && missingBody.error === 'not_found',
+    `unknown spine answered ${missing.status} ${JSON.stringify(missingBody)}`,
+  );
+  check(
+    'Juniper Vale lists its 3 candidates in inline order; TR-200 starts with 1001; unknown spine 404',
+  );
+}
+
 // (d) the requests themselves: signed, CD-only, ten per page, paced.
 function stepRequests(ctx: Ctx): void {
   step('(d) every search request is signed, CD-only and paced');
@@ -693,6 +748,7 @@ runMain('verify-discogs-search', async (onCleanup) => {
   const photoId = await stepConnectAndScan(ctx);
   stepCandidates(ctx, photoId);
   await stepSpinesReadModel(ctx, photoId);
+  await stepShowAll(ctx, photoId);
   stepRequests(ctx);
   await step429Resume(ctx);
   // Later plans insert their steps here, before (f).
