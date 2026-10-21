@@ -3,7 +3,10 @@
 // started through the app ends at /settings?discogs=connected with a
 // callback on this server's own port, (c) the tokens land in the temp
 // secrets file with mode 0600, (d) every API request carries the project
-// User-Agent and every OAuth call is PLAINTEXT.
+// User-Agent and every OAuth call is PLAINTEXT, (e) a denied approval ends
+// at denied, (f) a made-up or replayed oauth_token ends at expired, (h) the
+// docs-form access-token signature still connects after one retry, and an
+// identity failure ends at error. Nothing but connected stores a token.
 // Step letters are stable across plans: (a) is the Settings card (Plan
 // 03-02) and (g) the paste-code path (Plan 03-04).
 // Run: node scripts/verify-discogs.ts   (VERIFY_SKIP_BUILD=1 reuses the build)
@@ -199,6 +202,122 @@ export function stepUserAgent(ctx: Ctx): void {
   check(`${api.length} API requests, all with the project User-Agent`);
 }
 
+function tokenKeysPresent(ctx: Ctx): string[] {
+  const secrets = readSecrets(ctx);
+  return TOKEN_KEYS.filter((k) => k in secrets);
+}
+
+/** GET a callback URL without following the redirect; returns Location. */
+async function callbackLocation(url: string): Promise<string> {
+  const res = await fetch(url, { redirect: 'manual' });
+  await res.text();
+  const location = res.headers.get('location');
+  assert(
+    res.status === 303 && location,
+    `callback ${new URL(url).pathname} answered ${res.status}, not a 303`,
+  );
+  assertNoLeak('callback Location', location);
+  return location;
+}
+
+function accessTokenPosts(ctx: Ctx): number {
+  return fakeLog(ctx).filter(
+    (e) =>
+      e.surface === 'api' &&
+      e.method === 'POST' &&
+      e.path === '/oauth/access_token',
+  ).length;
+}
+
+// (e) Denying on (fake) discogs.com ends at denied and stores nothing.
+export async function stepDenied(ctx: Ctx): Promise<void> {
+  step('(e) a denied approval ends at /settings?discogs=denied');
+  clearConnection(ctx);
+  await ctx.fake.control({ authorize: 'deny' });
+  try {
+    const trace = await connectTrace(ctx);
+    assert(
+      new URL(trace.callbackUrl).searchParams.has('denied') &&
+        !new URL(trace.callbackUrl).searchParams.has('oauth_verifier'),
+      'the fake deny redirect still carries a verifier',
+    );
+    assertNoLeak('callback Location', trace.location);
+    assertSettingsLocation(ctx, trace.location, 'denied');
+  } finally {
+    await ctx.fake.control({ reset: true });
+  }
+  const present = tokenKeysPresent(ctx);
+  assert(present.length === 0, `denied connect stored ${present.join(', ')}`);
+  check('denied; no token keys in the secrets file');
+}
+
+// (f) Unknown and already-used oauth_tokens end at expired (T-03-01).
+export async function stepExpired(ctx: Ctx): Promise<void> {
+  step(
+    '(f) made-up and replayed oauth_tokens end at /settings?discogs=expired',
+  );
+  clearConnection(ctx);
+  const madeUp = `${ctx.origin}/api/discogs/callback?oauth_token=fake-rt-madeup0123&oauth_verifier=madeup`;
+  assertSettingsLocation(ctx, await callbackLocation(madeUp), 'expired');
+  const none = tokenKeysPresent(ctx);
+  assert(none.length === 0, `a made-up token stored ${none.join(', ')}`);
+  check('made-up oauth_token: expired, nothing stored');
+
+  const trace = await connectTrace(ctx);
+  assertSettingsLocation(ctx, trace.location, 'connected');
+  const before = readSecrets(ctx);
+  assertSettingsLocation(
+    ctx,
+    await callbackLocation(trace.callbackUrl),
+    'expired',
+  );
+  const after = readSecrets(ctx);
+  for (const k of TOKEN_KEYS) {
+    assert(after[k] === before[k], `replaying the callback changed ${k}`);
+  }
+  check('replayed callback: expired, the saved connection is unchanged');
+}
+
+// (h) RESEARCH A2: a consumer_secret& exchange connects after one retry;
+// an identity failure ends at error and stores nothing.
+export async function stepDocsSignature(ctx: Ctx): Promise<void> {
+  step('(h) docs-form access-token signature connects after one retry');
+  clearConnection(ctx);
+  await ctx.fake.control({ accessSignature: 'docs' });
+  try {
+    const posts = accessTokenPosts(ctx);
+    const trace = await connectTrace(ctx);
+    assertSettingsLocation(ctx, trace.location, 'connected');
+    const sent = accessTokenPosts(ctx) - posts;
+    assert(
+      sent === 2,
+      `the docs-form connect sent ${sent} POST /oauth/access_token, expected 2`,
+    );
+    assert(
+      tokenKeysPresent(ctx).length === 3,
+      'the docs-form connect saved no tokens',
+    );
+  } finally {
+    await ctx.fake.control({ reset: true });
+  }
+  check('connected with exactly two POST /oauth/access_token');
+
+  clearConnection(ctx);
+  await ctx.fake.control({ revoked: true });
+  try {
+    const trace = await connectTrace(ctx);
+    assertSettingsLocation(ctx, trace.location, 'error');
+  } finally {
+    await ctx.fake.control({ reset: true });
+  }
+  const present = tokenKeysPresent(ctx);
+  assert(
+    present.length === 0,
+    `a failed identity stored ${present.join(', ')}`,
+  );
+  check('identity 401: error, nothing stored');
+}
+
 runMain('verify-discogs', async (onCleanup) => {
   const tmp = await makeTempDir('verify-discogs');
   onCleanup(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -228,6 +347,11 @@ runMain('verify-discogs', async (onCleanup) => {
 
   await stepConnect(ctx);
   stepSecretsFile(ctx);
+  stepUserAgent(ctx);
+  await stepDenied(ctx);
+  await stepExpired(ctx);
+  await stepDocsSignature(ctx);
+  // (d) again: the extra connects above kept the User-Agent and PLAINTEXT.
   stepUserAgent(ctx);
 
   step('stop');
