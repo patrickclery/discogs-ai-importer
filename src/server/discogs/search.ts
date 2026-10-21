@@ -36,17 +36,6 @@ const COMMON_PARAMS = {
   page: 1,
 } as const;
 
-/** Results per dialog (manual) search: one page of 25 (D-15). */
-export const MANUAL_PER_PAGE = 25;
-
-/** The one manual search's params besides q: CDs only (A-03-23). */
-export const MANUAL_PARAMS = {
-  type: 'release',
-  format: 'CD',
-  per_page: MANUAL_PER_PAGE,
-  page: 1,
-} as const;
-
 /**
  * catno, then artist and/or release_title (A-03-10), then free text. A stage
  * is left out when it has nothing to send.

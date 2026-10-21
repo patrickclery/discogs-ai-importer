@@ -9,7 +9,6 @@ import type { SearchInputs } from '../../discogs/inputs';
 import {
   type CascadeResult,
   type CascadeSearch,
-  MANUAL_PARAMS,
   parseSearchResponse,
   rankCandidates,
   runCascade,
@@ -181,7 +180,14 @@ export async function runSearchSpine(
         return;
       }
       const { results, total } = await api.search(
-        { q: manualQuery, ...MANUAL_PARAMS },
+        // CDs only, like the cascade (A-03-23); one page of 25 (D-15).
+        {
+          q: manualQuery,
+          type: 'release',
+          format: 'CD',
+          per_page: DIALOG_RESULTS_MAX,
+          page: 1,
+        },
         ctx.signal,
       );
       outcome =

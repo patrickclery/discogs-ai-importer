@@ -64,9 +64,10 @@ export const DIALOG_DESCRIPTION =
 export const BEFORE_SEARCH_LINE = 'Results from Discogs appear here.';
 export const RELEASE_CHECK_LINE =
   'Check that this is the CD you meant. Discogs numbers releases and masters separately, so a number can point to a different record.';
-export const MORE_RESULTS_LINE = `Showing the first ${DIALOG_RESULTS_MAX} results. Add a word or the catalog number to narrow it down.`;
+export const MORE_RESULTS_LINE =
+  'Showing the first 25 results. Add a word or the catalog number to narrow it down.';
 
-/** UI-SPEC "Dialog not found": a pasted number Discogs has no release for. */
+/** UI-SPEC "Dialog not found": a pasted number unknown to Discogs. */
 export function notFoundLine(releaseId: number | null): string {
   return `Discogs has no release ${releaseId ?? ''}. Check the number, or paste the full link from the release page.`;
 }
