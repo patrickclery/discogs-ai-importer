@@ -7,6 +7,7 @@ import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 import { revalidatePath } from 'next/cache';
+import { getDiscogsAuth, saveDiscogsAuth } from '@/server/discogs/auth';
 import { clearSecretAction, saveDiscogsCredentials } from './actions';
 
 const CANARY_KEY = 'CANARYKEY-0123456789wxyz';
@@ -164,5 +165,62 @@ describe('settings actions', () => {
     expect(save && !save.ok && save.formError).toMatch(
       /^Couldn't write secrets\.json: x{160}\. Check/,
     );
+  });
+  // RESEARCH Pitfall 7 / A4, T-03-13: the Discogs sign-in is bound to the
+  // consumer key, so clearing a consumer value also disconnects.
+  it('clearSecretAction on the consumer key while connected also disconnects', async () => {
+    await saveDiscogsCredentials(
+      null,
+      form({
+        discogsConsumerKey: CANARY_KEY,
+        discogsConsumerSecret: CANARY_SECRET,
+      }),
+    );
+    saveDiscogsAuth({
+      token: 'CANARYTOKEN-0123456789efgh',
+      tokenSecret: 'CANARYTOKENSECRET-0123456789ijkl',
+      username: 'fake-owner',
+    });
+    expect(getDiscogsAuth()).not.toBeNull();
+    const res = await clearSecretAction('discogsConsumerKey');
+    expect(res).toEqual({ ok: true });
+    expect(getDiscogsAuth()?.username ?? null).toBeNull();
+    const stored = readFile();
+    expect(stored).not.toHaveProperty('discogsOAuthToken');
+    expect(stored).not.toHaveProperty('discogsOAuthTokenSecret');
+    expect(stored).not.toHaveProperty('discogsUsername');
+    expect(stored.discogsConsumerSecret).toBe(CANARY_SECRET);
+  });
+
+  it('clearSecretAction on the consumer secret while connected also disconnects', async () => {
+    await saveDiscogsCredentials(
+      null,
+      form({
+        discogsConsumerKey: CANARY_KEY,
+        discogsConsumerSecret: CANARY_SECRET,
+      }),
+    );
+    saveDiscogsAuth({
+      token: 'CANARYTOKEN-0123456789efgh',
+      tokenSecret: 'CANARYTOKENSECRET-0123456789ijkl',
+      username: 'fake-owner',
+    });
+    expect(await clearSecretAction('discogsConsumerSecret')).toEqual({
+      ok: true,
+    });
+    expect(getDiscogsAuth()?.username ?? null).toBeNull();
+    expect(readFile().discogsConsumerKey).toBe(CANARY_KEY);
+  });
+
+  it('clearSecretAction while not connected still succeeds', async () => {
+    await saveDiscogsCredentials(
+      null,
+      form({ discogsConsumerKey: CANARY_KEY }),
+    );
+    expect(await clearSecretAction('discogsConsumerKey')).toEqual({
+      ok: true,
+    });
+    expect(getDiscogsAuth()).toBeNull();
+    expect(readFile()).not.toHaveProperty('discogsConsumerKey');
   });
 });
