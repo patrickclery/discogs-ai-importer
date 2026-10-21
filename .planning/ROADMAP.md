@@ -115,28 +115,39 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans:** 8 plans
+**Plans:** 13 plans
 
 Plans:
 **Wave 1**
-- [ ] 03-01-PLAN.md — Connect tracer: PLAINTEXT signer, pacing gate, in-house client, OAuth connect/callback/paste-code, first Discogs card, fake Discogs and verify-discogs (wave 1)
+- [ ] 03-01-PLAN.md — Connect tracer through the API: PLAINTEXT signer, pacing gate, read-only in-house client, OAuth connect/callback, fake Discogs and verify-discogs (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 03-02-PLAN.md — Settings Discogs card complete: Test connection, Disconnect, Reconnect needed, ?discogs= notices, callback URL, paste-code form, clear-also-disconnects (wave 2)
-- [ ] 03-03-PLAN.md — Auto search tracer [schema apply]: searches and candidates tables, catno/artist-title/text cascade, enqueue on scan, re-scan and connect backfill, 429 deferral and lane gate (wave 2)
+- [ ] 03-02-PLAN.md — Settings Discogs card: Connect button, Connected as, Test connection, Disconnect, Reconnect needed, clear-also-disconnects (wave 2)
+- [ ] 03-03-PLAN.md — Auto search tracer [schema apply]: searches and candidates tables, catno/artist-title/text cascade, enqueue on scan, search_spine handler, fake data API (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 03-04-PLAN.md — Candidates on the spine card: search-state badge, Discogs matches list with Show all, not-connected notice, polling while lookups run (wave 3)
-- [ ] 03-05-PLAN.md — Cover cache in the data folder and the header's Discogs backlog and pause countdown (wave 3)
+- [ ] 03-04-PLAN.md — Return from discogs.com: paste-code fallback, ?discogs= notices, callback URL, auth/connect/signer tests and canary sweep (wave 3)
+- [ ] 03-05-PLAN.md — Rate limits never lose work: 429 deferral and lane gate, revoked and vanished-spine branches, pacing gate limits (wave 3)
+- [ ] 03-06-PLAN.md — Cover cache in the data folder and the header's Discogs backlog and pause countdown (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 03-06-PLAN.md — Fields changed since last search, Search again and Retry search (wave 4)
+- [ ] 03-07-PLAN.md — Connect backfill of already-scanned spines (verify-discogs-backfill) and cascade, mapping, pin and enqueue tests (wave 4)
+- [ ] 03-08-PLAN.md — Candidates on the spine card: search-state badge, Discogs matches top 3, state lines (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 03-07-PLAN.md — Search Discogs… dialog: free-text search, pasted release link or number, master refusal, add as pinned manual candidate (wave 5)
+- [ ] 03-09-PLAN.md — Show all, candidate details rules, /spines polling, not-connected notice, paused countdown (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 03-08-PLAN.md — Owner connects the real Discogs account on port 3001 (blocking checkpoint) and a read-only live report settles A1, A2, A3, A5 (wave 6)
+- [ ] 03-10-PLAN.md — Fields changed since last search, Search again and Retry search (wave 6)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 03-11-PLAN.md — Search Discogs… dialog: pasted release link or number, master refusal, add as pinned manual candidate (wave 7)
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 03-12-PLAN.md — Search Discogs… dialog: free-text search, result covers, error states, refusal tests, manual picks survive re-search (wave 8)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 03-13-PLAN.md — Owner connects the real Discogs account on port 3001 (blocking checkpoint) and a read-only live report settles A1, A2, A3, A5 (wave 9)
 
 **UI hint**: yes
 

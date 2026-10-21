@@ -499,17 +499,19 @@ The job lane must be `'discogs'` [VERIFIED: src/server/jobs/types.ts:4 `export c
 | A9 | i.discogs.com thumb URLs are stable (no expiry) | Pattern 6 | A re-fetch of an expired URL 404s and the placeholder shows. The cache makes this rare. |
 | A10 | Routes and the lease-holding worker share one Node process in `next start`, so one `globalThis` gate covers both | Pattern 2 | Under a second process (another `next dev` on the same DATA_DIR), routes in the non-holder could exceed pacing slightly. Single-user and rare. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Stage-2 condition when only artist or only title exists**
+All four were resolved during planning; each resolution is recorded as a planner assumption in the named plan.
+
+1. **Stage-2 condition when only artist or only title exists** — RESOLVED: stage 2 runs when either is present and sends whichever exist (Plan 03-03, A-03-10; pinned by Plan 03-07's search tests).
    - What we know: D-09 says "artist + release_title". 164/237 spines have an artist and 181/237 a title [VERIFIED: app.db read-only counts].
    - Recommendation: run stage 2 when either is present, sending whichever exist. A title-only query with `format=CD` is still useful before free text.
-2. **`per_page` for the catno stage**
+2. **`per_page` for the catno stage** — RESOLVED: `per_page=10` on every stage, the literal reading of D-10; the per_page=50 catno variant was not adopted (Plan 03-03, A-03-09). Smarter ranking stays deferred.
    - What we know: catno search is fuzzy, and exact matches can fall outside Discogs' top 10. One request returns up to 100 at the same cost.
    - Recommendation: request `per_page=50` for the catno stage, pin exact normalized matches, then keep the top 10. Request 10 for the other stages. This is a slight reading of D-10 ("top 10 results of the winning stage"), so the planner should confirm it or keep 10 everywhere.
-3. **Lane pause after a 429: 60 s vs shorter**
+3. **Lane pause after a 429: 60 s vs shorter** — RESOLVED: keep the 60 s pause when Retry-After is absent, per D-06 (Plan 03-01 client, Plan 03-05 deferral and gate tests).
    - The probe shows recovery in about 6 s. D-06 locks 60 s when Retry-After is absent. Keep 60 s.
-4. **Unsure-media spines**
+4. **Unsure-media spines** — RESOLVED: only `cd` spines are auto-searched; `unsure` spines show "Not searched" plus the manual "Search Discogs…" action, and `SpineDto` gains `mediaKind` from the current detection (Plans 03-03, 03-08 and 03-11).
    - D-08 auto-searches only `cd`. `unsure` spines get "Not searched" plus the manual "Search Discogs…" action. `SpineDto` currently has no media kind, so add `mediaKind` from the current detection.
 
 ## Environment Availability
