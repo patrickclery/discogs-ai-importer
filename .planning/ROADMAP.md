@@ -115,7 +115,7 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans:** 3/13 plans executed
+**Plans:** 4/13 plans executed
 
 Plans:
 **Wave 1**
@@ -126,7 +126,7 @@ Plans:
 - [x] 03-03-PLAN.md — Auto search tracer [schema apply]: searches and candidates tables, catno/artist-title/text cascade, enqueue on scan, search_spine handler, fake data API (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 03-04-PLAN.md — Return from discogs.com: paste-code fallback, ?discogs= notices, callback URL, auth/connect/signer tests and canary sweep (wave 3)
+- [x] 03-04-PLAN.md — Return from discogs.com: paste-code fallback, ?discogs= notices, callback URL, auth/connect/signer tests and canary sweep (wave 3)
 - [ ] 03-05-PLAN.md — Rate limits never lose work: 429 deferral and lane gate, revoked and vanished-spine branches, pacing gate limits (wave 3)
 - [ ] 03-06-PLAN.md — Cover cache in the data folder and the header's Discogs backlog and pause countdown (wave 3)
 
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
-| 3. Discogs Match | 3/13 | In Progress | - |
+| 3. Discogs Match | 4/13 | In Progress | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
 
 ## Backlog
