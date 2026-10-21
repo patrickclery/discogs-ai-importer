@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Discogs Match
-status: executing
-stopped_at: Completed 03-12-PLAN.md
-last_updated: "2026-10-21T05:53:11.973Z"
+status: verifying
+stopped_at: Completed 03-13-PLAN.md
+last_updated: "2026-10-21T18:23:41.659Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 3 execution started
-state_head: f4017a569bd4d7f8fc4a595684b8d811043f6f5b
+state_head: 4d26cb45d43110e3f32d10a82133267112e305bd
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 32
+  completed_plans: 33
   percent: 50
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 Phase: 3 (Discogs Match) — EXECUTING
 Plan: 13 of 13
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-20 — Phase 3 execution started
 
 Progress: [█████░░░░░] 50%
@@ -89,6 +89,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P10 | 6min | 2 tasks | 9 files |
 | Phase 03 P11 | 8 min | 2 tasks | 16 files |
 | Phase 03 P12 | 8min | 2 tasks | 14 files |
+| Phase 03 P13 | 12h37m | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,7 @@ Recent decisions affecting current work:
 - [Phase 03]: A manual dialog search sends one CD-only GET /database/search of 25 and never writes discogs_candidates; an empty stored query fails without a request
 - [Phase 03]: Dialog result covers resolve their URL from the search's stored results_json (manual and release searches only), never the request
 - [Phase 03]: The dialog's polite status announces only done ('{n} results') and no_match; not-found and failed are visible text
+- [Phase 03]: Live run: Discogs honours the per-request callback (A1) and the standard exchange signature (A2); 97% of real candidates carry covers (A5); A3 not exercised (no 429)
 
 ### Pending Todos
 
@@ -201,6 +203,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T05:53:11.830Z
-Stopped at: Completed 03-12-PLAN.md
+Last session: 2026-10-21T18:23:41.515Z
+Stopped at: Completed 03-13-PLAN.md
 Resume file: None
