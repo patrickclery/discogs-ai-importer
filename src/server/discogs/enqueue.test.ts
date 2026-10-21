@@ -425,7 +425,7 @@ describe('discogs enqueue', () => {
       releaseDedupeKey(s.job_id);
     }
 
-    it.fails('CR-01: the backfill re-picks a spine whose latest search ended skipped', async () => {
+    it('CR-01: the backfill re-picks a spine whose latest search ended skipped', async () => {
       const sc = await scanned();
       connect();
       const db = getDb().$client;
@@ -438,7 +438,7 @@ describe('discogs enqueue', () => {
       ]);
     });
 
-    it.fails('CR-01: a skipped latest search is no baseline for enqueueAutoSearch', async () => {
+    it('CR-01: a skipped latest search is no baseline for enqueueAutoSearch', async () => {
       const sc = await scanned();
       connect();
       const db = getDb().$client;
@@ -447,7 +447,7 @@ describe('discogs enqueue', () => {
       expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
     });
 
-    it.fails('CR-01 end to end: auto queued, spine orphaned, job runs, re-attach, a new auto search is queued', async () => {
+    it('CR-01 end to end: auto queued, spine orphaned, job runs, re-attach, a new auto search is queued', async () => {
       const sc = await scanned();
       connect();
       const db = getDb().$client;

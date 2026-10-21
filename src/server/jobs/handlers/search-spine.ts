@@ -129,12 +129,15 @@ export async function runSearchSpine(
   const spine = db
     .prepare('SELECT state FROM spines WHERE id = @spineId')
     .get({ spineId: search.spine_id }) as { state: string } | undefined;
-  if (
-    !spine ||
-    VANISHED_STATES.has(spine.state) ||
-    (spine.state === 'orphaned' && search.kind === 'auto')
-  ) {
+  if (!spine || VANISHED_STATES.has(spine.state)) {
     finish('skipped');
+    return;
+  }
+  if (spine.state === 'orphaned' && search.kind === 'auto') {
+    // CR-01: an orphaned spine can become active again (re-attach, re-scan
+    // merge). Release the key so the same inputs can be auto-searched then.
+    finish('skipped');
+    releaseDedupeKey(ctx.job.id);
     return;
   }
 

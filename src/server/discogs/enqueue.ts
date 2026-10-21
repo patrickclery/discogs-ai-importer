@@ -28,9 +28,10 @@ export function discogsReady(): boolean {
 
 /**
  * The hash of the spine's newest auto or again search that reached Discogs,
- * or could have. A not_connected or auth_failed search never ran against
- * Discogs and released its dedupe key (Plan 03-05), so it is no baseline
- * (A-03-27): the backfill can search that spine again with the same fields.
+ * or could have. A not_connected, auth_failed or skipped search never ran
+ * against Discogs and released its dedupe key (Plan 03-05, CR-01), so it is
+ * no baseline (A-03-27): the backfill can search that spine again with the
+ * same fields.
  */
 function baselineHash(
   db: Database.Database,
@@ -40,7 +41,7 @@ function baselineHash(
     .prepare(
       `SELECT input_hash FROM discogs_searches
        WHERE spine_id = @spineId AND kind IN ('auto', 'again')
-         AND status NOT IN ('not_connected', 'auth_failed')
+         AND status NOT IN ('not_connected', 'auth_failed', 'skipped')
        ORDER BY created_at DESC, id DESC
        LIMIT 1`,
     )
@@ -50,8 +51,8 @@ function baselineHash(
 
 /**
  * Creates an auto search row and its search_spine job, unless the spine's
- * latest auto or again search (ignoring ones that ended not_connected or
- * auth_failed) already used the same inputs. Returns whether a job was
+ * latest auto or again search (ignoring ones that ended not_connected,
+ * auth_failed or skipped) already used the same inputs. Returns whether a job was
  * created. Joins the caller's transaction when there is one.
  */
 export function enqueueAutoSearch(
@@ -116,7 +117,7 @@ export function enqueueAutoSearchesForPhoto(
 /**
  * The connect backfill and its safety net (D-08, RESEARCH Pattern 5): an
  * auto search for every active CD spine with no auto or again search yet, or
- * whose latest one ended not_connected (and auth_failed when
+ * whose latest one ended not_connected or skipped (and auth_failed when
  * includeAuthFailed). Only finishing a connect passes includeAuthFailed; the
  * lease-tick maintenance hook never does, so a revoked sign-in cannot loop
  * (T-03-17). A latest search that failed after its retries is never picked:
@@ -137,7 +138,7 @@ export function enqueueMissingSearches(
        ORDER BY x.created_at DESC, x.id DESC
        LIMIT 1)
      WHERE s.state = 'active' AND d.media_kind = 'cd'
-       AND (ls.id IS NULL OR ls.status = 'not_connected'
+       AND (ls.id IS NULL OR ls.status IN ('not_connected', 'skipped')
          OR (@includeAuthFailed = 1 AND ls.status = 'auth_failed'))
      ORDER BY s.photo_id, d.idx, d.position, s.id`,
   );

@@ -257,7 +257,6 @@ describe('search_spine handler (deferral, auth, vanished spines, errors)', () =>
   it.each([
     ['superseded', 'auto'],
     ['dismissed', 'auto'],
-    ['orphaned', 'auto'],
     ['superseded', 'again'],
   ] as const)(
     'a %s spine finishes a %s search skipped without a request',
@@ -275,9 +274,8 @@ describe('search_spine handler (deferral, auth, vanished spines, errors)', () =>
 
   // Nyquist gap audit (CR-01): an orphaned spine can become active again
   // (re-attach, re-scan merge), so its skipped auto search must release the
-  // dedupe key or the same inputs can never be auto-searched again. it.fails
-  // while CR-01 is open; flip to it (and narrow the it.each above) once fixed.
-  it.fails('CR-01: an orphaned spine finishes its auto search skipped and releases the dedupe key', async () => {
+  // dedupe key or the same inputs can never be auto-searched again.
+  it('CR-01: an orphaned spine finishes its auto search skipped and releases the dedupe key', async () => {
     const { searchId, ctx, result, calls } = await run(
       () => new Response(okBody, { status: 200 }),
       { state: 'orphaned', kind: 'auto' },
