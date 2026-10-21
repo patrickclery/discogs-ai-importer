@@ -1,9 +1,8 @@
 import { connection } from 'next/server';
 import { ClaudeCliCard } from '@/components/claude-cli-card';
 import { DevJobTrigger } from '@/components/dev-job-trigger';
-import { DiscogsCredentials } from '@/components/secret-field';
+import { DiscogsCard } from '@/components/discogs-card';
 import { StoragePaths } from '@/components/storage-paths';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Card,
   CardContent,
@@ -14,6 +13,10 @@ import {
 import { getClaudeCliStatus } from '@/server/claude/cli';
 import { devHooksEnabled } from '@/server/config';
 import {
+  type DiscogsConnection,
+  getDiscogsConnection,
+} from '@/server/discogs/auth';
+import {
   listSecretStatus,
   type SecretStatus,
   SecretsFileError,
@@ -22,11 +25,16 @@ import {
 import { getVisionModel } from '@/server/settings';
 import { dataRoot } from '@/server/storage/paths';
 
-function readStatuses():
-  | { ok: true; statuses: SecretStatus[] }
+/** Key statuses and the safe connection DTO, both read from secrets.json. */
+function readDiscogs():
+  | { ok: true; statuses: SecretStatus[]; connection: DiscogsConnection }
   | { ok: false; reason: string } {
   try {
-    return { ok: true, statuses: listSecretStatus() };
+    return {
+      ok: true,
+      statuses: listSecretStatus(),
+      connection: getDiscogsConnection(),
+    };
   } catch (err) {
     if (err instanceof SecretsFileError) {
       return { ok: false, reason: err.message.slice(0, 160) };
@@ -47,7 +55,7 @@ function secretsPathOrNull(): string | null {
 export default async function SettingsPage() {
   await connection();
   const showDeveloper = devHooksEnabled();
-  const secrets = readStatuses();
+  const secrets = readDiscogs();
   const claude = await getClaudeCliStatus({ maxAgeMs: 0 });
 
   return (
@@ -61,34 +69,11 @@ export default async function SettingsPage() {
       </div>
       <div className="mt-8 flex flex-col gap-6">
         <ClaudeCliCard status={claude} model={getVisionModel()} />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Discogs app</CardTitle>
-            <CardDescription>
-              The consumer key and secret for your Discogs app, from{' '}
-              <a
-                href="https://www.discogs.com/settings/developers"
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline underline-offset-4"
-              >
-                discogs.com/settings/developers
-              </a>
-              . You'll connect your Discogs account when matching is added.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {secrets.ok ? (
-              <DiscogsCredentials statuses={secrets.statuses} />
-            ) : (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  {`Couldn't read secrets.json: ${secrets.reason}. Fix or delete the file, then reload.`}
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+        <DiscogsCard
+          statuses={secrets.ok ? secrets.statuses : null}
+          connection={secrets.ok ? secrets.connection : null}
+          secretsError={secrets.ok ? undefined : secrets.reason}
+        />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Data folder</CardTitle>

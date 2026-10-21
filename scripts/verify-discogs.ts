@@ -7,8 +7,9 @@
 // at denied, (f) a made-up or replayed oauth_token ends at expired, (h) the
 // docs-form access-token signature still connects after one retry, and an
 // identity failure ends at error. Nothing but connected stores a token.
-// Step letters are stable across plans: (a) is the Settings card (Plan
-// 03-02) and (g) the paste-code path (Plan 03-04).
+// Plan 03-02: (a) the Settings card shows Connect Discogs before and
+// "Connected as fake-owner" after (b). Step letters are stable across
+// plans: (g) is the paste-code path (Plan 03-04).
 // Run: node scripts/verify-discogs.ts   (VERIFY_SKIP_BUILD=1 reuses the build)
 // It builds and starts from NEXT_DIST_DIR, default .next/verify, so a
 // long-running `next start` on the default .next keeps working meanwhile.
@@ -124,6 +125,37 @@ export async function stepStart(
       ...discogsEnv(fake, tmp),
     },
   });
+}
+
+/** GET /settings as text: tags and React's text-node comments removed. */
+export async function settingsText(ctx: Ctx): Promise<string> {
+  const res = await fetch(`${ctx.baseUrl}/settings`);
+  const html = await res.text();
+  assert(res.status === 200, `GET /settings answered ${res.status}`);
+  assertNoLeak('GET /settings', html);
+  return html.replace(/<[^>]*>/g, '');
+}
+
+// (a) The Settings "Discogs" card: Connect before, "Connected as" after.
+export async function stepSettingsBefore(ctx: Ctx): Promise<void> {
+  step('(a) Settings shows Connect Discogs before connecting');
+  const text = await settingsText(ctx);
+  assert(text.includes('Connect Discogs'), 'Settings has no Connect Discogs');
+  assert(
+    !text.includes('Connected as'),
+    'Settings says Connected as before any connect',
+  );
+  check('Connect Discogs on /settings, not connected');
+}
+
+export async function stepSettingsAfter(ctx: Ctx): Promise<void> {
+  step('(a) Settings shows Connected as fake-owner after connecting');
+  const text = await settingsText(ctx);
+  assert(
+    text.includes('Connected as fake-owner'),
+    'Settings does not say Connected as fake-owner',
+  );
+  check('Connected as fake-owner on /settings');
 }
 
 // (b) A connect through the app comes back connected, on this port.
@@ -345,7 +377,9 @@ runMain('verify-discogs', async (onCleanup) => {
     secretsFile: tempSecretsFile(tmp),
   };
 
+  await stepSettingsBefore(ctx);
   await stepConnect(ctx);
+  await stepSettingsAfter(ctx);
   stepSecretsFile(ctx);
   stepUserAgent(ctx);
   await stepDenied(ctx);
