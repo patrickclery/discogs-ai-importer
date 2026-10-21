@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Discogs Match
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-10-21T01:38:29.828Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-10-21T01:49:40.398Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 03 execution started
-state_head: a05ad9d6a2afee6bbf1ffb95cae3613a26e9361b
+state_head: 69d486670baef0db2a3cf7a628ed0744eb8f8144
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 24
+  completed_plans: 25
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Discogs Match) — EXECUTING
-Plan: 5 of 13
+Plan: 6 of 13
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 03 execution started
 
@@ -81,6 +81,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P02 | 8min | 3 tasks | 14 files |
 | Phase 03 P03 | 8 min | 1 tasks | 17 files |
 | Phase 03 P04 | 7min | 3 tasks | 11 files |
+| Phase 03 P05 | 9min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Paste-code finish route reads the pending entry without consuming it (readPendingConnect) and drops it only on success or the 5th rejected code
 - [Phase 03]: Finish route failure reasons are fixed plain-language strings; Discogs error messages can name /oauth paths
 - [Phase 03]: Settings callback URL is built with callbackUrlFor(Host) from next/headers, shared with the connect route
+- [Phase 03]: An orphaned spine skips only automatic searches; an explicit Search again on it still runs
+- [Phase 03]: A search ending not_connected or auth_failed releases its job's dedupe key so a later connect can queue it again
+- [Phase 03]: Retry-After accepts only delta-seconds and the three RFC 9110 HTTP-date forms; anything else falls back to the 60 s pause
 
 ### Pending Todos
 
@@ -174,6 +178,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T01:38:29.703Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-10-21T01:49:40.269Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
