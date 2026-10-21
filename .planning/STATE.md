@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Discogs Match
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-10-21T01:09:08.232Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-10-21T01:19:20.216Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 03 execution started
-state_head: ac07c7742acaa71d6e8b4463a805f27af96b24d1
+state_head: 7c8408693b8661d2e37b2e47ef355286ac8c77d4
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 21
+  completed_plans: 22
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Discogs Match) — EXECUTING
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 03 execution started
 
@@ -78,6 +78,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P13 | 2min | 2 tasks | 7 files |
 | Phase 02 P14 | 3min | 2 tasks | 5 files |
 | Phase 03 P01 | 11min | 3 tasks | 16 files |
+| Phase 03 P02 | 8min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,9 @@ Recent decisions affecting current work:
 - [Phase 02]: A pending field save is flushed on SpineField unmount, not dropped
 - [Phase 03]: Discogs auth 'oauth' uses the stored token and is the only mode whose 401 sets the auth-invalid flag; connect uses 'request' with explicit tokens
 - [Phase 03]: Verify builds go to NEXT_DIST_DIR (.next/verify) so the owner's running next start on .next is never rebuilt
+- [Phase 03]: A successful Test connection clears the in-memory auth-invalid flag (clearAuthInvalid), so Reconnect needed cannot contradict Connection works
+- [Phase 03]: Clearing a Discogs consumer value clears the sign-in and any pending connect
+- [Phase 03]: Connect failures for busy and credentials_missing use plain-language reasons in the UI-SPEC Other template
 
 ### Pending Todos
 
@@ -162,6 +166,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T01:09:08.111Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-10-21T01:19:20.091Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
