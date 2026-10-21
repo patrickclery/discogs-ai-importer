@@ -13,10 +13,17 @@ import { needsReview } from '@/lib/spine-review';
 import {
   LEGIBILITY_LEVELS,
   type Legibility,
+  MEDIA_KINDS,
+  type MediaKind,
   SPINE_FIELDS,
   type SpineField,
 } from '@/lib/vision-contract';
 import { getDb } from '../db/client';
+import {
+  anyDiscogsActive,
+  discogsConnection,
+  discogsForSpines,
+} from '../discogs/queries';
 import {
   getConfidenceThreshold,
   getDensityThresholds,
@@ -138,6 +145,7 @@ type SpineListRow = {
   crop_path: string | null;
   crop_w: number | null;
   crop_h: number | null;
+  media_kind: string | null;
   orphaned_run_no: number | null;
 };
 
@@ -149,6 +157,12 @@ type SpineFieldListRow = {
   confidence: number;
   edit_base_ai_value: string | null;
 };
+
+function toMediaKind(v: string | null): MediaKind | null {
+  return (MEDIA_KINDS as readonly (string | null)[]).includes(v)
+    ? (v as MediaKind)
+    : null;
+}
 
 function toLegibility(v: string | null): Legibility | null {
   return (LEGIBILITY_LEVELS as readonly (string | null)[]).includes(v)
@@ -172,7 +186,7 @@ export function loadSpineDtos(
   const rows = db
     .prepare(
       `SELECT s.id, s.photo_id, s.state, s.created_run_id,
-         d.idx, d.legibility, d.crop_path, d.crop_w, d.crop_h,
+         d.idx, d.legibility, d.crop_path, d.crop_w, d.crop_h, d.media_kind,
          CASE WHEN s.state = 'orphaned' THEN (
            SELECT MIN(o.run_no) FROM vision_runs o
            WHERE o.photo_id = s.photo_id AND o.status = 'done'
@@ -238,6 +252,9 @@ export function loadSpineDtos(
       ),
       createdRunId: r.created_run_id,
       orphanedRunNo: r.orphaned_run_no,
+      mediaKind: toMediaKind(r.media_kind),
+      // Filled in by getSpines (the /spines read model) only.
+      discogs: null,
     };
   });
 }
@@ -289,6 +306,10 @@ export function getSpines(
   const scoped = opts.photoId ? all.filter((p) => p.id === opts.photoId) : all;
   const listed =
     scoped.length === 0 ? [] : listSpines({ photoId: opts.photoId });
+  // Search summaries cover every listed spine, so polling continues while a
+  // spine the review filter hides is still being looked up.
+  const summaries = discogsForSpines(getDb().$client, listed);
+  for (const s of listed) s.discogs = summaries.get(s.id) ?? null;
   const confidenceThreshold = getConfidenceThreshold();
   const flagged = listed.filter((s) => needsReview(s, confidenceThreshold));
   const spines = opts.review ? flagged : listed;
@@ -303,5 +324,7 @@ export function getSpines(
     counts: { all: listed.length, needsReview: flagged.length },
     confidenceThreshold,
     densityMaxSpines: getDensityThresholds().maxSpines,
+    discogsActive: anyDiscogsActive(summaries.values()),
+    discogs: discogsConnection(),
   };
 }

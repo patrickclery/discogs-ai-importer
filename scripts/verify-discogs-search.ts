@@ -9,6 +9,8 @@
 // finishes without spending an attempt, (f) a revoked sign-in costs at most
 // one request for a whole batch. (f) stays the last step: later plans insert
 // their steps before it.
+// Plan 03-08: (c2) /api/spines and /spines show each spine's lookup state
+// and its top three candidates.
 // Plans 03-05, 03-08, 03-09, 03-10, 03-11 and 03-12 add their own named
 // steps here; step letters are stable across plans.
 // Run: node scripts/verify-discogs-search.ts   (VERIFY_SKIP_BUILD=1 reuses
@@ -356,6 +358,109 @@ function stepCandidates(ctx: Ctx, photoId: string): void {
   );
 }
 
+type ApiSpine = {
+  id: string;
+  mediaKind: string | null;
+  fields: { field: string; value: string | null }[];
+  discogs: {
+    state: string;
+    candidateCount: number;
+    topCandidates: { releaseId: number; catnoMatch: boolean; title: string }[];
+  } | null;
+};
+
+// (c2) Plan 03-08: GET /api/spines carries each spine's lookup state and its
+// top 3 candidates, and /spines renders the Discogs matches section.
+async function stepSpinesReadModel(ctx: Ctx, photoId: string): Promise<void> {
+  step(
+    '(c2) /api/spines lists search states and top candidates; /spines renders them',
+  );
+  const res = await fetch(
+    `${ctx.baseUrl}/api/spines?photo=${encodeURIComponent(photoId)}`,
+    { cache: 'no-store' },
+  );
+  assert(res.status === 200, `GET /api/spines returned ${res.status}`);
+  const body = (await res.json()) as {
+    spines: ApiSpine[];
+    discogsActive: boolean;
+    discogs: { connected: boolean; pausedUntil: number | null };
+  };
+  assert(
+    body.spines.length === TRACER.spines.length,
+    `${body.spines.length} spines listed, expected ${TRACER.spines.length}`,
+  );
+  assert(
+    body.discogs?.connected === true,
+    'SpinesResponse.discogs.connected is not true',
+  );
+  assert(
+    body.discogsActive === false,
+    'discogsActive is true after the lane drained',
+  );
+  const value = (s: ApiSpine, field: string) =>
+    s.fields.find((f) => f.field === field)?.value ?? null;
+  for (const s of body.spines) {
+    assert(
+      s.mediaKind === 'cd',
+      `spine ${value(s, 'artist')} mediaKind ${s.mediaKind}`,
+    );
+    assert(
+      s.discogs && ['done', 'no_match'].includes(s.discogs.state),
+      `spine ${value(s, 'artist')} discogs ${JSON.stringify(s.discogs)}`,
+    );
+    assert(
+      s.discogs.topCandidates.length <= 3,
+      `spine ${value(s, 'artist')} inlines ${s.discogs.topCandidates.length} candidates`,
+    );
+  }
+  const juniper = body.spines.find(
+    (s) => value(s, 'catalog_number') === 'TR-203',
+  );
+  assert(juniper?.discogs, 'no TR-203 (Juniper Vale) spine in /api/spines');
+  assert(
+    juniper.discogs.state === 'done' &&
+      juniper.discogs.topCandidates.length === 3,
+    `Juniper Vale ${juniper.discogs.state} with ${juniper.discogs.topCandidates.length} top candidates, expected done with 3`,
+  );
+  const tr200 = body.spines.filter(
+    (s) => value(s, 'catalog_number') === 'TR-200',
+  );
+  assert(tr200.length === 2, `${tr200.length} TR-200 spines in /api/spines`);
+  for (const s of tr200) {
+    const first = s.discogs?.topCandidates[0];
+    assert(
+      first?.releaseId === 1001 && first.catnoMatch === true,
+      `TR-200 first candidate ${JSON.stringify(first)}, expected 1001 with catnoMatch`,
+    );
+    assert(
+      first.title === 'Nova Lane - Blue Hour',
+      `TR-200 first candidate title ${first.title} is not verbatim`,
+    );
+  }
+  const owen = body.spines.find((s) => value(s, 'catalog_number') === 'TR-205');
+  assert(
+    owen?.discogs?.state === 'no_match' && owen.discogs.candidateCount === 0,
+    `Owen Ashby discogs ${JSON.stringify(owen?.discogs)}, expected no_match`,
+  );
+  const page = await fetch(
+    `${ctx.baseUrl}/spines?photo=${encodeURIComponent(photoId)}`,
+  );
+  assert(page.status === 200, `GET /spines returned ${page.status}`);
+  const html = await page.text();
+  for (const text of [
+    'Discogs matches',
+    'Nova Lane - Blue Hour',
+    'https://www.discogs.com/release/1001',
+    'Catalog number match',
+    'No matches',
+  ]) {
+    assert(html.includes(text), `/spines HTML lacks "${text}"`);
+  }
+  check(
+    '6 cd spines done or no_match; Juniper Vale 3 inline; TR-200 leads with 1001 (catno match); /spines renders Discogs matches',
+  );
+}
+
 // (d) the requests themselves: signed, CD-only, ten per page, paced.
 function stepRequests(ctx: Ctx): void {
   step('(d) every search request is signed, CD-only and paced');
@@ -587,6 +692,7 @@ runMain('verify-discogs-search', async (onCleanup) => {
   stepSchema(ctx);
   const photoId = await stepConnectAndScan(ctx);
   stepCandidates(ctx, photoId);
+  await stepSpinesReadModel(ctx, photoId);
   stepRequests(ctx);
   await step429Resume(ctx);
   // Later plans insert their steps here, before (f).

@@ -240,6 +240,8 @@ describe('withSpineField (02-09)', () => {
     fields: [field(), field({ field: 'title', aiValue: 'T', value: 'T' })],
     createdRunId: null,
     orphanedRunNo: null,
+    mediaKind: 'cd' as const,
+    discogs: null,
   };
   it('replaces one field of one spine and keeps the AI read it is given', () => {
     const next = withSpineField({ spines: [spine] }, 's1', {

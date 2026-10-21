@@ -3,9 +3,11 @@
 import { CircleX, ImageIcon, ScanSearch } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
+import { DiscogsMatches } from '@/components/discogs-matches';
 import { PhotoStatusBadge } from '@/components/photo-status-badge';
 import { RescanButton } from '@/components/rescan-button';
-import { SpineCard } from '@/components/spine-card';
+import { SearchStateBadge } from '@/components/search-state-badge';
+import { OrphanFooter, SpineCard } from '@/components/spine-card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Empty,
@@ -86,14 +88,52 @@ function CardSkeletons() {
   );
 }
 
+/** Discogs connection state threaded from SpinesResponse.discogs. */
+type DiscogsView = { connected: boolean; pausedUntil: number | null };
+
+/**
+ * A /spines card: the search-state badge last in the status slot, and a
+ * footer holding the orphan row first (when orphaned, RESEARCH Pitfall 3)
+ * and then the Discogs matches section, so every card offers its matches.
+ */
+function SpineView({
+  spine,
+  threshold,
+  discogs,
+}: {
+  spine: SpineDto;
+  threshold: number;
+  discogs: DiscogsView;
+}) {
+  return (
+    <SpineCard
+      spine={spine}
+      threshold={threshold}
+      statusSlot={<SearchStateBadge discogs={spine.discogs} />}
+      footer={
+        <div className="flex flex-col gap-4">
+          {spine.state === 'orphaned' ? <OrphanFooter spine={spine} /> : null}
+          <DiscogsMatches
+            spine={spine}
+            connected={discogs.connected}
+            pausedUntil={discogs.pausedUntil}
+          />
+        </div>
+      }
+    />
+  );
+}
+
 function SectionBody({
   photo,
   spines,
   threshold,
+  discogs,
 }: {
   photo: PhotoDto;
   spines: SpineDto[];
   threshold: number;
+  discogs: DiscogsView;
 }) {
   const active = spines.filter((s) => s.state !== 'orphaned');
   const orphans = spines.filter((s) => s.state === 'orphaned');
@@ -146,7 +186,12 @@ function SectionBody({
           {`No longer detected (${orphans.length})`}
         </p>
         {orphans.map((spine) => (
-          <SpineCard key={spine.id} spine={spine} threshold={threshold} />
+          <SpineView
+            key={spine.id}
+            spine={spine}
+            threshold={threshold}
+            discogs={discogs}
+          />
         ))}
       </>
     ) : null;
@@ -156,7 +201,12 @@ function SectionBody({
       {alert}
       {noCds}
       {active.map((spine) => (
-        <SpineCard key={spine.id} spine={spine} threshold={threshold} />
+        <SpineView
+          key={spine.id}
+          spine={spine}
+          threshold={threshold}
+          discogs={discogs}
+        />
       ))}
       {orphanList}
     </>
@@ -172,11 +222,17 @@ export function PhotoSection({
   photo,
   spines,
   threshold,
+  connected,
+  pausedUntil,
 }: {
   photo: PhotoDto;
   spines: SpineDto[];
   /** The confidence_threshold setting (D-09). */
   threshold: number;
+  /** Discogs is connected (D-04): cards say how to connect when not. */
+  connected: boolean;
+  /** The Discogs pause end (epoch ms), or null. */
+  pausedUntil: number | null;
 }) {
   const headingId = `photo-${photo.id}`;
   const now = useNow(photo.status === 'calling' ? 1000 : 30_000);
@@ -221,7 +277,12 @@ export function PhotoSection({
           />
         </div>
       </div>
-      <SectionBody photo={photo} spines={spines} threshold={threshold} />
+      <SectionBody
+        photo={photo}
+        spines={spines}
+        threshold={threshold}
+        discogs={{ connected, pausedUntil }}
+      />
     </section>
   );
 }

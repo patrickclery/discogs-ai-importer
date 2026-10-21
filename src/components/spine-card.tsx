@@ -26,8 +26,12 @@ export const FIELD_SPANS: Record<FieldName, string> = {
 export const ORPHAN_EXPLANATION =
   "The latest re-scan didn't find this spine. Your edits are kept until you re-attach or dismiss it.";
 
-/** The orphaned card's footer (D-11, D-16): explanation left, actions right. */
-function OrphanFooter({ spine }: { spine: SpineDto }) {
+/**
+ * The orphaned card's footer (D-11, D-16): explanation left, actions right.
+ * Exported so a caller passing its own footer can compose it first (RESEARCH
+ * Pitfall 3); SpineCard still falls back to it when no footer is given.
+ */
+export function OrphanFooter({ spine }: { spine: SpineDto }) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <p className="text-xs text-muted-foreground sm:flex-1">

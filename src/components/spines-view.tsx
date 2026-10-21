@@ -195,6 +195,8 @@ export function SpinesView({
             photo={p}
             spines={byPhoto.get(p.id) ?? []}
             threshold={data.confidenceThreshold}
+            connected={data.discogs.connected}
+            pausedUntil={data.discogs.pausedUntil}
           />
         ))}
       </div>

@@ -1,6 +1,7 @@
 // Scan DTOs and constants shared by routes and client components.
 // Client-safe: no server-only import here.
-import type { Legibility, SpineField } from './vision-contract';
+import type { SpineDiscogsDto } from './discogs-types';
+import type { Legibility, MediaKind, SpineField } from './vision-contract';
 
 /** Status of a photo = status of its latest vision run. */
 export const PHOTO_STATUSES = [
@@ -94,6 +95,10 @@ export type SpineDto = {
   fields: SpineFieldDto[];
   createdRunId: string | null;
   orphanedRunNo: number | null;
+  /** From the current detection: only cd spines are looked up automatically. */
+  mediaKind: MediaKind | null;
+  /** The Discogs search summary; null outside the /spines read model. */
+  discogs: SpineDiscogsDto | null;
 };
 
 export type PhotosResponse = { photos: PhotoDto[] };
@@ -111,6 +116,9 @@ export type SpinesResponse = {
   counts: { all: number; needsReview: number };
   confidenceThreshold: number;
   densityMaxSpines: number;
+  /** A search for a listed spine is queued or running (poll while true). */
+  discogsActive: boolean;
+  discogs: { connected: boolean; pausedUntil: number | null };
 };
 
 export type UploadResponse = { photoId: string; duplicate: boolean };
