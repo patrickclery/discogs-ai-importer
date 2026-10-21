@@ -349,6 +349,12 @@ export function SecretField({
           {status.source === 'env' ? (
             <FieldDescription>{envDescription(status)}</FieldDescription>
           ) : null}
+          {connected ? (
+            <FieldDescription>
+              Saving a different value disconnects your Discogs account. Connect
+              again afterwards.
+            </FieldDescription>
+          ) : null}
           <div className="flex gap-2">
             <SaveButton pending={pending} />
             {editing ? (

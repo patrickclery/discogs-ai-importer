@@ -226,8 +226,27 @@ describe('settings actions', () => {
 
   // Nyquist gap audit (WR-03): the sign-in is bound to the consumer key, so
   // saving a different key must drop the old token, as clearing it does.
-  // it.fails while WR-03 is open.
-  it.fails('WR-03: saving a new consumer key while connected drops the old sign-in', async () => {
+  it('WR-03: re-saving the same consumer key keeps the sign-in', async () => {
+    await saveDiscogsCredentials(
+      null,
+      form({
+        discogsConsumerKey: CANARY_KEY,
+        discogsConsumerSecret: CANARY_SECRET,
+      }),
+    );
+    saveDiscogsAuth({
+      token: 'CANARYTOKEN-0123456789efgh',
+      tokenSecret: 'CANARYTOKENSECRET-0123456789ijkl',
+      username: 'fake-owner',
+    });
+    await saveDiscogsCredentials(
+      null,
+      form({ discogsConsumerKey: CANARY_KEY }),
+    );
+    expect(getDiscogsAuth()?.username).toBe('fake-owner');
+  });
+
+  it('WR-03: saving a new consumer key while connected drops the old sign-in', async () => {
     await saveDiscogsCredentials(
       null,
       form({

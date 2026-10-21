@@ -10,6 +10,7 @@ import {
 import { clearDiscogsAuth, clearPendingConnect } from '@/server/discogs/auth';
 import {
   clearSecret,
+  getSecret,
   SECRET_KEYS,
   type SecretKey,
   saveSecrets,
@@ -70,7 +71,15 @@ export async function saveDiscogsCredentials(
   if (savedKeys.length === 0) return { ok: false, formError: NOTHING_TO_SAVE };
 
   try {
+    const before = savedKeys.map((k) => getSecret(k));
     saveSecrets(values);
+    // WR-03: the sign-in is bound to the consumer key (RESEARCH Pitfall 7,
+    // A4). A value that changes the effective key or secret disconnects,
+    // as clearing one does. An env value still wins, so it changes nothing.
+    if (savedKeys.some((k, i) => getSecret(k) !== before[i])) {
+      clearDiscogsAuth();
+      clearPendingConnect();
+    }
   } catch (err) {
     return { ok: false, formError: ioError(err) };
   }
