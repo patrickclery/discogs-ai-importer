@@ -91,6 +91,12 @@ export type SpineDiscogsDto = {
   /** The first INLINE_CANDIDATES candidates in D-10 order. */
   topCandidates: CandidateDto[];
   failure: SearchFailure | null;
+  /**
+   * The current artist, title, catalog number or raw text normalize to
+   * different inputs than the latest auto or again search used (D-14).
+   * False for a never-searched spine.
+   */
+  fieldsChanged: boolean;
 };
 
 /** GET /api/spines/{id}/candidates: the full ordered list. */

@@ -15,12 +15,17 @@ import {
 } from '@/lib/discogs-types';
 import { getDiscogsAuth } from './auth';
 import { discogsGate } from './gate';
-import { capCodePoints } from './inputs';
+import {
+  capCodePoints,
+  type FieldValues,
+  inputHash,
+  searchInputs,
+} from './inputs';
 
 // The Discogs half of the /spines read model (D-10, D-11, D-12, RESEARCH
-// Pattern 5). Two queries per page, whatever the spine count: the latest
-// auto or again search per spine with its job status, and the spines'
-// candidates. Raw SQL with @named parameters and single-quoted literals.
+// Pattern 5). Three queries per page, whatever the spine count: the latest
+// auto or again search per spine with its job status, the spines'
+// candidates, and their search fields (for fieldsChanged, D-14). Raw SQL with @named parameters and single-quoted literals.
 
 /** Owner-facing failure reasons are cut to this many code points (UI-SPEC). */
 const REASON_MAX = 160;
@@ -31,6 +36,7 @@ export const ENDED_WITHOUT_RESULT = 'the search ended without a result';
 const LATEST_SQL = `
   WITH latest AS (
     SELECT s.spine_id, s.status, s.error_kind, s.error, s.job_id,
+      s.input_hash,
       ROW_NUMBER() OVER (
         PARTITION BY s.spine_id ORDER BY s.created_at DESC, s.id DESC
       ) AS rn
@@ -38,7 +44,8 @@ const LATEST_SQL = `
     WHERE s.kind IN ('auto', 'again')
       AND s.spine_id IN (SELECT value FROM json_each(@ids))
   )
-  SELECT l.spine_id, l.status, l.error_kind, l.error, j.status AS job_status
+  SELECT l.spine_id, l.status, l.error_kind, l.error, l.input_hash,
+    j.status AS job_status
   FROM latest l
   LEFT JOIN jobs j ON j.id = l.job_id
   WHERE l.rn = 1`;
@@ -52,6 +59,12 @@ const CANDIDATES_SQL = `
   FROM discogs_candidates c
   WHERE c.spine_id IN (SELECT value FROM json_each(@ids))`;
 
+const FIELDS_SQL = `
+  SELECT f.spine_id, f.field, f.value
+  FROM spine_fields f
+  WHERE f.spine_id IN (SELECT value FROM json_each(@ids))
+    AND f.field IN ('artist', 'title', 'catalog_number', 'raw_text')`;
+
 const SPINE_CANDIDATES_SQL = `
   SELECT ${CANDIDATE_COLUMNS}
   FROM discogs_candidates c
@@ -63,6 +76,8 @@ export type LatestSearchRow = {
   error: string | null;
   /** jobs.status of the search's job, or null when it has none. */
   job_status: string | null;
+  /** The search's normalized inputs hash (auto and again always have one). */
+  input_hash?: string | null;
 };
 
 type CandidateRowRaw = {
@@ -93,6 +108,24 @@ function failureFrom(row: LatestSearchRow): SearchFailure {
     return { kind: 'unavailable', reason: null };
   }
   return { kind: 'other', reason: shortReason(row.error) };
+}
+
+/**
+ * D-14: the latest auto or again search used other inputs than the spine's
+ * current fields. Hashing goes through the same normalize function as the
+ * enqueue (inputs.ts), so a whitespace-only edit is no change. A latest
+ * search that never reached Discogs (not connected, skipped) is no
+ * baseline: there are no matches it could have made out of date.
+ */
+export function fieldsChangedSince(
+  latest: Pick<LatestSearchRow, 'status' | 'input_hash'> | null,
+  fields: FieldValues,
+): boolean {
+  if (!latest?.input_hash) return false;
+  if (latest.status === 'not_connected' || latest.status === 'skipped') {
+    return false;
+  }
+  return latest.input_hash !== inputHash(searchInputs(fields));
 }
 
 /**
@@ -265,17 +298,26 @@ export function discogsForSpines(
     if (list) list.push(r);
     else bySpine.set(r.spine_id, [r]);
   }
+  const fields = new Map<string, FieldValues>();
+  for (const r of db.prepare(FIELDS_SQL).all({ ids }) as {
+    spine_id: string;
+    field: keyof FieldValues;
+    value: string | null;
+  }[]) {
+    const f = fields.get(r.spine_id) ?? {};
+    f[r.field] = r.value;
+    fields.set(r.spine_id, f);
+  }
   for (const { id } of spines) {
     const candidates = orderCandidates(bySpine.get(id) ?? []);
-    const { state, failure } = searchStateOf(
-      latest.get(id) ?? null,
-      candidates.length,
-    );
+    const last = latest.get(id) ?? null;
+    const { state, failure } = searchStateOf(last, candidates.length);
     out.set(id, {
       state,
       candidateCount: candidates.length,
       topCandidates: candidates.slice(0, INLINE_CANDIDATES),
       failure,
+      fieldsChanged: fieldsChangedSince(last, fields.get(id) ?? {}),
     });
   }
   return out;

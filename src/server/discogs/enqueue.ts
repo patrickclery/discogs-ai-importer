@@ -153,3 +153,66 @@ export function enqueueMissingSearches(
   });
   return tx.immediate();
 }
+
+/** Search kinds the owner starts explicitly (Plan 03-11 adds more). */
+export type ExplicitSearchKind = 'again';
+
+export type ExplicitSearchResult =
+  | { status: 'ok'; searchId: string }
+  | { status: 'not_found' }
+  | { status: 'not_searchable' }
+  | { status: 'busy' };
+
+/**
+ * The owner's Search again or Retry search (D-14, D-06): a new search row
+ * from the spine's current inputs and a job keyed search:{searchId}, so it
+ * always runs, even when the inputs equal an earlier search's (RESEARCH
+ * Pitfall 1). Refuses an unknown spine, a superseded or dismissed one, and
+ * a spine whose latest auto or again search is still queued or running
+ * (T-03-30). Checks and writes share one IMMEDIATE transaction, so two
+ * clicks cannot both pass the busy check.
+ */
+export function enqueueExplicitSearch(
+  db: Database.Database,
+  input: { spineId: string; kind: ExplicitSearchKind },
+): ExplicitSearchResult {
+  const tx = db.transaction((): ExplicitSearchResult => {
+    const spine = db
+      .prepare('SELECT state FROM spines WHERE id = @spineId')
+      .get({ spineId: input.spineId }) as { state: string } | undefined;
+    if (!spine) return { status: 'not_found' };
+    if (spine.state !== 'active' && spine.state !== 'orphaned') {
+      return { status: 'not_searchable' };
+    }
+    const busy = db
+      .prepare(
+        `SELECT 1 FROM discogs_searches s
+         LEFT JOIN jobs j ON j.id = s.job_id
+         WHERE s.id = (
+           SELECT x.id FROM discogs_searches x
+           WHERE x.spine_id = @spineId AND x.kind IN ('auto', 'again')
+           ORDER BY x.created_at DESC, x.id DESC
+           LIMIT 1)
+           AND s.status = 'queued'
+           AND (j.id IS NULL OR j.status IN ('queued', 'running'))`,
+      )
+      .get({ spineId: input.spineId });
+    if (busy) return { status: 'busy' };
+    const inputs = loadSpineInputs(db, input.spineId);
+    const searchId = createSearch(db, {
+      spineId: input.spineId,
+      kind: input.kind,
+      inputs,
+      inputHash: inputHash(inputs),
+    });
+    const job = enqueue({
+      lane: 'discogs',
+      type: SEARCH_JOB_TYPE,
+      payload: { searchId },
+      dedupeKey: `search:${searchId}`,
+    });
+    setSearchJob(db, searchId, job.id);
+    return { status: 'ok', searchId };
+  });
+  return tx.immediate();
+}

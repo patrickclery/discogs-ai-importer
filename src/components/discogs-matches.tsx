@@ -1,17 +1,22 @@
 'use client';
 
-import { CircleX, Clock, Unplug } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { CircleX, Clock, PencilLine, RotateCw, Unplug } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useState } from 'react';
 import { CandidateList } from '@/components/candidate-list';
+import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
+import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { searchFailureText } from '@/lib/candidate-format';
+import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
 import type { SpineDto } from '@/lib/scan-types';
 
 // The card footer's "Discogs matches" section (D-12, UI-SPEC Spine card:
 // Discogs matches). Header row, at most one notice line, then the body by
-// search state. Plans 03-10 and 03-11 add the Search again / Retry search /
-// Search Discogs… actions.
+// search state. Plan 03-10 adds Search again / Retry search (POST
+// /api/spines/{id}/search { mode: 'again' }); Plan 03-11 adds Search
+// Discogs….
 
 export const NOT_SEARCHED_LINE =
   "Not looked up yet. It's waiting its turn, or use Search Discogs… to look it up now.";
@@ -26,6 +31,7 @@ export const SEARCHING_LINE = 'Searching Discogs…';
 export function pausedLine(seconds: number): string {
   return `Discogs asked the app to slow down. Searching picks up again in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
 }
+export const FIELDS_CHANGED_LINE = 'Fields changed since last search.';
 export const NO_MATCHES_LINE =
   'Discogs found nothing for this spine. Check the artist, title and catalog number against the crop, then search again, or use Search Discogs….';
 
@@ -73,7 +79,10 @@ function useSecondsUntil(until: number | null, active: boolean): number {
   return left > 0 ? Math.ceil(left / 1000) : 0;
 }
 
-/** The not-connected, paused or failed line, at most one (UI-SPEC order). */
+/**
+ * The not-connected, fields-changed, paused or failed line, at most one
+ * (UI-SPEC order).
+ */
 function NoticeLine({
   spine,
   connected,
@@ -97,6 +106,20 @@ function NoticeLine({
         >
           Open Settings
         </Link>
+      </Line>
+    );
+  }
+  if (spine.discogs?.fieldsChanged) {
+    return (
+      <Line
+        icon={
+          <PencilLine
+            aria-hidden="true"
+            className="mt-px size-4 shrink-0 text-warning"
+          />
+        }
+      >
+        {FIELDS_CHANGED_LINE}
       </Line>
     );
   }
@@ -179,6 +202,61 @@ function Body({ spine, connected }: { spine: SpineDto; connected: boolean }) {
   }
 }
 
+/**
+ * Which header action the spine offers (UI-SPEC Header row): Retry search
+ * when the latest search failed (D-06), else Search again when the fields
+ * changed since it and it is not queued or running (D-14).
+ */
+export function matchesAction(
+  spine: Pick<SpineDto, 'discogs'>,
+): 'retry' | 'again' | null {
+  const d = spine.discogs;
+  if (!d) return null;
+  if (d.state === 'failed') return 'retry';
+  if (d.fieldsChanged && d.state !== 'queued' && d.state !== 'searching') {
+    return 'again';
+  }
+  return null;
+}
+
+/** Search again / Retry search, plus its inline request error. */
+function useSearchAgain(spineId: string) {
+  const queryClient = useQueryClient();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function run() {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/spines/${encodeURIComponent(spineId)}/search`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ mode: 'again' }),
+        },
+      );
+      if (!res.ok) {
+        setError(await failureReason(res));
+        return;
+      }
+      // No toast: the badge flips to Queued (UI-SPEC).
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['spines'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['discogs-candidates', spineId],
+        }),
+      ]);
+      window.dispatchEvent(new Event(STATUS_REFRESH_EVENT));
+    } catch {
+      setError(UNREACHABLE_REASON);
+    } finally {
+      setPending(false);
+    }
+  }
+  return { pending, error, run };
+}
+
 export function DiscogsMatches({
   spine,
   connected,
@@ -190,6 +268,8 @@ export function DiscogsMatches({
   /** SpinesResponse.discogs.pausedUntil: the paused line while queued (D-06). */
   pausedUntil: number | null;
 }) {
+  const action = matchesAction(spine);
+  const again = useSearchAgain(spine.id);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -197,9 +277,36 @@ export function DiscogsMatches({
           <h3 className="text-xs font-medium text-muted-foreground">
             Discogs matches
           </h3>
-          {/* Plans 03-10 and 03-11 add Search again, Retry and Search Discogs…. */}
-          <div className="ml-auto flex flex-wrap gap-2" />
+          {/* Plan 03-11 adds Search Discogs… after these. */}
+          <div className="ml-auto flex flex-wrap justify-end gap-2">
+            {action ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={again.pending}
+                onClick={() => void again.run()}
+              >
+                {again.pending ? (
+                  <>
+                    <Spinner aria-hidden="true" role="presentation" />
+                    Queuing…
+                  </>
+                ) : (
+                  <>
+                    <RotateCw aria-hidden="true" />
+                    {action === 'retry' ? 'Retry search' : 'Search again'}
+                  </>
+                )}
+              </Button>
+            ) : null}
+          </div>
         </div>
+        {again.error ? (
+          <p role="alert" className="text-xs text-destructive">
+            Couldn't start the search: {again.error}.
+          </p>
+        ) : null}
         <NoticeLine
           spine={spine}
           connected={connected}

@@ -13,6 +13,8 @@
 // and its top three candidates.
 // Plan 03-09: (c3) GET /api/spines/{id}/candidates lists every candidate
 // in the inline order, and an unknown spine is a 404.
+// Plan 03-10: (g) an edit starts no search but flags fieldsChanged; Search
+// again searches the new values, and repeated identical re-searches run.
 // Plans 03-05, 03-08, 03-09, 03-10, 03-11 and 03-12 add their own named
 // steps here; step letters are stable across plans.
 // Run: node scripts/verify-discogs-search.ts   (VERIFY_SKIP_BUILD=1 reuses
@@ -368,6 +370,7 @@ type ApiSpine = {
     state: string;
     candidateCount: number;
     topCandidates: { releaseId: number; catnoMatch: boolean; title: string }[];
+    fieldsChanged?: boolean;
   } | null;
 };
 
@@ -672,6 +675,150 @@ async function step429Resume(ctx: Ctx): Promise<void> {
   );
 }
 
+type SearchRow = {
+  id: string;
+  kind: string;
+  status: string;
+  stage: string | null;
+  job_id: string | null;
+  dedupe_key: string | null;
+};
+
+function searchRows(ctx: Ctx, spineId: string): SearchRow[] {
+  return withDb(
+    ctx,
+    (db) =>
+      db
+        .prepare(
+          `SELECT s.id, s.kind, s.status, s.stage, s.job_id, j.dedupe_key
+           FROM discogs_searches s LEFT JOIN jobs j ON j.id = s.job_id
+           WHERE s.spine_id = ? ORDER BY s.created_at, s.id`,
+        )
+        .all(spineId) as SearchRow[],
+  );
+}
+
+async function apiSpine(ctx: Ctx, photoId: string, spineId: string) {
+  const res = await fetch(
+    `${ctx.baseUrl}/api/spines?photo=${encodeURIComponent(photoId)}`,
+    { cache: 'no-store' },
+  );
+  assert(res.status === 200, `GET /api/spines returned ${res.status}`);
+  const body = (await res.json()) as { spines: ApiSpine[] };
+  const spine = body.spines.find((s) => s.id === spineId);
+  assert(spine?.discogs, `spine ${spineId} missing from /api/spines`);
+  return spine;
+}
+
+/** POST { mode: 'again' } and wait for that search to finish. */
+async function searchAgain(ctx: Ctx, spineId: string): Promise<string> {
+  const res = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spineId)}/search`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mode: 'again' }),
+    },
+  );
+  const body = (await res.json()) as { searchId?: string };
+  assert(
+    res.status === 201 && typeof body.searchId === 'string',
+    `POST search again returned ${res.status} ${JSON.stringify(body)}`,
+  );
+  const searchId = body.searchId;
+  await waitFor(
+    'the again search to finish',
+    async () =>
+      searchRows(ctx, spineId).find((r) => r.id === searchId)?.status !==
+        'queued' && discogsBacklog(ctx).open === 0
+        ? true
+        : undefined,
+    { timeoutMs: 30_000, intervalMs: 200 },
+  );
+  return searchId;
+}
+
+// (g) Plan 03-10 (DISC-05, D-14): editing a field never searches by
+// itself, the read model flags the change, Search again runs the new
+// values, and identical re-searches are never swallowed (Pitfall 1).
+async function stepSearchAgain(ctx: Ctx, photoId: string): Promise<void> {
+  step('(g) an edit flags fieldsChanged; Search again finds the new values');
+  const owen = spineSearches(ctx, photoId).find((s) => s.catno === 'TR-205');
+  assert(owen, 'no TR-205 (Owen Ashby) spine');
+  const before = searchRows(ctx, owen.spineId);
+  assert(
+    before.length === 1 && before[0].status === 'no_match',
+    `Owen Ashby searches ${JSON.stringify(before)}, expected one no_match`,
+  );
+  const patch = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(owen.spineId)}/fields`,
+    {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ field: 'artist', value: 'Juniper Vale' }),
+    },
+  );
+  assert(patch.status === 200, `PATCH fields returned ${patch.status}`);
+  const afterEdit = searchRows(ctx, owen.spineId);
+  assert(
+    afterEdit.length === 1,
+    `the edit created a search: ${JSON.stringify(afterEdit)}`,
+  );
+  const flagged = await apiSpine(ctx, photoId, owen.spineId);
+  assert(
+    flagged.discogs?.fieldsChanged === true,
+    `fieldsChanged ${flagged.discogs?.fieldsChanged} after the edit, expected true`,
+  );
+
+  const first = await searchAgain(ctx, owen.spineId);
+  const done = searchRows(ctx, owen.spineId).find((r) => r.id === first);
+  assert(
+    done?.kind === 'again' &&
+      done.status === 'done' &&
+      done.stage === 'artist_title' &&
+      done.dedupe_key === `search:${first}`,
+    `again search ${JSON.stringify(done)}, expected done at artist_title keyed search:${first}`,
+  );
+  const fresh = spineSearches(ctx, photoId).find(
+    (s) => s.spineId === owen.spineId,
+  );
+  const auto = fresh?.candidates.filter((c) => c.source === 'auto') ?? [];
+  assert(
+    auto.length === 3 && auto.every((c) => c.stage === 'artist_title'),
+    `Owen Ashby candidates ${JSON.stringify(fresh?.candidates)}, expected 3 auto at artist_title`,
+  );
+  const settled = await apiSpine(ctx, photoId, owen.spineId);
+  assert(
+    settled.discogs?.fieldsChanged === false &&
+      settled.discogs.state === 'done',
+    `after Search again ${JSON.stringify(settled.discogs)}, expected done with fieldsChanged false`,
+  );
+
+  const jobsBefore = discogsBacklog(ctx).total;
+  const second = await searchAgain(ctx, owen.spineId);
+  const third = await searchAgain(ctx, owen.spineId);
+  const rows = searchRows(ctx, owen.spineId);
+  assert(
+    rows.length === 4 && second !== third && second !== first,
+    `${rows.length} searches after two identical re-searches, expected 4`,
+  );
+  const jobsAfter = discogsBacklog(ctx).total;
+  assert(
+    jobsAfter - jobsBefore === 2,
+    `${jobsAfter - jobsBefore} new jobs for two identical re-searches, expected 2`,
+  );
+  for (const id of [second, third]) {
+    const r = rows.find((x) => x.id === id);
+    assert(
+      r?.status === 'done' && r.dedupe_key === `search:${id}`,
+      `re-search ${JSON.stringify(r)}, expected done keyed search:${id}`,
+    );
+  }
+  check(
+    'edit made no search and set fieldsChanged; again: done at artist_title with 3 candidates, fieldsChanged false; 2 identical re-searches ran',
+  );
+}
+
 // (f) a revoked sign-in mid-backlog: one 401, then every remaining search
 // short-circuits to auth_failed without a request (RESEARCH Pitfall 7).
 // Keep this step last: it leaves the app needing a reconnect.
@@ -751,6 +898,7 @@ runMain('verify-discogs-search', async (onCleanup) => {
   await stepShowAll(ctx, photoId);
   stepRequests(ctx);
   await step429Resume(ctx);
+  await stepSearchAgain(ctx, photoId);
   // Later plans insert their steps here, before (f).
   await stepRevoked(ctx);
 

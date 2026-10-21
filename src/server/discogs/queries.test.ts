@@ -192,6 +192,7 @@ describe('discogsForSpines and listCandidates (D-10)', () => {
       candidateCount: 0,
       topCandidates: [],
       failure: null,
+      fieldsChanged: false,
     });
   });
 
