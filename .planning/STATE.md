@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 03
+current_phase: 3
 current_phase_name: Discogs Match
 status: executing
-stopped_at: Completed 03-08-PLAN.md
-last_updated: "2026-10-21T02:18:03.643Z"
+stopped_at: Completed 03-09-PLAN.md
+last_updated: "2026-10-21T05:24:46.555Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 03 execution started
-state_head: 1abeefc97b24cca3d6bdfcba72225046d8c12e07
+last_activity_desc: Phase 3 execution started
+state_head: 81d6db4e2d1a58c45e87346f092feae85ce5751b
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 28
+  completed_plans: 29
   percent: 50
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 03 — Discogs Match
+**Current focus:** Phase 3 — Discogs Match
 
 ## Current Position
 
-Phase: 03 (Discogs Match) — EXECUTING
-Plan: 9 of 13
+Phase: 3 (Discogs Match) — EXECUTING
+Plan: 10 of 13
 Status: Ready to execute
-Last activity: 2026-10-20 — Phase 03 execution started
+Last activity: 2026-10-20 — Phase 3 execution started
 
 Progress: [█████░░░░░] 50%
 
@@ -85,6 +85,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P06 | 6min | 2 tasks | 17 files |
 | Phase 03 P07 | 10min | 2 tasks | 14 files |
 | Phase 03 P08 | 6 min | 1 tasks | 15 files |
+| Phase 03 P09 | 6min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-07: Discogs strings are capped in code points (capCodePoints), never splitting a surrogate pair
 - [Phase 03]: 03-08: stored candidates win over Not searched / No matches; a done search with zero stored candidates reads as No matches
 - [Phase 03]: 03-08: Discogs summaries cover every listed spine (before the review filter) so discogsActive keeps polling for hidden spines
+- [Phase 03]: 03-09: candidates route lists only active/orphaned spines; unknown, superseded, dismissed share the 404 NOT_FOUND body
+- [Phase 03]: 03-09: Show all fetches ['discogs-candidates', spineId] only when opened; spinesRefetchInterval is the single /spines polling rule (fastest applicable wins)
 
 ### Pending Todos
 
@@ -188,6 +191,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T02:18:03.510Z
-Stopped at: Completed 03-08-PLAN.md
+Last session: 2026-10-21T05:24:46.421Z
+Stopped at: Completed 03-09-PLAN.md
 Resume file: None
