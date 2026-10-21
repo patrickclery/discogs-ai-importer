@@ -2,7 +2,7 @@
 
 import { CircleX, Clock, Unplug } from 'lucide-react';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { CandidateList } from '@/components/candidate-list';
 import { Spinner } from '@/components/ui/spinner';
 import { searchFailureText } from '@/lib/candidate-format';
@@ -10,8 +10,8 @@ import type { SpineDto } from '@/lib/scan-types';
 
 // The card footer's "Discogs matches" section (D-12, UI-SPEC Spine card:
 // Discogs matches). Header row, at most one notice line, then the body by
-// search state. Plans 03-09 to 03-11 add the paused line, Show all, and the
-// Search again / Retry search / Search Discogs… actions.
+// search state. Plans 03-10 and 03-11 add the Search again / Retry search /
+// Search Discogs… actions.
 
 export const NOT_SEARCHED_LINE =
   "Not looked up yet. It's waiting its turn, or use Search Discogs… to look it up now.";
@@ -22,6 +22,10 @@ export const ORPHANED_LINE =
 export const QUEUED_LINE =
   'Waiting its turn. Discogs allows about one lookup per second.';
 export const SEARCHING_LINE = 'Searching Discogs…';
+/** UI-SPEC Paused line, `{s}` counting down client-side from pausedUntil. */
+export function pausedLine(seconds: number): string {
+  return `Discogs asked the app to slow down. Searching picks up again in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
+}
 export const NO_MATCHES_LINE =
   'Discogs found nothing for this spine. Check the artist, title and catalog number against the crop, then search again, or use Search Discogs….';
 
@@ -47,14 +51,40 @@ function Line({
   );
 }
 
-/** The not-connected, paused (Plan 03-09) or failed line, at most one. */
+/**
+ * Whole seconds until `until`, ticking once a second while it is in the
+ * future and `active`; 0 once it passes (the interval is cleared then and on
+ * unmount).
+ */
+function useSecondsUntil(until: number | null, active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    if (!active || until === null || until <= Date.now()) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= until) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [until, active]);
+  if (!active || until === null) return 0;
+  const left = until - now;
+  return left > 0 ? Math.ceil(left / 1000) : 0;
+}
+
+/** The not-connected, paused or failed line, at most one (UI-SPEC order). */
 function NoticeLine({
   spine,
   connected,
+  pausedUntil,
 }: {
   spine: SpineDto;
   connected: boolean;
+  pausedUntil: number | null;
 }) {
+  const queued = connected && spine.discogs?.state === 'queued';
+  const pausedSeconds = useSecondsUntil(pausedUntil, queued);
   if (!connected) {
     return (
       <Line
@@ -67,6 +97,15 @@ function NoticeLine({
         >
           Open Settings
         </Link>
+      </Line>
+    );
+  }
+  if (pausedSeconds > 0) {
+    return (
+      <Line
+        icon={<Clock aria-hidden="true" className="mt-px size-4 shrink-0" />}
+      >
+        {pausedLine(pausedSeconds)}
       </Line>
     );
   }
@@ -143,11 +182,12 @@ function Body({ spine, connected }: { spine: SpineDto; connected: boolean }) {
 export function DiscogsMatches({
   spine,
   connected,
+  pausedUntil,
 }: {
   spine: SpineDto;
   /** SpinesResponse.discogs.connected (D-04). */
   connected: boolean;
-  /** SpinesResponse.discogs.pausedUntil; Plan 03-09 shows the paused line. */
+  /** SpinesResponse.discogs.pausedUntil: the paused line while queued (D-06). */
   pausedUntil: number | null;
 }) {
   return (
@@ -160,7 +200,11 @@ export function DiscogsMatches({
           {/* Plans 03-10 and 03-11 add Search again, Retry and Search Discogs…. */}
           <div className="ml-auto flex flex-wrap gap-2" />
         </div>
-        <NoticeLine spine={spine} connected={connected} />
+        <NoticeLine
+          spine={spine}
+          connected={connected}
+          pausedUntil={pausedUntil}
+        />
       </div>
       <Body spine={spine} connected={connected} />
     </div>

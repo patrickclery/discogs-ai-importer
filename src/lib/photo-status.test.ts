@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DISCOGS_POLL_MS,
   formatElapsed,
   incompleteTooltip,
   isActiveStatus,
@@ -7,6 +8,7 @@ import {
   photosRefetchInterval,
   pluralize,
   rowAction,
+  spinesRefetchInterval,
   statusView,
 } from './photo-status';
 import type { PhotoDto } from './scan-types';
@@ -195,5 +197,63 @@ describe('rowAction (/upload row actions, UI-SPEC E3)', () => {
     ] as const) {
       expect(rowAction(photo({ status }))).toBeNull();
     }
+  });
+});
+
+describe('spinesRefetchInterval (UI-SPEC Polling)', () => {
+  const options = (status: PhotoDto['status']) => [
+    { id: 'p1', filename: 'a.jpg', status: 'done' as const },
+    { id: 'p2', filename: 'b.jpg', status },
+  ];
+
+  it('polls every 3 s while a Discogs search is queued or running', () => {
+    expect(DISCOGS_POLL_MS).toBe(3000);
+    expect(
+      spinesRefetchInterval(
+        { photoOptions: options('done'), discogsActive: true },
+        'success',
+      ),
+    ).toBe(3000);
+  });
+
+  it('keeps 1.5 s while a photo is analyzing (fastest wins)', () => {
+    expect(
+      spinesRefetchInterval(
+        { photoOptions: options('calling'), discogsActive: true },
+        'success',
+      ),
+    ).toBe(1500);
+    expect(
+      spinesRefetchInterval(
+        { photoOptions: options('queued'), discogsActive: false },
+        'error',
+      ),
+    ).toBe(1500);
+  });
+
+  it('stops polling once nothing is active', () => {
+    expect(
+      spinesRefetchInterval(
+        { photoOptions: options('error'), discogsActive: false },
+        'success',
+      ),
+    ).toBe(false);
+    expect(spinesRefetchInterval(undefined, 'success')).toBe(false);
+  });
+
+  it('retries every 3 s after a failed poll, with or without searches', () => {
+    expect(
+      spinesRefetchInterval(
+        { photoOptions: options('done'), discogsActive: true },
+        'error',
+      ),
+    ).toBe(3000);
+    expect(
+      spinesRefetchInterval(
+        { photoOptions: options('done'), discogsActive: false },
+        'error',
+      ),
+    ).toBe(3000);
+    expect(spinesRefetchInterval(undefined, 'error')).toBe(3000);
   });
 });

@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { CircleCheck, CircleX, ImageOff, Rows3 } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useMemo } from 'react';
+import { DiscogsNotConnectedAlert } from '@/components/discogs-not-connected-alert';
 import { PhotoSection } from '@/components/photo-section';
 import {
   SpinesFilterBar,
@@ -21,7 +22,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { photosRefetchInterval, pluralize } from '@/lib/photo-status';
+import { pluralize, spinesRefetchInterval } from '@/lib/photo-status';
 import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
 async function fetchSpines(
@@ -156,9 +157,9 @@ export function SpinesView({
     // until the new one loads.
     placeholderData: keepPreviousData,
     // Every photo's status, so a scan finishing on a photo the filters hide
-    // still refreshes the counts.
-    refetchInterval: (q) =>
-      photosRefetchInterval(q.state.data?.photoOptions, q.state.status),
+    // still refreshes the counts; and every 3 s while a listed spine's
+    // Discogs search is queued or running (Pitfall 4).
+    refetchInterval: (q) => spinesRefetchInterval(q.state.data, q.state.status),
   });
   const data = query.data;
   const byPhoto = useMemo(() => groupByPhoto(data?.spines ?? []), [data]);
@@ -189,6 +190,9 @@ export function SpinesView({
     body = (
       <div className="flex flex-col gap-6">
         {pollError}
+        {!data.discogs.connected && data.spines.length > 0 ? (
+          <DiscogsNotConnectedAlert />
+        ) : null}
         {data.photos.map((p) => (
           <PhotoSection
             key={p.id}

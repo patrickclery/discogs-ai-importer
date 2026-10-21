@@ -1,6 +1,6 @@
 // Photo status view model (UI-SPEC status mapping table). Pure and
 // client-safe: the one place a run status becomes a label and sub-line.
-import type { PhotoDto, PhotoStatus } from './scan-types';
+import type { PhotoDto, PhotoStatus, SpinesResponse } from './scan-types';
 
 export type StatusTone = 'muted' | 'spinner' | 'success' | 'destructive';
 
@@ -111,6 +111,28 @@ export function photosRefetchInterval(
 ): number | false {
   if (photos?.some((p) => isActiveStatus(p.status))) return ACTIVE_POLL_MS;
   return status === 'error' ? POLL_RETRY_MS : false;
+}
+
+/** Polling interval for /spines while a Discogs search is queued or running. */
+export const DISCOGS_POLL_MS = 3000;
+
+/**
+ * refetchInterval for the /spines query (UI-SPEC Polling, Pitfall 4): the
+ * photos rules (1.5 s while a photo is active, 3 s after a failed poll) plus
+ * 3 s while discogsActive. The fastest applicable interval wins; false once
+ * none applies.
+ */
+export function spinesRefetchInterval(
+  data: Pick<SpinesResponse, 'photoOptions' | 'discogsActive'> | undefined,
+  status: PollQueryStatus,
+): number | false {
+  const intervals: number[] = [];
+  if (data?.photoOptions.some((p) => isActiveStatus(p.status))) {
+    intervals.push(ACTIVE_POLL_MS);
+  }
+  if (data?.discogsActive) intervals.push(DISCOGS_POLL_MS);
+  if (status === 'error') intervals.push(POLL_RETRY_MS);
+  return intervals.length > 0 ? Math.min(...intervals) : false;
 }
 
 /** Tooltip for the "May be incomplete" badge (UI-SPEC truncation copy). */
