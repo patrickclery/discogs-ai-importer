@@ -9,7 +9,8 @@
 // identity failure ends at error. Nothing but connected stores a token.
 // Plan 03-02: (a) the Settings card shows Connect Discogs before and
 // "Connected as fake-owner" after (b), and (j0) Test connection signs one
-// /oauth/identity with the stored sign-in. Step letters are stable across
+// /oauth/identity with the stored sign-in, and (j1) a rejected test shows
+// Reconnect on Settings and Disconnect forgets the sign-in. Step letters are stable across
 // plans: (g) is the paste-code path (Plan 03-04).
 // Run: node scripts/verify-discogs.ts   (VERIFY_SKIP_BUILD=1 reuses the build)
 // It builds and starts from NEXT_DIST_DIR, default .next/verify, so a
@@ -223,6 +224,63 @@ export async function stepTestConnection(ctx: Ctx): Promise<void> {
   check('{ ok: true, username: fake-owner }; one signed /oauth/identity');
 }
 
+async function postJson(
+  ctx: Ctx,
+  route: string,
+): Promise<{ status: number; text: string }> {
+  const res = await fetch(`${ctx.baseUrl}${route}`, {
+    method: 'POST',
+    headers: { origin: ctx.origin, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  const text = await res.text();
+  assertNoLeak(`POST ${route} body`, text);
+  return { status: res.status, text };
+}
+
+// (j1) A rejected sign-in shows Reconnect on Settings; Disconnect forgets it.
+export async function stepReconnectAndDisconnect(ctx: Ctx): Promise<void> {
+  step('(j1) a rejected test shows Reconnect needed; Disconnect clears it');
+  clearConnection(ctx);
+  assertSettingsLocation(ctx, (await connectTrace(ctx)).location, 'connected');
+  await ctx.fake.control({ revoked: true });
+  try {
+    const test = await postJson(ctx, '/api/discogs/test');
+    assert(
+      test.status === 200 &&
+        JSON.parse(test.text).ok === false &&
+        JSON.parse(test.text).kind === 'rejected',
+      `a revoked test answered ${test.status} ${test.text}`,
+    );
+  } finally {
+    await ctx.fake.control({ reset: true });
+  }
+  const reconnect = await settingsText(ctx);
+  for (const needle of [
+    'Reconnect needed',
+    'Discogs stopped accepting this app',
+    'Reconnect Discogs',
+  ]) {
+    assert(reconnect.includes(needle), `Settings lacks "${needle}"`);
+  }
+  check('rejected; Settings shows Reconnect needed and Reconnect Discogs');
+
+  const off = await postJson(ctx, '/api/discogs/disconnect');
+  assert(
+    off.status === 200 && JSON.parse(off.text).ok === true,
+    `POST /api/discogs/disconnect answered ${off.status} ${off.text}`,
+  );
+  const present = tokenKeysPresent(ctx);
+  assert(present.length === 0, `disconnect left ${present.join(', ')}`);
+  const after = await settingsText(ctx);
+  assert(
+    after.includes('Connect Discogs') && after.includes('Not connected'),
+    'Settings is not back to Not connected after Disconnect',
+  );
+  assert(!after.includes('Connected as'), 'Settings still says Connected as');
+  check('disconnected; token keys gone, Settings shows Connect Discogs');
+}
+
 // (c) The three token keys are in the temp secrets file, mode 0600.
 export function stepSecretsFile(ctx: Ctx): void {
   step('(c) tokens saved to the temp secrets file, mode 0600');
@@ -428,6 +486,7 @@ runMain('verify-discogs', async (onCleanup) => {
   await stepDenied(ctx);
   await stepExpired(ctx);
   await stepDocsSignature(ctx);
+  await stepReconnectAndDisconnect(ctx);
   // (d) again: the extra connects above kept the User-Agent and PLAINTEXT.
   stepUserAgent(ctx);
 

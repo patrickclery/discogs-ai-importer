@@ -3,9 +3,10 @@ import {
   CONNECT_BUTTON_ID,
   ConnectDiscogsButton,
 } from '@/components/connect-discogs-button';
+import { DisconnectDiscogsButton } from '@/components/disconnect-discogs-button';
 import { DiscogsCredentials } from '@/components/secret-field';
 import { TestDiscogsButton } from '@/components/test-discogs-button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -70,8 +71,30 @@ function ConnectedSection({ username }: { username: string }) {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TestDiscogsButton />
+        <DisconnectDiscogsButton />
       </div>
     </div>
+  );
+}
+
+/** Discogs stopped accepting the stored sign-in (any signed 401). */
+function ReconnectAlert({ credentialsSaved }: { credentialsSaved: boolean }) {
+  return (
+    <Alert>
+      <TriangleAlert aria-hidden="true" className="text-warning" />
+      <AlertTitle>Discogs stopped accepting this app</AlertTitle>
+      <AlertDescription className="flex flex-col gap-3">
+        <p>
+          {
+            "Lookups are paused until you reconnect. This happens if the app's access was removed on discogs.com or the consumer key changed."
+          }
+        </p>
+        <ConnectDiscogsButton
+          label="Reconnect Discogs"
+          credentialsSaved={credentialsSaved}
+        />
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -128,7 +151,13 @@ export function DiscogsCard({
       <CardContent className="flex flex-col gap-4">
         {statuses && connection ? (
           <>
-            <DiscogsCredentials statuses={statuses} />
+            {connection.connected && connection.needsReconnect ? (
+              <ReconnectAlert credentialsSaved={connection.credentialsSaved} />
+            ) : null}
+            <DiscogsCredentials
+              statuses={statuses}
+              connected={connection.connected}
+            />
             <Separator />
             <AccountSection connection={connection} />
           </>

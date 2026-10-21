@@ -180,12 +180,14 @@ function ClearControl({
   status,
   label,
   disabled,
+  connected,
   onPendingChange,
   onFormError,
 }: {
   status: SecretStatus;
   label: string;
   disabled: boolean;
+  connected: boolean;
   onPendingChange: (pending: boolean) => void;
   onFormError: FormErrorSink;
 }) {
@@ -234,8 +236,7 @@ function ClearControl({
             {`Clear saved Discogs ${noun(status)}?`}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            The value is removed from secrets.json. Discogs matching can't run
-            until you add it again.
+            {`The value is removed from secrets.json. Discogs matching can't run until you add it again.${connected ? ' This also disconnects your Discogs account.' : ''}`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -267,10 +268,12 @@ function ClearControl({
 export function SecretField({
   status,
   shared,
+  connected = false,
   onFormError = () => {},
 }: {
   status: SecretStatus;
   shared?: { pending: boolean; error?: string };
+  connected?: boolean;
   onFormError?: FormErrorSink;
 }) {
   const [editing, setEditing] = useState(false);
@@ -383,6 +386,7 @@ export function SecretField({
                 status={status}
                 label={status.source === 'env' ? 'Clear' : 'Clear value'}
                 disabled={busy}
+                connected={connected}
                 onPendingChange={setClearing}
                 onFormError={onFormError}
               />
@@ -428,7 +432,14 @@ function SharedCredentialsForm({
   );
 }
 
-export function DiscogsCredentials({ statuses }: { statuses: SecretStatus[] }) {
+export function DiscogsCredentials({
+  statuses,
+  connected = false,
+}: {
+  statuses: SecretStatus[];
+  /** While connected, the Clear confirm says it also disconnects (A4). */
+  connected?: boolean;
+}) {
   const [formError, setFormError] = useState<string | null>(null);
   const bothUnset = statuses.every((s) => s.source === null);
 
@@ -445,7 +456,11 @@ export function DiscogsCredentials({ statuses }: { statuses: SecretStatus[] }) {
         statuses.map((status, i) => (
           <div key={status.key} className="flex flex-col gap-6">
             {i > 0 ? <Separator /> : null}
-            <SecretField status={status} onFormError={setFormError} />
+            <SecretField
+              status={status}
+              connected={connected}
+              onFormError={setFormError}
+            />
           </div>
         ))
       )}

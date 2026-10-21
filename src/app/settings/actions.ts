@@ -7,6 +7,7 @@ import {
   type TestResult,
   testClaude,
 } from '@/server/claude/cli';
+import { clearDiscogsAuth, clearPendingConnect } from '@/server/discogs/auth';
 import {
   clearSecret,
   SECRET_KEYS,
@@ -84,6 +85,10 @@ export async function clearSecretAction(
   if (!parsed.success) return { ok: false, formError: 'Unknown setting.' };
   try {
     clearSecret(parsed.data);
+    // Both keys are Discogs consumer values, and the sign-in is bound to
+    // the consumer key (RESEARCH Pitfall 7, A4): clearing one disconnects.
+    clearDiscogsAuth();
+    clearPendingConnect();
   } catch (err) {
     return { ok: false, formError: ioError(err) };
   }
