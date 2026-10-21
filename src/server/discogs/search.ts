@@ -66,7 +66,8 @@ export function buildStages(inputs: SearchInputs): Stage[] {
   return stages;
 }
 
-const cap = (max: number) => z.string().transform((s) => s.slice(0, max));
+/** Caps in code points, so a surrogate pair is never split. */
+const cap = (max: number) => z.string().transform((s) => capCodePoints(s, max));
 
 const FormatSchema = z.object({
   name: cap(MAX_SHORT),
@@ -166,7 +167,7 @@ export function toYear(v: string | number | null | undefined): number | null {
 
 function text(v: string | null | undefined, max = MAX_SHORT): string | null {
   if (typeof v !== 'string') return null;
-  const t = v.trim().slice(0, max);
+  const t = capCodePoints(v.trim(), max).trim();
   return t || null;
 }
 
@@ -189,14 +190,14 @@ export function toFormats(
     if (!f.success) continue;
     const descriptions = (f.data.descriptions ?? [])
       .filter((d): d is string => typeof d === 'string')
-      .map((d) => d.slice(0, MAX_SHORT))
+      .map((d) => capCodePoints(d, MAX_SHORT))
       .slice(0, MAX_DESCRIPTIONS);
     out.push({
       name: f.data.name,
       qty:
         f.data.qty === null || f.data.qty === undefined
           ? null
-          : String(f.data.qty).slice(0, 20),
+          : capCodePoints(String(f.data.qty), 20),
       descriptions,
       text: text(f.data.text),
     });
@@ -253,8 +254,8 @@ function artistsDisplay(artists: Release['artists']): string | null {
 
 export function toCandidateFromRelease(rel: Release, rank = 0): Candidate {
   const artist = artistsDisplay(rel.artists);
-  const title = (artist ? `${artist} - ${rel.title}` : rel.title).slice(
-    0,
+  const title = capCodePoints(
+    artist ? `${artist} - ${rel.title}` : rel.title,
     MAX_TITLE,
   );
   return {
