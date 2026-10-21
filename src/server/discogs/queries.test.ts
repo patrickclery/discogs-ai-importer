@@ -195,6 +195,45 @@ describe('discogsForSpines and listCandidates (D-10)', () => {
     });
   });
 
+  it('a release both found and added manually lists once, as manual', () => {
+    seed();
+    const db = getDb().$client;
+    const auto = createSearch(db, {
+      spineId: 's1',
+      kind: 'auto',
+      inputs: searchInputs({ artist: 'A' }),
+      inputHash: 'h',
+    });
+    finishSearch(db, auto, { status: 'done', resultCount: 3 });
+    addCandidate(auto, { releaseId: 30, rank: 0 });
+    addCandidate(auto, { releaseId: 31, rank: 1, catnoMatch: true });
+    addCandidate(auto, { releaseId: 32, rank: 2 });
+    const manual = createSearch(db, {
+      spineId: 's1',
+      kind: 'manual',
+      inputs: searchInputs({}),
+      inputHash: null,
+    });
+    addCandidate(manual, {
+      releaseId: 32,
+      rank: 0,
+      source: 'manual',
+      createdAt: 3,
+    });
+
+    expect(
+      listCandidates(db, 's1').map((c) => [c.releaseId, c.source]),
+    ).toEqual([
+      [32, 'manual'],
+      [31, 'auto'],
+      [30, 'auto'],
+    ]);
+    const s1 = discogsForSpines(db, [{ id: 's1' }]).get('s1');
+    expect(s1?.candidateCount).toBe(3);
+    expect(s1?.topCandidates.map((c) => c.releaseId)).toEqual([32, 31, 30]);
+    expect(listCandidates(db, 's2')).toEqual([]);
+  });
+
   it('reads the latest auto or again search and its job', () => {
     seed();
     const db = getDb().$client;
