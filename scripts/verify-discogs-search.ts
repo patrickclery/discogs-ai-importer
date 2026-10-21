@@ -18,7 +18,9 @@
 // Plan 03-11: (h) a pasted release link fetches exactly that release once,
 // and adding it pins it first as a manual candidate.
 // Plan 03-12: (i) a typed dialog search is one paced CD-only request of 25
-// that lists results with covers and writes no candidate rows.
+// that lists results with covers and writes no candidate rows; (j) an
+// unknown release ends not_found, a master link is refused with no
+// request, and Search again keeps the manual pick first.
 // Plans 03-05, 03-08, 03-09, 03-10, 03-11 and 03-12 add their own named
 // steps here; step letters are stable across plans.
 // Run: node scripts/verify-discogs-search.ts   (VERIFY_SKIP_BUILD=1 reuses
@@ -1039,6 +1041,79 @@ async function stepTextSearch(ctx: Ctx, photoId: string): Promise<void> {
   );
 }
 
+// (j) Plan 03-12 (D-15, D-16, Pitfall 5): a release number Discogs does
+// not have ends not_found; a master link is refused with 400 before any
+// request; Search again on the spine from (h) replaces only the automatic
+// candidates, so the manual 1820636 is still listed first.
+async function stepRefusalsAndManualSurvives(
+  ctx: Ctx,
+  photoId: string,
+): Promise<void> {
+  step('(j) unknown release not_found; master refused; manual pick survives');
+  const spine = spineSearches(ctx, photoId).find((s) => s.catno === 'TR-201');
+  assert(spine, 'no TR-201 spine');
+
+  const missing = await startDialogSearch(ctx, spine.spineId, {
+    mode: 'ref',
+    value: '999999999',
+  });
+  const ended = await waitDialogSearch(ctx, missing);
+  assert(
+    ended.kind === 'release' &&
+      ended.state === 'not_found' &&
+      ended.releaseId === 999999999 &&
+      ended.results.length === 0,
+    `release 999999999 search ${JSON.stringify(ended)}, expected not_found with no results`,
+  );
+
+  const before = fakeLog(ctx).length;
+  const searchesBefore = searchRows(ctx, spine.spineId).length;
+  const master = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spine.spineId)}/search`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'ref',
+        value: 'https://www.discogs.com/master/13814',
+      }),
+    },
+  );
+  const refused = (await master.json()) as { error?: string };
+  assert(
+    master.status === 400 && refused.error === 'master',
+    `master link answered ${master.status} ${JSON.stringify(refused)}, expected 400 master`,
+  );
+  assert(
+    fakeLog(ctx).length === before &&
+      searchRows(ctx, spine.spineId).length === searchesBefore,
+    'the master link reached Discogs or created a search',
+  );
+
+  const againId = await searchAgain(ctx, spine.spineId);
+  const again = searchRows(ctx, spine.spineId).find((r) => r.id === againId);
+  assert(
+    again?.kind === 'again' && again.status === 'done',
+    `again search ${JSON.stringify(again)}, expected done`,
+  );
+  const list = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spine.spineId)}/candidates`,
+    { cache: 'no-store' },
+  );
+  const { candidates } = (await list.json()) as {
+    candidates: { releaseId: number; source: string }[];
+  };
+  assert(
+    candidates[0]?.releaseId === 1820636 &&
+      candidates[0].source === 'manual' &&
+      candidates.some((c) => c.source === 'auto'),
+    `candidates after Search again ${JSON.stringify(candidates)}, expected manual 1820636 first above the auto ones`,
+  );
+  check(
+    'release 999999999 not_found; master link 400 with no request; Search again done and manual 1820636 still first',
+  );
+}
+
 // (f) a revoked sign-in mid-backlog: one 401, then every remaining search
 // short-circuits to auth_failed without a request (RESEARCH Pitfall 7).
 // Keep this step last: it leaves the app needing a reconnect.
@@ -1121,6 +1196,7 @@ runMain('verify-discogs-search', async (onCleanup) => {
   await stepSearchAgain(ctx, photoId);
   await stepPasteRelease(ctx, photoId);
   await stepTextSearch(ctx, photoId);
+  await stepRefusalsAndManualSurvives(ctx, photoId);
   // Later plans insert their steps here, before (f).
   await stepRevoked(ctx);
 

@@ -65,8 +65,18 @@ export const BEFORE_SEARCH_LINE = 'Results from Discogs appear here.';
 export const RELEASE_CHECK_LINE =
   'Check that this is the CD you meant. Discogs numbers releases and masters separately, so a number can point to a different record.';
 export const MORE_RESULTS_LINE = `Showing the first ${DIALOG_RESULTS_MAX} results. Add a word or the catalog number to narrow it down.`;
-/** Placeholder for ended searches with nothing to pick (Plan 03-12 copy). */
-const NOTHING_TO_ADD_LINE = 'Nothing to add from this search.';
+
+/** UI-SPEC "Dialog not found": a pasted number Discogs has no release for. */
+export function notFoundLine(releaseId: number | null): string {
+  return `Discogs has no release ${releaseId ?? ''}. Check the number, or paste the full link from the release page.`;
+}
+
+/** UI-SPEC "Dialog search failed"; searching again is the retry. */
+export function searchFailedLine(failure: string | null): string {
+  const reason =
+    failure?.trim().replace(/[.\s]+$/u, '') || 'something went wrong';
+  return `Search failed: ${reason}. Search again to retry.`;
+}
 
 /** UI-SPEC "Dialog no results", quoting the searched text. */
 export function noResultsLine(query: string | null): string {
@@ -219,8 +229,18 @@ function Results({
       break;
     case 'no_match':
       return <Line>{noResultsLine(data.query)}</Line>;
-    default:
-      return <Line>{NOTHING_TO_ADD_LINE}</Line>;
+    case 'not_found':
+      return (
+        <p className="text-xs break-words text-destructive">
+          {notFoundLine(data.releaseId)}
+        </p>
+      );
+    case 'failed':
+      return (
+        <p className="text-xs break-words text-destructive">
+          {searchFailedLine(data.failure)}
+        </p>
+      );
   }
   return (
     <div className="flex flex-col gap-2">

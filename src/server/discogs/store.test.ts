@@ -3,8 +3,10 @@ import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
 import { newId } from '../ids';
 import { searchInputs } from './inputs';
+import { listCandidates } from './queries';
 import type { Candidate } from './search';
 import {
+  addManualCandidate,
   createSearch,
   finishSearch,
   getSearch,
@@ -200,5 +202,47 @@ describe('discogs store', () => {
     const again = search('again');
     search('manual');
     expect(latestAutoSearch(db, SPINE)?.id).toBe(again);
+  });
+
+  it('a later automatic search after a manual add keeps the manual row, listed first (D-16, UI E7/E8)', () => {
+    seedSpine();
+    const db = getDb().$client;
+    const first = search('auto');
+    finishSearch(db, first, { status: 'done' });
+    replaceAutoCandidates(db, {
+      spineId: SPINE,
+      searchId: first,
+      stage: 'catno',
+      candidates: [cand(10, 0), cand(11, 1)],
+    });
+    const manual = search('manual');
+    finishSearch(db, manual, {
+      status: 'done',
+      resultsJson: JSON.stringify([{ ...cand(77, 0), stage: 'text' }]),
+    });
+    expect(
+      addManualCandidate(db, {
+        spineId: SPINE,
+        searchId: manual,
+        releaseId: 77,
+      }).status,
+    ).toBe('ok');
+
+    const again = search('again');
+    finishSearch(db, again, { status: 'done' });
+    replaceAutoCandidates(db, {
+      spineId: SPINE,
+      searchId: again,
+      stage: 'catno',
+      candidates: [cand(12, 0), cand(77, 1)],
+    });
+    expect(candidates().map((c) => `${c.source}:${c.release_id}`)).toEqual([
+      'auto:12',
+      'auto:77',
+      'manual:77',
+    ]);
+    const listed = listCandidates(db, SPINE);
+    expect(listed[0]).toMatchObject({ releaseId: 77, source: 'manual' });
+    expect(listed.map((c) => c.releaseId)).toEqual([77, 12]);
   });
 });
