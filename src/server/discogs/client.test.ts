@@ -8,8 +8,8 @@ import {
   DiscogsAuthError,
   DiscogsNotFoundError,
   DiscogsRateLimitedError,
-  DiscogsRequestError,
   type DiscogsRequest,
+  DiscogsRequestError,
   DiscogsUnavailableError,
   discogsFetch,
 } from './client';
