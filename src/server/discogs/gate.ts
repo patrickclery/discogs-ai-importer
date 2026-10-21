@@ -60,6 +60,26 @@ function nonNegativeInt(value: string | null): number | null {
   return Number.isSafeInteger(n) ? n : null;
 }
 
+// The three HTTP-date forms (RFC 9110 5.6.7). Date.parse alone also accepts
+// '1.5', '-3' or an ISO date, and reads a zone-less asctime date as local
+// time, so only these shapes reach it.
+const IMF_FIXDATE =
+  /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+const RFC850_DATE =
+  /^[A-Z][a-z]{5,8}, \d{2}-[A-Z][a-z]{2}-\d{2} \d{2}:\d{2}:\d{2} GMT$/;
+const ASCTIME_DATE =
+  /^[A-Z][a-z]{2} [A-Z][a-z]{2} [ \d]\d \d{2}:\d{2}:\d{2} \d{4}$/;
+
+/** Epoch ms of an HTTP-date, or null for anything else. */
+function parseHttpDate(v: string): number | null {
+  let text: string;
+  if (IMF_FIXDATE.test(v) || RFC850_DATE.test(v)) text = v;
+  else if (ASCTIME_DATE.test(v)) text = `${v} GMT`;
+  else return null;
+  const at = Date.parse(text);
+  return Number.isNaN(at) ? null : at;
+}
+
 /**
  * Retry-After as milliseconds: integer delta-seconds or an HTTP-date (delta
  * rounded up to whole seconds), clamped to 1-300 s. Null for anything else;
@@ -76,8 +96,8 @@ export function parseRetryAfter(
   if (/^\d+$/.test(v)) {
     ms = Number(v) * 1000;
   } else {
-    const at = Date.parse(v);
-    if (Number.isNaN(at)) return null;
+    const at = parseHttpDate(v);
+    if (at === null) return null;
     ms = Math.ceil((at - now) / 1000) * 1000;
   }
   if (!Number.isFinite(ms)) return null;
