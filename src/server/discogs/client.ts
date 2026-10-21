@@ -36,6 +36,11 @@ export type DiscogsRequest = {
   tokenSecret?: string;
   callback?: string;
   verifier?: string;
+  /**
+   * The caller's abort signal. Only job handlers pass one, and a request
+   * with a signal never waits out a rate-limit pause: it throws
+   * DiscogsRateLimitedError at once so the job defers (WR-02, D-06).
+   */
   signal?: AbortSignal;
 };
 
@@ -192,6 +197,12 @@ export async function discogsFetch(
     body = new URLSearchParams(req.form ?? {}).toString();
   }
 
+  // WR-02 (D-06): a job must not sleep through a pause a route's 429 set;
+  // its timeout would abort the wait and spend an attempt. Defer instead.
+  const pausedUntil = gate.pausedUntil();
+  if (req.signal && pausedUntil !== null) {
+    throw new DiscogsRateLimitedError(`${label} deferred: paused`, pausedUntil);
+  }
   await gate.acquire(req.signal);
 
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);

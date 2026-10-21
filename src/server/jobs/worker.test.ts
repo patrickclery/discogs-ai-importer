@@ -259,7 +259,7 @@ describe('429 deferral and the lane gate (D-06, RESEARCH Pattern 3)', () => {
 // Nyquist gap audit (WR-02, D-06): a 429 from a route (Test connection,
 // Connect, paste-code) pauses the shared gate while a search_spine job is
 // between cascade stages. The job must defer, never time out on the pause
-// and spend an attempt. it.fails while WR-02 is open.
+// and spend an attempt.
 describe('a rate-limit pause during a running search (WR-02)', () => {
   useTempDataDir();
   let dir = '';
@@ -295,7 +295,7 @@ describe('a rate-limit pause during a running search (WR-02)', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it.fails('WR-02: a pause longer than the job timeout defers the job instead of failing an attempt', async () => {
+  it('WR-02: a pause longer than the job timeout defers the job instead of failing an attempt', async () => {
     const db = getDb().$client;
     const now = Date.now();
     db.prepare(
