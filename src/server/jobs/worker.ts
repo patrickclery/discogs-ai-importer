@@ -1,7 +1,11 @@
 import 'server-only';
 import type { StatusResponse } from '@/lib/status-types';
 import { newId } from '../ids';
-import { handlers as defaultHandlers, maintenance } from './handlers';
+import {
+  handlers as defaultHandlers,
+  laneGates,
+  maintenance,
+} from './handlers';
 import {
   acquireLease,
   heartbeatLease,
@@ -13,6 +17,7 @@ import {
 import {
   claimNext,
   complete,
+  deferJob,
   failJob,
   failOrRetry,
   isClaimCurrent,
@@ -26,6 +31,9 @@ export const LANE_CONCURRENCY: Record<Lane, number> = {
 };
 
 const IDLE_SLEEP_MS = 500;
+/** Longest single sleep while a lane gate is paused; re-checked after. */
+const LANE_GATE_SLEEP_MS = 1000;
+const DEFERRED_REASON = 'deferred: Discogs asked the app to slow down';
 const ERROR_SLEEP_MS = 1000;
 /**
  * How long an aborted handler gets to actually stop (WR-03). runProcess kills
@@ -152,7 +160,7 @@ export async function processNext(
     /** The running worker's boot id; isCurrent() also checks the lease. */
     bootId?: string;
   } = {},
-): Promise<'idle' | 'succeeded' | 'failed'> {
+): Promise<'idle' | 'succeeded' | 'failed' | 'deferred'> {
   const job = claimNext(lane, opts.now);
   if (!job) return 'idle';
   const handler = (opts.handlers ?? defaultHandlers)[job.type];
@@ -225,6 +233,21 @@ export async function processNext(
           return 'failed';
         }
       }
+      // D-06: a deferral (Discogs 429) goes back to queued at its runAfter
+      // without spending an attempt. Compared by name, like stopped above.
+      const deferred = err as { name?: unknown; runAfter?: unknown } | null;
+      if (
+        !controller.signal.aborted &&
+        deferred?.name === 'JobDeferredError' &&
+        typeof deferred.runAfter === 'number' &&
+        Number.isFinite(deferred.runAfter)
+      ) {
+        const runAfter = deferred.runAfter;
+        await writeStatus(() =>
+          deferJob(job.id, runAfter, DEFERRED_REASON, opts.now, job.attempts),
+        );
+        return 'deferred';
+      }
       // A stopped worker leaves the job running; lease recovery requeues it.
       if (!stopped) {
         await writeStatus(() =>
@@ -241,12 +264,34 @@ export async function processNext(
   }
 }
 
+/** Ms until the lane's gate opens, or 0 when it has no gate or no pause. */
+export function laneWaitMs(
+  lane: Lane,
+  now: number,
+  gates: Partial<Record<Lane, () => number | null>> = laneGates,
+): number {
+  const until = gates[lane]?.() ?? null;
+  return until !== null && until > now ? until - now : 0;
+}
+
 async function runLane(
   lane: Lane,
   bootId: string,
   isStopped: () => boolean,
 ): Promise<void> {
   while (!isStopped()) {
+    // While the lane is paused (a Discogs 429), claim nothing. The deferred
+    // job's run_after stays the durable record across restarts.
+    let wait = 0;
+    try {
+      wait = laneWaitMs(lane, Date.now());
+    } catch (err) {
+      console.error(`[worker] ${lane} lane gate error:`, err);
+    }
+    if (wait > 0) {
+      await sleep(Math.min(wait, LANE_GATE_SLEEP_MS));
+      continue;
+    }
     let result: Awaited<ReturnType<typeof processNext>>;
     try {
       result = await processNext(lane, { bootId });

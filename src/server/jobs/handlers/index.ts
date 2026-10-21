@@ -1,6 +1,7 @@
 import 'server-only';
+import { discogsGate } from '../../discogs/gate';
 import { reconcileVisionRuns } from '../../scan/reconcile';
-import type { JobHandler } from '../types';
+import type { JobHandler, Lane } from '../types';
 import { runNoop } from './noop';
 import { runScanPhoto } from './scan-photo';
 import { runSearchSpine } from './search-spine';
@@ -25,3 +26,13 @@ export const handlers: Record<string, JobHandler> = {
  * the same tick. Each hook must be cheap and must never spawn a paid call.
  */
 export const maintenance: Array<() => unknown> = [() => reconcileVisionRuns()];
+
+/**
+ * Per-lane pause: the epoch ms a lane may claim again, or null. While the
+ * Discogs gate is paused after a 429 the whole lane waits, so a backlog of
+ * queued searches is not claimed and deferred one by one (RESEARCH
+ * Pattern 3). Routes and the worker share the one globalThis gate.
+ */
+export const laneGates: Partial<Record<Lane, () => number | null>> = {
+  discogs: () => discogsGate().pausedUntil(),
+};

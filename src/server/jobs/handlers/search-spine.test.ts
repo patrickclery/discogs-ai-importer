@@ -259,16 +259,19 @@ describe('search_spine handler (deferral, auth, vanished spines, errors)', () =>
     ['dismissed', 'auto'],
     ['orphaned', 'auto'],
     ['superseded', 'again'],
-  ] as const)('a %s spine finishes a %s search skipped without a request', async (state, kind) => {
-    const { searchId, ctx, result, calls } = await run(
-      () => new Response(okBody, { status: 200 }),
-      { state, kind },
-    );
-    await expect(result).resolves.toBeUndefined();
-    expect(calls()).toBe(0);
-    expect(searchRow(searchId).status).toBe('skipped');
-    expect(dedupeKey(ctx.job.id)).not.toBeNull();
-  });
+  ] as const)(
+    'a %s spine finishes a %s search skipped without a request',
+    async (state, kind) => {
+      const { searchId, ctx, result, calls } = await run(
+        () => new Response(okBody, { status: 200 }),
+        { state, kind },
+      );
+      await expect(result).resolves.toBeUndefined();
+      expect(calls()).toBe(0);
+      expect(searchRow(searchId).status).toBe('skipped');
+      expect(dedupeKey(ctx.job.id)).not.toBeNull();
+    },
+  );
 
   it('an orphaned spine still runs an explicit (again) search', async () => {
     const { searchId, result, calls } = await run(
@@ -293,19 +296,20 @@ describe('search_spine handler (deferral, auth, vanished spines, errors)', () =>
     });
   });
 
-  it.each([
-    400, 403, 422,
-  ])('a %i finishes the search failed with error_kind rejected and does not throw', async (status) => {
-    const { searchId, ctx, result, calls } = await run(
-      () => new Response('{"message":"bad"}', { status }),
-    );
-    await expect(result).resolves.toBeUndefined();
-    expect(calls()).toBe(1);
-    const row = searchRow(searchId);
-    expect(row.status).toBe('failed');
-    expect(row.error_kind).toBe('rejected');
-    expect(row.error?.length ?? 0).toBeLessThanOrEqual(160);
-    expect(row.error).toContain(String(status));
-    expect(dedupeKey(ctx.job.id)).not.toBeNull();
-  });
+  it.each([400, 403, 422])(
+    'a %i finishes the search failed with error_kind rejected and does not throw',
+    async (status) => {
+      const { searchId, ctx, result, calls } = await run(
+        () => new Response('{"message":"bad"}', { status }),
+      );
+      await expect(result).resolves.toBeUndefined();
+      expect(calls()).toBe(1);
+      const row = searchRow(searchId);
+      expect(row.status).toBe('failed');
+      expect(row.error_kind).toBe('rejected');
+      expect(row.error?.length ?? 0).toBeLessThanOrEqual(160);
+      expect(row.error).toContain(String(status));
+      expect(dedupeKey(ctx.job.id)).not.toBeNull();
+    },
+  );
 });

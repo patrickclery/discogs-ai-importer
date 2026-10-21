@@ -39,3 +39,18 @@ export type JobHandler = {
   run(payload: unknown, ctx: JobContext): Promise<void>;
   timeoutMs: number;
 };
+
+/**
+ * Thrown by a handler to put its job back in the queue until runAfter
+ * without spending an attempt (D-06: a Discogs 429 is never a failed try).
+ * The worker matches it by name, because HMR can leave two class copies.
+ */
+export class JobDeferredError extends Error {
+  /** Epoch ms the job may run again. */
+  readonly runAfter: number;
+  constructor(runAfter: number, reason = 'job deferred') {
+    super(reason);
+    this.name = 'JobDeferredError';
+    this.runAfter = runAfter;
+  }
+}

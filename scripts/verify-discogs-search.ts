@@ -5,6 +5,10 @@
 // Discogs searches drain, (c) one auto search per CD spine with the right
 // cascade stage, candidates and exact-catno pin, (d) every search request is
 // signed, CD-only, ten per page and paced through the one gate.
+// Plan 03-05: (e) a 429 mid-batch pauses the lane and every search still
+// finishes without spending an attempt, (f) a revoked sign-in costs at most
+// one request for a whole batch. (f) stays the last step: later plans insert
+// their steps before it.
 // Plans 03-05, 03-08, 03-09, 03-10, 03-11 and 03-12 add their own named
 // steps here; step letters are stable across plans.
 // Run: node scripts/verify-discogs-search.ts   (VERIFY_SKIP_BUILD=1 reuses
@@ -48,6 +52,10 @@ const TRACER = LAYOUTS.tracerShelf;
 const PHASE3_TABLES = ['discogs_searches', 'discogs_candidates'];
 /** Fake limit 600/min gives a 112 ms gate interval; allow network jitter. */
 const MIN_GAP_MS = 100;
+/** Retry-After the fake sends with its injected 429 in step (e). */
+const RETRY_AFTER_S = 2;
+/** Timer and clock granularity allowed when measuring the pause. */
+const PAUSE_JITTER_MS = 5;
 
 type Ctx = ScanCtx & { tmp: string; fake: FakeDiscogs };
 
@@ -409,6 +417,141 @@ function stepRequests(ctx: Ctx): void {
   );
 }
 
+type DiscogsJob = {
+  id: string;
+  status: string;
+  attempts: number;
+  last_error: string | null;
+  dedupe_key: string | null;
+};
+
+/** The search_spine jobs of one photo's searches. */
+function photoJobs(ctx: Ctx, photoId: string): DiscogsJob[] {
+  return withDb(
+    ctx,
+    (db) =>
+      db
+        .prepare(
+          `SELECT j.id, j.status, j.attempts, j.last_error, j.dedupe_key
+           FROM jobs j
+           JOIN discogs_searches ds ON ds.job_id = j.id
+           JOIN spines s ON s.id = ds.spine_id
+           WHERE s.photo_id = ? AND j.lane = 'discogs'`,
+        )
+        .all(photoId) as DiscogsJob[],
+  );
+}
+
+/** Uploads another tracer-layout photo (distinct bytes) and drains Discogs. */
+async function scanAnotherShelf(ctx: Ctx, quality: number): Promise<string> {
+  const jpeg = new Uint8Array(
+    (await makeSyntheticShelf(TRACER, { quality })).jpeg,
+  );
+  const up = await upload(ctx, jpeg);
+  assert(up.status === 201, `upload returned ${up.status}`);
+  const photoId = String(up.body.photoId);
+  await waitPhotoDone(ctx, photoId);
+  await waitFor(
+    'the Discogs lane to drain',
+    async () => (discogsBacklog(ctx).open === 0 ? true : undefined),
+    { timeoutMs: 60_000, intervalMs: 250 },
+  );
+  return photoId;
+}
+
+// (e) a 429 in the middle of a batch: the lane waits out Retry-After and
+// every search still finishes, with no attempt spent on the 429 (D-06).
+async function step429Resume(ctx: Ctx): Promise<void> {
+  step('(e) a 429 mid-batch pauses the lane and resumes without losing work');
+  const before = fakeLog(ctx).length;
+  await ctx.fake.control({ at429: 2, retryAfter: RETRY_AFTER_S });
+  const photoId = await scanAnotherShelf(ctx, 80);
+
+  const spines = spineSearches(ctx, photoId);
+  assert(
+    spines.length === TRACER.spines.length,
+    `${spines.length} active spines, expected ${TRACER.spines.length}`,
+  );
+  for (const s of spines) {
+    assert(
+      s.searches.length === 1 &&
+        ['done', 'no_match'].includes(s.searches[0].status),
+      `spine ${s.artist} searches ${JSON.stringify(s.searches)}, expected one done or no_match`,
+    );
+  }
+  const jobs = photoJobs(ctx, photoId);
+  assert(
+    jobs.length === TRACER.spines.length,
+    `${jobs.length} search jobs, expected ${TRACER.spines.length}`,
+  );
+  for (const j of jobs) {
+    assert(
+      j.status === 'succeeded' && j.attempts === 1,
+      `job ${j.id} ${j.status} with attempts ${j.attempts}, expected succeeded with 1`,
+    );
+  }
+  const deferred = jobs.filter((j) => j.last_error?.startsWith('deferred'));
+  assert(deferred.length >= 1, 'no job records the 429 deferral');
+
+  const api = fakeLog(ctx)
+    .slice(before)
+    .filter((e) => e.surface === 'api')
+    .sort((a, b) => a.t - b.t);
+  const hits = api.filter((e) => e.status === 429);
+  assert(hits.length === 1, `${hits.length} 429 answers, expected 1`);
+  const at = hits[0].t;
+  const next = api.find((e) => e.t > at);
+  assert(next, 'no API request after the 429');
+  const gap = next.t - at;
+  assert(
+    gap >= RETRY_AFTER_S * 1000 - PAUSE_JITTER_MS,
+    `an API request ${gap} ms after the 429, expected none for ${RETRY_AFTER_S * 1000} ms`,
+  );
+  check(
+    `6 searches finished, 6 jobs succeeded on attempt 1, ${deferred.length} deferred; next request ${gap} ms after the 429`,
+  );
+}
+
+// (f) a revoked sign-in mid-backlog: one 401, then every remaining search
+// short-circuits to auth_failed without a request (RESEARCH Pitfall 7).
+// Keep this step last: it leaves the app needing a reconnect.
+async function stepRevoked(ctx: Ctx): Promise<void> {
+  step('(f) a revoked sign-in costs at most one request for the batch');
+  const before = fakeLog(ctx).length;
+  await ctx.fake.control({ revoked: true });
+  const photoId = await scanAnotherShelf(ctx, 70);
+
+  const spines = spineSearches(ctx, photoId);
+  for (const s of spines) {
+    assert(
+      s.searches.length === 1 && s.searches[0].status === 'auth_failed',
+      `spine ${s.artist} searches ${JSON.stringify(s.searches)}, expected one auth_failed`,
+    );
+  }
+  const signed = fakeLog(ctx)
+    .slice(before)
+    .filter((e) => e.surface === 'api' && e.path === '/database/search');
+  assert(
+    signed.length <= 1,
+    `${signed.length} search requests after the revoke, expected at most 1`,
+  );
+  const jobs = photoJobs(ctx, photoId);
+  assert(
+    jobs.length === TRACER.spines.length,
+    `${jobs.length} search jobs, expected ${TRACER.spines.length}`,
+  );
+  for (const j of jobs) {
+    assert(
+      j.status === 'succeeded',
+      `job ${j.id} is ${j.status}, expected succeeded (none queued or failed)`,
+    );
+    assert(j.dedupe_key === null, `job ${j.id} kept its dedupe key`);
+  }
+  check(
+    `${spines.length} searches auth_failed with ${signed.length} search request; no job queued or failed; keys released`,
+  );
+}
+
 runMain('verify-discogs-search', async (onCleanup) => {
   const tmp = await makeTempDir('verify-discogs-search');
   onCleanup(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -445,6 +588,9 @@ runMain('verify-discogs-search', async (onCleanup) => {
   const photoId = await stepConnectAndScan(ctx);
   stepCandidates(ctx, photoId);
   stepRequests(ctx);
+  await step429Resume(ctx);
+  // Later plans insert their steps here, before (f).
+  await stepRevoked(ctx);
 
   step('stop');
   await server.stop('SIGTERM');

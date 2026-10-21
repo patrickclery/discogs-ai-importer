@@ -21,7 +21,7 @@ vi.mock('./queue', async (importOriginal) => {
 });
 
 import { claimNext, enqueue, recoverRunningJobs } from './queue';
-import { type JobHandler, JobDeferredError } from './types';
+import { JobDeferredError, type JobHandler } from './types';
 import {
   laneWaitMs,
   processNext,

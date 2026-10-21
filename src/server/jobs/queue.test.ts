@@ -467,9 +467,10 @@ describe('deferJob and releaseDedupeKey (D-06, RESEARCH Pattern 3)', () => {
 
   it('releaseDedupeKey frees the key so the same key can be enqueued again', () => {
     const a = enqueue({ lane: 'discogs', type: 'noop', dedupeKey: 'k' });
-    expect(enqueue({ lane: 'discogs', type: 'noop', dedupeKey: 'k' })).toEqual(
-      { id: a.id, created: false },
-    );
+    expect(enqueue({ lane: 'discogs', type: 'noop', dedupeKey: 'k' })).toEqual({
+      id: a.id,
+      created: false,
+    });
     releaseDedupeKey(a.id);
     expect(rawJob(a.id).dedupe_key).toBeNull();
     const b = enqueue({ lane: 'discogs', type: 'noop', dedupeKey: 'k' });

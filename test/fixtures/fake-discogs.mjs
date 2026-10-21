@@ -39,16 +39,18 @@
 //        been deleted.' } otherwise.
 //   GET  /img/{name}.jpeg  a small JPEG rendered once with sharp at startup.
 //        No rate-limit headers; never counted against the limit.
-// Every API answer carries X-Discogs-Ratelimit (FAKE_DISCOGS_LIMIT, default
-// 600 so tests run fast), -Remaining and -Used over a moving 60 s window.
+// Every API answer except an injected 429 carries X-Discogs-Ratelimit
+// (FAKE_DISCOGS_LIMIT, default 600 so tests run fast), -Remaining and -Used
+// over a moving 60 s window.
 //
 // Test control (not part of Discogs):
 //   POST /__control  JSON { authorize?, accessSignature?, revoked?, reset?,
 //        at429?, retryAfter?, at5xx?, limit? } changes modes at runtime;
 //        revoked: true makes every request signed with an access token
 //        answer 401 JSON. at429: N answers the N-th API request from now
-//        (1 = the next) with 429 and an empty body, carrying Retry-After
-//        when retryAfter (seconds) is a number; at5xx: N does the same with
+//        (1 = the next; /img and /__control never count) with 429, an
+//        empty body and no rate-limit headers, carrying Retry-After when
+//        retryAfter (seconds) is a number; at5xx: N does the same with
 //        a 502. limit changes X-Discogs-Ratelimit. Answers the current state.
 //   GET  /__control  the current state, including the last oauth_callback
 //        received (a URL, not a secret).
@@ -528,8 +530,12 @@ const server = http.createServer(async (req, res) => {
 
 /** Answers one API request; returns the status sent. */
 async function answerApi(req, res, url, oauth, rate) {
+  // Only API requests reach here (never /img or /__control), so at429
+  // counts API requests only. Like the live probe, the 429 has an empty
+  // body and, unless retryAfter is set, no Retry-After. It also carries no
+  // rate-limit headers, so the gate's pacing must survive their absence.
   if (injected('at429')) {
-    const headers = { ...rate, 'content-type': 'application/json' };
+    const headers = { 'content-type': 'application/json' };
     if (modes.retryAfter !== null) {
       headers['retry-after'] = String(modes.retryAfter);
     }

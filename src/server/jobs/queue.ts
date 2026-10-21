@@ -214,6 +214,50 @@ export function failOrRetry(
 }
 
 /**
+ * Put a running job back to queued until runAfter without spending an
+ * attempt (D-06, RESEARCH Pattern 3): claimNext added one on claim, so the
+ * decrement restores the count. Fenced like failOrRetry: only the claim that
+ * produced `attempt` may write; anything else returns 'stale'. The job's
+ * run_after is the durable record, so a restart during a pause still waits.
+ */
+export function deferJob(
+  id: string,
+  runAfter: number,
+  reason: string,
+  now = Date.now(),
+  attempt?: number,
+): 'deferred' | 'stale' {
+  const db = sql();
+  const run = db.transaction((): 'deferred' | 'stale' => {
+    const info = db
+      .prepare(
+        `UPDATE jobs SET status = 'queued', attempts = attempts - 1,
+           run_after = @runAfter, locked_at = NULL, last_error = @reason,
+           updated_at = @now
+         WHERE id = @id AND status = 'running'
+           AND (@attempt IS NULL OR attempts = @attempt)`,
+      )
+      .run({
+        id,
+        runAfter,
+        reason: errorText(reason),
+        now,
+        attempt: attempt ?? null,
+      });
+    return info.changes === 1 ? 'deferred' : 'stale';
+  });
+  return run.immediate();
+}
+
+/**
+ * Frees a job's dedupe key so the same key can be enqueued again (a search
+ * that ended not_connected or auth_failed must run again after a connect).
+ */
+export function releaseDedupeKey(id: string): void {
+  sql().prepare('UPDATE jobs SET dedupe_key = NULL WHERE id = @id').run({ id });
+}
+
+/**
  * Boot recovery (D-14), run only by the process that holds the worker lease.
  * Interrupted jobs go back to queued; a job interrupted on its final attempt
  * fails instead, so a crash loop never exceeds max_attempts runs.
