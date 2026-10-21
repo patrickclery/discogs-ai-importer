@@ -11,7 +11,9 @@
 // "Connected as fake-owner" after (b), and (j0) Test connection signs one
 // /oauth/identity with the stored sign-in, and (j1) a rejected test shows
 // Reconnect on Settings and Disconnect forgets the sign-in. Step letters are stable across
-// plans: (g) is the paste-code path (Plan 03-04).
+// plans. Plan 03-04: (g) a connect that ends on a code page is finished by
+// pasting the code (a wrong code first answers rejected), and (l) Settings
+// shows the "Code from Discogs" field only while that connect is pending.
 // Run: node scripts/verify-discogs.ts   (VERIFY_SKIP_BUILD=1 reuses the build)
 // It builds and starts from NEXT_DIST_DIR, default .next/verify, so a
 // long-running `next start` on the default .next keeps working meanwhile.
@@ -281,6 +283,105 @@ export async function stepReconnectAndDisconnect(ctx: Ctx): Promise<void> {
   check('disconnected; token keys gone, Settings shows Connect Discogs');
 }
 
+/** Starts a connect whose (fake) discogs.com page shows the code. */
+async function startCodeConnect(ctx: Ctx): Promise<string> {
+  await ctx.fake.control({ authorize: 'code' });
+  const res = await fetch(`${ctx.baseUrl}/api/discogs/connect`, {
+    method: 'POST',
+    headers: { origin: ctx.origin, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  const body = await res.text();
+  assertNoLeak('POST /api/discogs/connect body', body);
+  assert(
+    res.status === 200,
+    `POST /api/discogs/connect answered ${res.status}`,
+  );
+  const { authorizeUrl } = JSON.parse(body) as { authorizeUrl: string };
+  const page = await fetch(authorizeUrl, { redirect: 'manual' });
+  const html = await page.text();
+  assert(
+    page.status === 200,
+    `the fake code page answered ${page.status}, expected 200`,
+  );
+  const m = /<code id="verifier">([^<]+)<\/code>/.exec(html);
+  assert(m, 'the fake code page shows no code');
+  return m[1];
+}
+
+export async function postFinish(
+  ctx: Ctx,
+  code: string,
+): Promise<{ status: number; text: string }> {
+  const res = await fetch(`${ctx.baseUrl}/api/discogs/finish`, {
+    method: 'POST',
+    headers: { origin: ctx.origin, 'content-type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const text = await res.text();
+  assertNoLeak('POST /api/discogs/finish body', text);
+  assert(!text.includes(code), 'POST /api/discogs/finish echoed the code');
+  return { status: res.status, text };
+}
+
+// (g) + (l) RESEARCH A1: discogs.com shows a code instead of coming back;
+// pasting it on Settings finishes the connect.
+export async function stepPasteCode(ctx: Ctx): Promise<void> {
+  step('(g) a code shown by discogs.com finishes the connect when pasted');
+  clearConnection(ctx);
+  let code = '';
+  try {
+    code = await startCodeConnect(ctx);
+  } finally {
+    await ctx.fake.control({ reset: true });
+  }
+
+  step('(l) Settings shows "Code from Discogs" while the connect is pending');
+  const pending = await settingsText(ctx);
+  assert(
+    pending.includes('Code from Discogs') &&
+      pending.includes('Finish connecting'),
+    'Settings lacks the Code from Discogs field during a pending connect',
+  );
+  check('Code from Discogs and Finish connecting on /settings');
+
+  const wrong = await postFinish(ctx, 'not-the-code-0000');
+  assert(
+    wrong.status === 401 && JSON.parse(wrong.text).error === 'rejected',
+    `a wrong code answered ${wrong.status} ${wrong.text}`,
+  );
+  assert(
+    tokenKeysPresent(ctx).length === 0,
+    'a rejected code stored token keys',
+  );
+  check('wrong code: 401 rejected, nothing stored, the connect stays pending');
+
+  const ok = await postFinish(ctx, `  ${code}  `);
+  assert(
+    ok.status === 200 && JSON.parse(ok.text).username === 'fake-owner',
+    `the pasted code answered ${ok.status} ${ok.text}`,
+  );
+  assert(tokenKeysPresent(ctx).length === 3, 'the pasted code saved no tokens');
+  const after = await settingsText(ctx);
+  assert(
+    after.includes('Connected as fake-owner'),
+    'Settings does not say Connected as fake-owner after the pasted code',
+  );
+  check('pasted code: 200 { username: fake-owner }, Connected as on /settings');
+
+  step('(l) Settings drops "Code from Discogs" once connected');
+  assert(
+    !after.includes('Code from Discogs'),
+    'Settings still shows Code from Discogs after connecting',
+  );
+  const again = await postFinish(ctx, code);
+  assert(
+    again.status === 410 && JSON.parse(again.text).error === 'expired',
+    `a second finish answered ${again.status} ${again.text}`,
+  );
+  check('no Code from Discogs after connecting; a reused code is expired');
+}
+
 // (c) The three token keys are in the temp secrets file, mode 0600.
 export function stepSecretsFile(ctx: Ctx): void {
   step('(c) tokens saved to the temp secrets file, mode 0600');
@@ -487,6 +588,7 @@ runMain('verify-discogs', async (onCleanup) => {
   await stepExpired(ctx);
   await stepDocsSignature(ctx);
   await stepReconnectAndDisconnect(ctx);
+  await stepPasteCode(ctx);
   // (d) again: the extra connects above kept the User-Agent and PLAINTEXT.
   stepUserAgent(ctx);
 

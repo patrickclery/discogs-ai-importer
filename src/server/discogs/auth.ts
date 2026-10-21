@@ -25,10 +25,15 @@ export type DiscogsAuth = {
   username: string;
 };
 
+/** Pasted codes Discogs may reject before the pending connect is dropped. */
+export const MAX_REJECTED_CODES = 5;
+
 export type PendingConnect = {
   secret: string;
   callback: string;
   expiresAt: number;
+  /** Pasted codes Discogs rejected for this request token (T-03-38). */
+  rejections?: number;
 };
 
 /** Safe to render: no token, secret or verifier. */
@@ -98,6 +103,38 @@ export function takePendingConnect(
   if (!entry) return null;
   map.delete(token);
   return entry.expiresAt > now ? entry : null;
+}
+
+/**
+ * The live entry, secret included, WITHOUT consuming it. Only the paste-code
+ * finish route uses it: a rejected code must leave the entry for another try
+ * (up to MAX_REJECTED_CODES). Never return its result to a browser.
+ */
+export function readPendingConnect(
+  token: string,
+  now: number = Date.now(),
+): PendingConnect | null {
+  const entry = pendingMap().get(token);
+  if (!entry || entry.expiresAt <= now) return null;
+  return { ...entry };
+}
+
+/**
+ * Counts a pasted code Discogs rejected. At the MAX_REJECTED_CODES-th
+ * rejection the entry is deleted, so guessing codes ends there (T-03-38).
+ * Returns true when the entry is gone.
+ */
+export function noteRejectedCode(token: string): boolean {
+  const map = pendingMap();
+  const entry = map.get(token);
+  if (!entry) return true;
+  const rejections = (entry.rejections ?? 0) + 1;
+  if (rejections >= MAX_REJECTED_CODES) {
+    map.delete(token);
+    return true;
+  }
+  map.set(token, { ...entry, rejections });
+  return false;
 }
 
 /** The live pending connect without its secret, or null. */

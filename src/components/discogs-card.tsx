@@ -4,6 +4,7 @@ import {
   ConnectDiscogsButton,
 } from '@/components/connect-discogs-button';
 import { DisconnectDiscogsButton } from '@/components/disconnect-discogs-button';
+import { PasteCodeForm } from '@/components/paste-code-form';
 import { DiscogsCredentials } from '@/components/secret-field';
 import { TestDiscogsButton } from '@/components/test-discogs-button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -100,7 +101,15 @@ function ReconnectAlert({ credentialsSaved }: { credentialsSaved: boolean }) {
 
 function AccountSection({ connection }: { connection: DiscogsConnection }) {
   if (connection.connected && connection.username) {
-    return <ConnectedSection username={connection.username} />;
+    return (
+      <div className="flex flex-col gap-4">
+        <ConnectedSection username={connection.username} />
+        {/* A Reconnect started from the Alert can end on a code too. */}
+        {connection.needsReconnect && connection.pendingConnect ? (
+          <PasteCodeForm />
+        ) : null}
+      </div>
+    );
   }
   return (
     <div className="flex flex-col gap-4">
@@ -113,6 +122,7 @@ function AccountSection({ connection }: { connection: DiscogsConnection }) {
         id={CONNECT_BUTTON_ID}
         credentialsSaved={connection.credentialsSaved}
       />
+      {connection.pendingConnect ? <PasteCodeForm /> : null}
     </div>
   );
 }
