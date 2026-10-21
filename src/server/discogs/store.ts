@@ -36,6 +36,15 @@ export type SearchRowRaw = {
 
 const ERROR_MAX = 1000;
 
+/**
+ * WR-01: the one baseline rule. A spine's baseline search is its newest auto
+ * or again search whose status is NOT IN this list: those never reached
+ * Discogs and released their dedupe key (A-03-27, CR-01). The enqueue, the
+ * backfill and fieldsChanged all use it, so they cannot disagree.
+ */
+export const NON_BASELINE_STATUSES_SQL =
+  "('not_connected', 'auth_failed', 'skipped')";
+
 export function createSearch(
   db: Database.Database,
   input: {

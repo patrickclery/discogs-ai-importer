@@ -21,6 +21,7 @@ import {
   inputHash,
   searchInputs,
 } from './inputs';
+import { NON_BASELINE_STATUSES_SQL } from './store';
 
 // The Discogs half of the /spines read model (D-10, D-11, D-12, RESEARCH
 // Pattern 5). Three queries per page, whatever the spine count: the latest
@@ -43,10 +44,21 @@ const LATEST_SQL = `
     FROM discogs_searches s
     WHERE s.kind IN ('auto', 'again')
       AND s.spine_id IN (SELECT value FROM json_each(@ids))
+  ),
+  baseline AS (
+    SELECT s.spine_id, s.input_hash,
+      ROW_NUMBER() OVER (
+        PARTITION BY s.spine_id ORDER BY s.created_at DESC, s.id DESC
+      ) AS rn
+    FROM discogs_searches s
+    WHERE s.kind IN ('auto', 'again')
+      AND s.status NOT IN ${NON_BASELINE_STATUSES_SQL}
+      AND s.spine_id IN (SELECT value FROM json_each(@ids))
   )
   SELECT l.spine_id, l.status, l.error_kind, l.error, l.input_hash,
-    j.status AS job_status
+    b.input_hash AS baseline_hash, j.status AS job_status
   FROM latest l
+  LEFT JOIN baseline b ON b.spine_id = l.spine_id AND b.rn = 1
   LEFT JOIN jobs j ON j.id = l.job_id
   WHERE l.rn = 1`;
 
@@ -78,6 +90,11 @@ export type LatestSearchRow = {
   job_status: string | null;
   /** The search's normalized inputs hash (auto and again always have one). */
   input_hash?: string | null;
+  /**
+   * The input hash of the spine's baseline search (WR-01: the newest auto
+   * or again search not in NON_BASELINE_STATUSES_SQL), or null for none.
+   */
+  baseline_hash?: string | null;
 };
 
 type CandidateRowRaw = {
@@ -111,21 +128,19 @@ function failureFrom(row: LatestSearchRow): SearchFailure {
 }
 
 /**
- * D-14: the latest auto or again search used other inputs than the spine's
- * current fields. Hashing goes through the same normalize function as the
- * enqueue (inputs.ts), so a whitespace-only edit is no change. A latest
- * search that never reached Discogs (not connected, skipped) is no
- * baseline: there are no matches it could have made out of date.
+ * D-14: the spine's baseline search used other inputs than its current
+ * fields. Hashing goes through the same normalize function as the enqueue
+ * (inputs.ts), so a whitespace-only edit is no change. The baseline is the
+ * same one the enqueue uses (WR-01, NON_BASELINE_STATUSES_SQL): searches that
+ * never reached Discogs (not connected, auth failed, skipped) are skipped
+ * over, and with no baseline there are no matches to be out of date.
  */
 export function fieldsChangedSince(
-  latest: Pick<LatestSearchRow, 'status' | 'input_hash'> | null,
+  latest: Pick<LatestSearchRow, 'baseline_hash'> | null,
   fields: FieldValues,
 ): boolean {
-  if (!latest?.input_hash) return false;
-  if (latest.status === 'not_connected' || latest.status === 'skipped') {
-    return false;
-  }
-  return latest.input_hash !== inputHash(searchInputs(fields));
+  if (!latest?.baseline_hash) return false;
+  return latest.baseline_hash !== inputHash(searchInputs(fields));
 }
 
 /**

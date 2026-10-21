@@ -4,7 +4,7 @@ import { getDb } from '../db/client';
 import { enqueue } from '../jobs/queue';
 import { getDiscogsAuth, isAuthInvalid } from './auth';
 import { inputHash, loadSpineInputs, type SearchInputs } from './inputs';
-import { createSearch, setSearchJob } from './store';
+import { createSearch, NON_BASELINE_STATUSES_SQL, setSearchJob } from './store';
 
 // Automatic search enqueue points (D-08, RESEARCH Pattern 5). The dedupe key
 // search:auto:{spineId}:{inputHash} means one spine is never auto-searched
@@ -27,26 +27,25 @@ export function discogsReady(): boolean {
 }
 
 /**
- * The hash of the spine's newest auto or again search that reached Discogs,
- * or could have. A not_connected, auth_failed or skipped search never ran
- * against Discogs and released its dedupe key (Plan 03-05, CR-01), so it is
- * no baseline (A-03-27): the backfill can search that spine again with the
- * same fields.
+ * The spine's newest auto or again search that reached Discogs, or could
+ * have. A not_connected, auth_failed or skipped search never ran against
+ * Discogs and released its dedupe key (Plan 03-05, CR-01), so it is no
+ * baseline (A-03-27, NON_BASELINE_STATUSES_SQL): the backfill can search that
+ * spine again with the same fields.
  */
-function baselineHash(
+function baselineSearch(
   db: Database.Database,
   spineId: string,
-): string | null | undefined {
-  const row = db
+): { id: string; input_hash: string | null } | undefined {
+  return db
     .prepare(
-      `SELECT input_hash FROM discogs_searches
+      `SELECT id, input_hash FROM discogs_searches
        WHERE spine_id = @spineId AND kind IN ('auto', 'again')
-         AND status NOT IN ('not_connected', 'auth_failed', 'skipped')
+         AND status NOT IN ${NON_BASELINE_STATUSES_SQL}
        ORDER BY created_at DESC, id DESC
        LIMIT 1`,
     )
-    .get({ spineId }) as { input_hash: string | null } | undefined;
-  return row?.input_hash;
+    .get({ spineId }) as { id: string; input_hash: string | null } | undefined;
 }
 
 /**
@@ -62,18 +61,21 @@ export function enqueueAutoSearch(
   const tx = db.transaction((): boolean => {
     const inputs = loadSpineInputs(db, spineId);
     const hash = inputHash(inputs);
-    if (baselineHash(db, spineId) === hash) return false;
+    const baseline = baselineSearch(db, spineId);
+    if (baseline?.input_hash === hash) return false;
     const searchId = createSearch(db, {
       spineId,
       kind: 'auto',
       inputs,
       inputHash: hash,
     });
+    // WR-01: the key carries the baseline it replaces, so returning to
+    // inputs searched before (A, then C, back to A) can search again.
     const job = enqueue({
       lane: 'discogs',
       type: SEARCH_JOB_TYPE,
       payload: { searchId },
-      dedupeKey: `search:auto:${spineId}:${hash}`,
+      dedupeKey: `search:auto:${spineId}:${hash}:${baseline?.id ?? 'none'}`,
     });
     if (!job.created) {
       // A-03-11: these inputs were auto-searched before; keep no extra row.
@@ -143,8 +145,15 @@ export function enqueueMissingSearches(
      ORDER BY s.photo_id, d.idx, d.position, s.id`,
   );
   const params = { includeAuthFailed: opts.includeAuthFailed ? 1 : 0 };
-  // The cheap read runs every lease tick; the write lock only when needed.
-  if (select.all(params).length === 0) return 0;
+  // The cheap read runs every lease tick; the write lock only when needed:
+  // a spine whose baseline already used its current inputs is a no-op
+  // (WR-01), so it never opens the transaction.
+  const due = (select.all(params) as { id: string }[]).some(
+    (s) =>
+      baselineSearch(db, s.id)?.input_hash !==
+      inputHash(loadSpineInputs(db, s.id)),
+  );
+  if (!due) return 0;
   const tx = db.transaction((): number => {
     let created = 0;
     for (const s of select.all(params) as { id: string }[]) {

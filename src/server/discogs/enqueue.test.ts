@@ -476,7 +476,27 @@ describe('discogs enqueue', () => {
       ]);
     });
 
-    it.fails('WR-01: a backfill no-op (baseline already equals the current inputs) takes no write lock', async () => {
+    it('WR-01: returning to inputs searched before (A, C, back to A) searches again', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      const original = fieldOf(sc.cd[0], 'title').value ?? '';
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+      endSearch(sc.cd[0], 'done');
+      updateSpineField(sc.cd[0], 'title', 'Some Other Title');
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+      endSearch(sc.cd[0], 'done');
+      updateSpineField(sc.cd[0], 'title', original);
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(false);
+      expect(autoSearches(sc.cd[0]).map((r) => r.status)).toEqual([
+        'done',
+        'done',
+        'queued',
+      ]);
+    });
+
+    it('WR-01: a backfill no-op (baseline already equals the current inputs) takes no write lock', async () => {
       const sc = await scanned();
       connect();
       const db = getDb().$client;
