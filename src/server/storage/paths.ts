@@ -2,13 +2,14 @@ import 'server-only';
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Data-folder layout, verbatim from D-04. */
+/** Data-folder layout: D-04, plus the Discogs cover cache (Phase 3 D-13). */
 export const SUBDIRS = [
   'photos',
   'vision',
   'crops',
   'thumbs',
   'backups',
+  'discogs-thumbs',
 ] as const;
 
 /**

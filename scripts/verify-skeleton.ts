@@ -17,7 +17,14 @@ import {
   waitFor,
 } from './lib/server.ts';
 
-const SUBDIRS = ['photos', 'vision', 'crops', 'thumbs', 'backups'];
+const SUBDIRS = [
+  'photos',
+  'vision',
+  'crops',
+  'thumbs',
+  'backups',
+  'discogs-thumbs',
+];
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);

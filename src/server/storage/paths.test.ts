@@ -63,7 +63,7 @@ describe('resolveData (D-05 traversal guard)', () => {
 });
 
 describe('ensureDataDirs', () => {
-  it('creates the five D-04 subfolders on a missing root and is idempotent', () => {
+  it('creates every SUBDIRS folder on a missing root and is idempotent', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dai-paths-'));
     try {
       const root = path.join(tmp, 'nested', 'data');

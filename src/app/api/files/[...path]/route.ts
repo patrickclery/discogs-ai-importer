@@ -5,10 +5,11 @@ import { connection } from 'next/server';
 import { resolveData } from '@/server/storage/paths';
 
 // Allowlisted streaming of derived images (RESEARCH Pattern 8, T-02-06).
-// Only crops, thumbnails and vision images, only .webp and .jpg. Originals
+// Only crops, thumbnails, vision images and cached Discogs covers
+// (discogs-thumbs, Phase 3 D-13), only .webp and .jpg. Originals
 // under photos/, raw.json and anything outside DATA_DIR are a plain 404.
 
-const ROOTS = new Set(['crops', 'thumbs', 'vision']);
+const ROOTS = new Set(['crops', 'thumbs', 'vision', 'discogs-thumbs']);
 const TYPES: Record<string, string> = {
   '.webp': 'image/webp',
   '.jpg': 'image/jpeg',
