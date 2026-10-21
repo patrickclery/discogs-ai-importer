@@ -69,10 +69,12 @@ function Line({
 function NoticeLine({
   spine,
   connected,
+  needsReconnect,
   pausedUntil,
 }: {
   spine: SpineDto;
   connected: boolean;
+  needsReconnect: boolean;
   pausedUntil: number | null;
 }) {
   const queued = connected && spine.discogs?.state === 'queued';
@@ -82,7 +84,9 @@ function NoticeLine({
       <Line
         icon={<Unplug aria-hidden="true" className="mt-px size-4 shrink-0" />}
       >
-        Connect Discogs to find matches.{' '}
+        {needsReconnect
+          ? 'Reconnect Discogs to find matches.'
+          : 'Connect Discogs to find matches.'}{' '}
         <Link
           href="/settings"
           className="rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -243,11 +247,14 @@ function useSearchAgain(spineId: string) {
 export function DiscogsMatches({
   spine,
   connected,
+  needsReconnect = false,
   pausedUntil,
 }: {
   spine: SpineDto;
   /** SpinesResponse.discogs.connected (D-04). */
   connected: boolean;
+  /** SpinesResponse.discogs.needsReconnect (WR-05). */
+  needsReconnect?: boolean;
   /** SpinesResponse.discogs.pausedUntil: the paused line while queued (D-06). */
   pausedUntil: number | null;
 }) {
@@ -266,7 +273,7 @@ export function DiscogsMatches({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={again.pending}
+                disabled={again.pending || !connected}
                 onClick={() => void again.run()}
               >
                 {again.pending ? (
@@ -293,6 +300,7 @@ export function DiscogsMatches({
         <NoticeLine
           spine={spine}
           connected={connected}
+          needsReconnect={needsReconnect}
           pausedUntil={pausedUntil}
         />
       </div>

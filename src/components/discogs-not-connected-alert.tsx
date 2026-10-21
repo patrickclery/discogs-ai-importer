@@ -12,13 +12,24 @@ export const NOT_CONNECTED_TITLE = "Discogs isn't connected";
 export const NOT_CONNECTED_BODY =
   'Connect your Discogs account in Settings and each CD here is looked up on Discogs automatically.';
 
-export function DiscogsNotConnectedAlert() {
+export const RECONNECT_TITLE = 'Reconnect Discogs';
+export const RECONNECT_BODY =
+  'Discogs rejected the connection. Reconnect your Discogs account in Settings and the CDs here are looked up again.';
+
+/** reconnect: signed in, but Discogs refused the sign-in (WR-05). */
+export function DiscogsNotConnectedAlert({
+  reconnect = false,
+}: {
+  reconnect?: boolean;
+}) {
   return (
     <Alert>
       <Unplug aria-hidden="true" />
-      <AlertTitle>{NOT_CONNECTED_TITLE}</AlertTitle>
+      <AlertTitle>
+        {reconnect ? RECONNECT_TITLE : NOT_CONNECTED_TITLE}
+      </AlertTitle>
       <AlertDescription className="flex flex-col items-start gap-3">
-        <p>{NOT_CONNECTED_BODY}</p>
+        <p>{reconnect ? RECONNECT_BODY : NOT_CONNECTED_BODY}</p>
         <Button asChild variant="outline" size="sm">
           <Link href="/settings">Open Settings</Link>
         </Button>

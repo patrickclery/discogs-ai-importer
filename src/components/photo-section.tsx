@@ -89,7 +89,11 @@ function CardSkeletons() {
 }
 
 /** Discogs connection state threaded from SpinesResponse.discogs. */
-type DiscogsView = { connected: boolean; pausedUntil: number | null };
+type DiscogsView = {
+  connected: boolean;
+  needsReconnect: boolean;
+  pausedUntil: number | null;
+};
 
 /**
  * A /spines card: the search-state badge last in the status slot, and a
@@ -116,6 +120,7 @@ function SpineView({
           <DiscogsMatches
             spine={spine}
             connected={discogs.connected}
+            needsReconnect={discogs.needsReconnect}
             pausedUntil={discogs.pausedUntil}
           />
         </div>
@@ -223,6 +228,7 @@ export function PhotoSection({
   spines,
   threshold,
   connected,
+  needsReconnect = false,
   pausedUntil,
 }: {
   photo: PhotoDto;
@@ -231,6 +237,8 @@ export function PhotoSection({
   threshold: number;
   /** Discogs is connected (D-04): cards say how to connect when not. */
   connected: boolean;
+  /** Signed in, but Discogs refused it: cards say Reconnect (WR-05). */
+  needsReconnect?: boolean;
   /** The Discogs pause end (epoch ms), or null. */
   pausedUntil: number | null;
 }) {
@@ -281,7 +289,7 @@ export function PhotoSection({
         photo={photo}
         spines={spines}
         threshold={threshold}
-        discogs={{ connected, pausedUntil }}
+        discogs={{ connected, needsReconnect, pausedUntil }}
       />
     </section>
   );

@@ -191,7 +191,7 @@ export function SpinesView({
       <div className="flex flex-col gap-6">
         {pollError}
         {!data.discogs.connected && data.spines.length > 0 ? (
-          <DiscogsNotConnectedAlert />
+          <DiscogsNotConnectedAlert reconnect={data.discogs.needsReconnect} />
         ) : null}
         {data.photos.map((p) => (
           <PhotoSection
@@ -200,6 +200,7 @@ export function SpinesView({
             spines={byPhoto.get(p.id) ?? []}
             threshold={data.confidenceThreshold}
             connected={data.discogs.connected}
+            needsReconnect={data.discogs.needsReconnect}
             pausedUntil={data.discogs.pausedUntil}
           />
         ))}

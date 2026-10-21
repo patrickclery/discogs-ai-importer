@@ -182,8 +182,8 @@ describe('POST /api/spines/{id}/search', () => {
 
   // Nyquist gap audit (WR-05): while a Reconnect is needed the card shows
   // Discogs as connected, so the refusal must say to reconnect, not to
-  // connect. it.fails while WR-05 is open.
-  it.fails('WR-05: 409 while Reconnect is needed tells the owner to reconnect', async () => {
+  // connect.
+  it('WR-05: 409 while Reconnect is needed tells the owner to reconnect', async () => {
     const { spineIds } = await orphanScenario();
     connect();
     markAuthInvalid();

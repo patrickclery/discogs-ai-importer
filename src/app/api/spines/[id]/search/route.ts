@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { MASTER_REFUSAL, parseDiscogsRef } from '@/lib/discogs-ref';
 import { DIALOG_INPUT_MAX } from '@/lib/discogs-types';
 import { getDb } from '@/server/db/client';
+import { getDiscogsAuth } from '@/server/discogs/auth';
 import {
   discogsReady,
   type ExplicitSearchInput,
@@ -119,8 +120,20 @@ export async function POST(
     return notSearchable();
   }
   if (!discogsReady()) {
+    // WR-05: a stored sign-in that Discogs refused needs a reconnect.
+    let signedIn = false;
+    try {
+      signedIn = getDiscogsAuth() !== null;
+    } catch {
+      signedIn = false;
+    }
     return Response.json(
-      { error: 'not_connected', message: 'Connect Discogs in Settings first' },
+      {
+        error: 'not_connected',
+        message: signedIn
+          ? 'Reconnect Discogs in Settings first'
+          : 'Connect Discogs in Settings first',
+      },
       { status: 409 },
     );
   }

@@ -118,7 +118,15 @@ export type SpinesResponse = {
   densityMaxSpines: number;
   /** A search for a listed spine is queued or running (poll while true). */
   discogsActive: boolean;
-  discogs: { connected: boolean; pausedUntil: number | null };
+  /**
+   * connected: signed in and not refused by Discogs (the search route's
+   * check). needsReconnect: signed in, but Discogs refused it (WR-05).
+   */
+  discogs: {
+    connected: boolean;
+    needsReconnect: boolean;
+    pausedUntil: number | null;
+  };
 };
 
 export type UploadResponse = { photoId: string; duplicate: boolean };

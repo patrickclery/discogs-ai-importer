@@ -13,7 +13,7 @@ import {
   type SearchStatus,
   type SpineDiscogsDto,
 } from '@/lib/discogs-types';
-import { getDiscogsAuth } from './auth';
+import { getDiscogsAuth, isAuthInvalid } from './auth';
 import { discogsGate } from './gate';
 import {
   capCodePoints,
@@ -360,17 +360,27 @@ export function anyDiscogsActive(
 
 /**
  * Connected and pause state for /spines. A secrets file that cannot be read
- * means not connected, never a 500 (as in GET /api/status).
+ * means not connected, never a 500 (as in GET /api/status). WR-05: connected
+ * matches the search route's discogsReady(), so a sign-in Discogs refused
+ * reads as not connected, with needsReconnect telling the cards to say
+ * Reconnect instead of Connect.
  */
 export function discogsConnection(): {
   connected: boolean;
+  needsReconnect: boolean;
   pausedUntil: number | null;
 } {
-  let connected = false;
+  let signedIn = false;
+  let invalid = false;
   try {
-    connected = getDiscogsAuth() !== null;
+    signedIn = getDiscogsAuth() !== null;
+    invalid = signedIn && isAuthInvalid();
   } catch {
-    connected = false;
+    signedIn = false;
   }
-  return { connected, pausedUntil: discogsGate().pausedUntil() };
+  return {
+    connected: signedIn && !invalid,
+    needsReconnect: invalid,
+    pausedUntil: discogsGate().pausedUntil(),
+  };
 }
