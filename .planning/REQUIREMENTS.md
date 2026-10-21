@@ -37,12 +37,12 @@
 
 ### Discogs
 
-- [x] **DISC-01**: User can connect their Discogs account via OAuth 1.0a and see which account is connected
-- [x] **DISC-02**: All Discogs requests go through a single throttled queue that respects the rate limit (reads rate-limit headers, backs off on 429)
-- [x] **DISC-03**: After extraction, each music spine is searched on Discogs automatically (catalog number first, then artist + title + format, then free text)
-- [x] **DISC-04**: User sees candidate releases with cover thumbnail, year, country, label, catalog number and format
-- [x] **DISC-05**: Editing a spine's fields lets the user re-run the Discogs search for that spine
-- [x] **DISC-06**: User can manually search Discogs or paste a Discogs release URL/ID for any spine
+- [ ] **DISC-01**: User can connect their Discogs account via OAuth 1.0a and see which account is connected
+- [ ] **DISC-02**: All Discogs requests go through a single throttled queue that respects the rate limit (reads rate-limit headers, backs off on 429)
+- [ ] **DISC-03**: After extraction, each music spine is searched on Discogs automatically (catalog number first, then artist + title + format, then free text)
+- [ ] **DISC-04**: User sees candidate releases with cover thumbnail, year, country, label, catalog number and format
+- [ ] **DISC-05**: Editing a spine's fields lets the user re-run the Discogs search for that spine
+- [ ] **DISC-06**: User can manually search Discogs or paste a Discogs release URL/ID for any spine
 
 ### Import
 
@@ -107,12 +107,12 @@
 | REV-03 | Phase 4 | Pending |
 | REV-04 | Phase 4 | Pending |
 | REV-05 | Phase 4 | Pending |
-| DISC-01 | Phase 3 | Complete |
-| DISC-02 | Phase 3 | Complete |
-| DISC-03 | Phase 3 | Complete |
-| DISC-04 | Phase 3 | Complete |
-| DISC-05 | Phase 3 | Complete |
-| DISC-06 | Phase 3 | Complete |
+| DISC-01 | Phase 3 | Gaps Found |
+| DISC-02 | Phase 3 | Gaps Found |
+| DISC-03 | Phase 3 | Gaps Found |
+| DISC-04 | Phase 3 | Gaps Found |
+| DISC-05 | Phase 3 | Gaps Found |
+| DISC-06 | Phase 3 | Gaps Found |
 | IMP-01 | Phase 4 | Pending |
 | IMP-02 | Phase 4 | Pending |
 | IMP-03 | Phase 4 | Pending |
