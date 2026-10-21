@@ -9,6 +9,7 @@ import {
 } from './auth';
 import { DiscogsRequestError, discogsFetch } from './client';
 import { webBase } from './config';
+import { enqueueMissingSearches } from './enqueue';
 import { parseFormBody, percentEncode } from './oauth';
 
 // The OAuth 1.0a connect flow (D-01, D-03), shared by the connect and
@@ -118,6 +119,14 @@ export async function completeConnect(p: {
   const username = parsed.data.username;
 
   saveDiscogsAuth({ token, tokenSecret, username });
+  // First-connect backfill (D-08): every already-scanned CD spine, plus the
+  // ones a revoked sign-in left auth_failed. It never changes the connect's
+  // outcome; the maintenance hook retries the never-searched ones.
+  try {
+    enqueueMissingSearches({ includeAuthFailed: true });
+  } catch (err) {
+    console.error('[discogs] connect backfill failed:', err);
+  }
   // Non-secret facts Plan 03-13's live report reads to settle A1 and A2.
   setSetting('discogs_exchange_form', exchangeForm);
   setSetting('discogs_connect_via', p.via);

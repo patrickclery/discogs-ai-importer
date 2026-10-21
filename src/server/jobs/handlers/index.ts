@@ -1,4 +1,5 @@
 import 'server-only';
+import { enqueueMissingSearches } from '../../discogs/enqueue';
 import { discogsGate } from '../../discogs/gate';
 import { reconcileVisionRuns } from '../../scan/reconcile';
 import type { JobHandler, Lane } from '../types';
@@ -25,7 +26,12 @@ export const handlers: Record<string, JobHandler> = {
  * reaping, so a job failed by recovery is followed by run reconciliation in
  * the same tick. Each hook must be cheap and must never spawn a paid call.
  */
-export const maintenance: Array<() => unknown> = [() => reconcileVisionRuns()];
+export const maintenance: Array<() => unknown> = [
+  () => reconcileVisionRuns(),
+  // Crash safety net for the connect backfill (D-08): returns at once when
+  // not connected, and never re-picks auth_failed spines (T-03-17).
+  () => enqueueMissingSearches({ includeAuthFailed: false }),
+];
 
 /**
  * Per-lane pause: the epoch ms a lane may claim again, or null. While the
