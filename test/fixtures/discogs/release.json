@@ -1,0 +1,78 @@
+{
+  "artists": [
+    {
+      "name": "Fake Band",
+      "anv": "",
+      "join": "&",
+      "role": "",
+      "tracks": "",
+      "id": 7000001,
+      "resource_url": "https://api.discogs.com/artists/7000001"
+    },
+    {
+      "name": "Guest Singer",
+      "anv": "",
+      "join": "",
+      "role": "",
+      "tracks": "",
+      "id": 7000002,
+      "resource_url": "https://api.discogs.com/artists/7000002"
+    }
+  ],
+  "artists_sort": "Fake Band & Guest Singer",
+  "blocked_from_sale": false,
+  "community": { "have": 3, "want": 1 },
+  "companies": [],
+  "country": "US",
+  "data_quality": "Correct",
+  "date_added": "2020-01-01T00:00:00-08:00",
+  "date_changed": "2021-01-01T00:00:00-08:00",
+  "estimated_weight": 85,
+  "extraartists": [],
+  "format_quantity": 1,
+  "formats": [{ "name": "CD", "qty": "1", "descriptions": ["Album"] }],
+  "genres": ["Rock"],
+  "id": 4100001,
+  "identifiers": [],
+  "images": [
+    {
+      "type": "primary",
+      "uri": "https://i.discogs.com/fake/4100001-full.jpeg",
+      "uri150": "https://i.discogs.com/fake/4100001-150.jpeg",
+      "width": 600,
+      "height": 600
+    }
+  ],
+  "is_offensive": false,
+  "labels": [
+    {
+      "name": "DGC",
+      "catno": "DGCD-24425",
+      "entity_type_name": "Label",
+      "id": 8000001
+    },
+    {
+      "name": "DGC",
+      "catno": "DGCD-24425",
+      "entity_type_name": "Label",
+      "id": 8000001
+    }
+  ],
+  "lowest_price": 1.5,
+  "master_id": 0,
+  "master_url": null,
+  "notes": "Made-up release for tests.",
+  "num_for_sale": 0,
+  "released": "1991",
+  "released_formatted": "1991",
+  "resource_url": "https://api.discogs.com/releases/4100001",
+  "series": [],
+  "status": "Accepted",
+  "styles": ["Grunge"],
+  "thumb": "",
+  "title": "Fake Album",
+  "tracklist": [],
+  "uri": "https://www.discogs.com/release/4100001-Fake-Band-Fake-Album",
+  "videos": [],
+  "year": 1991
+}

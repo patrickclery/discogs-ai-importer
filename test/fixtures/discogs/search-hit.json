@@ -1,0 +1,95 @@
+{
+  "pagination": {
+    "page": 1,
+    "pages": 1,
+    "per_page": 10,
+    "items": 4,
+    "urls": {}
+  },
+  "results": [
+    {
+      "country": "US",
+      "year": "1991",
+      "format": ["CD", "Album"],
+      "label": ["DGC", "DGC"],
+      "type": "release",
+      "genre": ["Rock"],
+      "style": ["Grunge"],
+      "id": 4100001,
+      "barcode": ["0 0000-00000-0 0"],
+      "master_id": 0,
+      "master_url": null,
+      "uri": "/release/4100001-Fake-Band-Fake-Album",
+      "catno": "DGCD-24425",
+      "title": "Fake Band - Fake Album",
+      "thumb": "",
+      "cover_image": "",
+      "resource_url": "https://api.discogs.com/releases/4100001",
+      "community": { "want": 1, "have": 2 },
+      "format_quantity": 1,
+      "formats": [{ "name": "CD", "qty": "1", "descriptions": ["Album"] }]
+    },
+    {
+      "country": "Europe",
+      "year": "",
+      "format": ["CD", "Compilation"],
+      "label": ["Fake Records"],
+      "type": "release",
+      "genre": ["Country"],
+      "style": [],
+      "id": 4100002,
+      "barcode": [],
+      "master_id": 5200002,
+      "master_url": "https://api.discogs.com/masters/5200002",
+      "uri": "/release/4100002-Don-Williams-The-Best-Of-Don-Williams",
+      "catno": "FAKE 002",
+      "title": "Don Williams (2) - The Best Of Don Williams",
+      "thumb": "https://i.discogs.com/fake/4100002.jpeg",
+      "cover_image": "https://i.discogs.com/fake/4100002-cover.jpeg",
+      "resource_url": "https://api.discogs.com/releases/4100002",
+      "community": { "want": 0, "have": 5 },
+      "format_quantity": 1,
+      "formats": [
+        {
+          "name": "CD",
+          "qty": "1",
+          "text": "Club Edition",
+          "descriptions": ["Compilation"]
+        }
+      ]
+    },
+    {
+      "country": "US",
+      "format": ["CD"],
+      "label": ["DGC"],
+      "type": "release",
+      "id": "not-a-number",
+      "catno": "DGC 0000",
+      "title": "Broken Result - Missing Id",
+      "thumb": "",
+      "formats": [{ "name": "CD", "qty": "1" }]
+    },
+    {
+      "country": "Japan",
+      "year": "0",
+      "format": ["CD"],
+      "label": ["Fake Japan"],
+      "type": "release",
+      "genre": ["Pop"],
+      "style": [],
+      "id": 4100004,
+      "barcode": [],
+      "uri": "/release/4100004-Fake-Band-Fake-Album",
+      "catno": "dgcd 24425",
+      "title": "Fake Band - Fake Album",
+      "thumb": "https://i.discogs.com/fake/4100004.jpeg",
+      "cover_image": "",
+      "resource_url": "https://api.discogs.com/releases/4100004",
+      "community": { "want": 0, "have": 0 },
+      "format_quantity": 1,
+      "formats": [
+        { "name": "CD", "qty": "1", "descriptions": ["Album", "Reissue"] }
+      ]
+    }
+  ]
+}
