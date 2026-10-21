@@ -115,7 +115,29 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans**: TBD
+**Plans:** 8 plans
+
+Plans:
+**Wave 1**
+- [ ] 03-01-PLAN.md — Connect tracer: PLAINTEXT signer, pacing gate, in-house client, OAuth connect/callback/paste-code, first Discogs card, fake Discogs and verify-discogs (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-02-PLAN.md — Settings Discogs card complete: Test connection, Disconnect, Reconnect needed, ?discogs= notices, callback URL, paste-code form, clear-also-disconnects (wave 2)
+- [ ] 03-03-PLAN.md — Auto search tracer [schema apply]: searches and candidates tables, catno/artist-title/text cascade, enqueue on scan, re-scan and connect backfill, 429 deferral and lane gate (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-04-PLAN.md — Candidates on the spine card: search-state badge, Discogs matches list with Show all, not-connected notice, polling while lookups run (wave 3)
+- [ ] 03-05-PLAN.md — Cover cache in the data folder and the header's Discogs backlog and pause countdown (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 03-06-PLAN.md — Fields changed since last search, Search again and Retry search (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 03-07-PLAN.md — Search Discogs… dialog: free-text search, pasted release link or number, master refusal, add as pinned manual candidate (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 03-08-PLAN.md — Owner connects the real Discogs account on port 3001 (blocking checkpoint) and a read-only live report settles A1, A2, A3, A5 (wave 6)
+
 **UI hint**: yes
 
 ### Phase 4: Import & Review Queue
@@ -143,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
-| 3. Discogs Match | 0/TBD | Not started | - |
+| 3. Discogs Match | 0/8 | Planned | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
 
 ## Backlog
