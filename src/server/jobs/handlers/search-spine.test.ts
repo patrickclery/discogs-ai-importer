@@ -313,3 +313,232 @@ describe('search_spine handler (deferral, auth, vanished spines, errors)', () =>
     },
   );
 });
+
+describe('search_spine handler (kind manual, D-15)', () => {
+  useTempDataDir();
+  useTempSecrets();
+  let gate: DiscogsGate;
+
+  beforeEach(() => {
+    gate = resetDiscogsGateForTests(fakeClock());
+  });
+
+  /** A queued manual search for the typed text, claimed like the worker. */
+  function queuedManual(text: string): { searchId: string; ctx: JobContext } {
+    const db = getDb().$client;
+    const searchId = createSearch(db, {
+      spineId: SPINE,
+      kind: 'manual',
+      inputs: { artist: null, title: null, catno: null, rawText: text },
+      inputHash: null,
+      queryText: text,
+    });
+    const job = enqueue({
+      lane: 'discogs',
+      type: 'search_spine',
+      payload: { searchId },
+      dedupeKey: `search:${searchId}`,
+    });
+    setSearchJob(db, searchId, job.id);
+    const claimed = claimNext('discogs');
+    if (!claimed) throw new Error('no job claimed');
+    return {
+      searchId,
+      ctx: {
+        job: claimed,
+        signal: new AbortController().signal,
+        isCurrent: () => true,
+      },
+    };
+  }
+
+  function manyResults(n: number, total: number): string {
+    return JSON.stringify({
+      pagination: { items: total, page: 1, pages: 2, per_page: 25 },
+      results: Array.from({ length: n }, (_, i) => ({
+        id: 2000 + i,
+        type: 'release',
+        title: `Band ${i} - Best Of`,
+        catno: `BO-${i}`,
+        formats: [{ name: 'CD', qty: '1' }],
+        thumb: `https://i.discogs.com/${i}.jpg`,
+      })),
+    });
+  }
+
+  function seedAutoCandidate(): void {
+    const db = getDb().$client;
+    const autoId = createSearch(db, {
+      spineId: SPINE,
+      kind: 'auto',
+      inputs: { artist: null, title: null, catno: 'X', rawText: null },
+      inputHash: 'hash-auto',
+    });
+    db.prepare(
+      `INSERT INTO discogs_candidates (id, spine_id, search_id, source,
+         release_id, rank, title, labels_json, formats_json, catno_match,
+         created_at)
+       VALUES ('cand-auto', ?, ?, 'auto', 9999, 0, 'Old - Auto', '[]',
+         '[]', 0, ?)`,
+    ).run(SPINE, autoId, Date.now());
+  }
+
+  function candidateIds(): string[] {
+    return (
+      getDb()
+        .$client.prepare(
+          'SELECT id FROM discogs_candidates WHERE spine_id = ? ORDER BY id',
+        )
+        .all(SPINE) as { id: string }[]
+    ).map((r) => r.id);
+  }
+
+  it('sends one GET /database/search with q, type, format CD, per_page 25 and page 1', async () => {
+    seedSpine();
+    const { searchId, ctx } = queuedManual('Best Of');
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string | URL) => {
+      urls.push(String(url));
+      return new Response(manyResults(25, 312), { status: 200 });
+    }) as unknown as typeof fetch;
+    await runSearchSpine({ searchId }, ctx, { fetch: { fetchImpl, gate } });
+    expect(urls).toHaveLength(1);
+    const u = new URL(urls[0] as string);
+    expect(u.pathname).toBe('/database/search');
+    expect(Object.fromEntries(u.searchParams)).toEqual({
+      q: 'Best Of',
+      type: 'release',
+      format: 'CD',
+      per_page: '25',
+      page: '1',
+    });
+    const row = getDb()
+      .$client.prepare(
+        'SELECT status, stage, result_count, total_count, results_json FROM discogs_searches WHERE id = ?',
+      )
+      .get(searchId) as {
+      status: string;
+      stage: string | null;
+      result_count: number;
+      total_count: number;
+      results_json: string;
+    };
+    expect(row.status).toBe('done');
+    expect(row.stage).toBe('text');
+    expect(row.result_count).toBe(25);
+    expect(row.total_count).toBe(312);
+    const stored = JSON.parse(row.results_json) as { releaseId: number }[];
+    expect(stored).toHaveLength(25);
+    expect(stored[0]?.releaseId).toBe(2000);
+  });
+
+  it('stores at most 25 results even when Discogs answers more', async () => {
+    seedSpine();
+    const { searchId, ctx } = queuedManual('Best Of');
+    const fetchImpl = vi.fn(
+      async () => new Response(manyResults(30, 30), { status: 200 }),
+    ) as unknown as typeof fetch;
+    await runSearchSpine({ searchId }, ctx, { fetch: { fetchImpl, gate } });
+    const row = getDb()
+      .$client.prepare(
+        'SELECT result_count, results_json FROM discogs_searches WHERE id = ?',
+      )
+      .get(searchId) as { result_count: number; results_json: string };
+    expect(row.result_count).toBe(25);
+    expect(JSON.parse(row.results_json)).toHaveLength(25);
+  });
+
+  it('no results finishes no_match after one request, with no cascade', async () => {
+    seedSpine();
+    const { searchId, ctx } = queuedManual('Nothing At All');
+    const stub = stubFetch(
+      () =>
+        new Response(
+          JSON.stringify({ pagination: { items: 0 }, results: [] }),
+          { status: 200 },
+        ),
+    );
+    await runSearchSpine({ searchId }, ctx, {
+      fetch: { fetchImpl: stub.fetchImpl, gate },
+    });
+    expect(stub.calls()).toBe(1);
+    expect(searchRow(searchId).status).toBe('no_match');
+  });
+
+  it('never inserts or deletes a discogs_candidates row', async () => {
+    seedSpine();
+    seedAutoCandidate();
+    const { searchId, ctx } = queuedManual('Best Of');
+    const fetchImpl = vi.fn(
+      async () => new Response(manyResults(3, 3), { status: 200 }),
+    ) as unknown as typeof fetch;
+    await runSearchSpine({ searchId }, ctx, { fetch: { fetchImpl, gate } });
+    expect(searchRow(searchId).status).toBe('done');
+    expect(candidateIds()).toEqual(['cand-auto']);
+  });
+
+  it('defers on a 429 and leaves the manual search queued', async () => {
+    seedSpine();
+    const { searchId, ctx } = queuedManual('Best Of');
+    const stub = stubFetch(
+      () => new Response('', { status: 429, headers: { 'retry-after': '3' } }),
+    );
+    const err = await runSearchSpine({ searchId }, ctx, {
+      fetch: { fetchImpl: stub.fetchImpl, gate },
+    }).then(
+      () => null,
+      (e: unknown) => e as { name: string },
+    );
+    expect(err?.name).toBe('JobDeferredError');
+    expect(searchRow(searchId).status).toBe('queued');
+  });
+
+  it('defers on a paused gate without a request', async () => {
+    seedSpine();
+    gate.pause(5000);
+    const { searchId, ctx } = queuedManual('Best Of');
+    const stub = stubFetch(() => new Response(okBody, { status: 200 }));
+    const err = await runSearchSpine({ searchId }, ctx, {
+      fetch: { fetchImpl: stub.fetchImpl, gate },
+    }).then(
+      () => null,
+      (e: unknown) => e as { name: string },
+    );
+    expect(err?.name).toBe('JobDeferredError');
+    expect(stub.calls()).toBe(0);
+  });
+
+  it('runs for an orphaned spine but skips a dismissed one', async () => {
+    seedSpine('dismissed');
+    const { searchId, ctx } = queuedManual('Best Of');
+    const stub = stubFetch(() => new Response(okBody, { status: 200 }));
+    await runSearchSpine({ searchId }, ctx, {
+      fetch: { fetchImpl: stub.fetchImpl, gate },
+    });
+    expect(stub.calls()).toBe(0);
+    expect(searchRow(searchId).status).toBe('skipped');
+  });
+
+  it('finishes not_connected and auth_failed without a request', async () => {
+    seedSpine();
+    clearDiscogsAuth();
+    const a = queuedManual('Best Of');
+    const stub = stubFetch(() => new Response(okBody, { status: 200 }));
+    await runSearchSpine({ searchId: a.searchId }, a.ctx, {
+      fetch: { fetchImpl: stub.fetchImpl, gate },
+    });
+    expect(searchRow(a.searchId).status).toBe('not_connected');
+    saveDiscogsAuth({
+      token: 'CANARYTOKEN-0123456789efgh',
+      tokenSecret: 'CANARYTOKENSECRET-0123456789ijkl',
+      username: 'fake-owner',
+    });
+    markAuthInvalid();
+    const b = queuedManual('Best Of 2');
+    await runSearchSpine({ searchId: b.searchId }, b.ctx, {
+      fetch: { fetchImpl: stub.fetchImpl, gate },
+    });
+    expect(searchRow(b.searchId).status).toBe('auth_failed');
+    expect(stub.calls()).toBe(0);
+  });
+});
