@@ -328,7 +328,7 @@ describe('fieldsChanged (D-14)', () => {
 
   // Nyquist gap audit (WR-01): fieldsChanged must use the same baseline as
   // the enqueue (the latest auto/again search not in not_connected,
-  // auth_failed or skipped). it.fails while WR-01 is open.
+  // auth_failed or skipped).
   it('WR-01: a not_connected latest search over an older done one still compares against the done one', async () => {
     const { spineIds } = await orphanScenario();
     const id = spineIds[0];

@@ -409,9 +409,8 @@ describe('discogs enqueue', () => {
     });
   });
 
-  // Nyquist gap audit (Phase 3, CR-01 / WR-01). These assert the CORRECT
-  // behaviour from 03-REVIEW.md; they are it.fails while the open findings
-  // stand, and turn red (flip to it) once the fix lands.
+  // Nyquist gap audit (Phase 3, CR-01 / WR-01): the fixed behaviour from
+  // 03-REVIEW.md.
   describe('skipped searches and the single baseline rule (CR-01, WR-01)', () => {
     /** Ends a queued auto search skipped and releases its key (the CR-01 fix). */
     function endSkippedReleased(spineId: string): void {
