@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { orphanScenario } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
 import { newId } from '../ids';
-import { searchInputs } from './inputs';
+import { updateSpineField } from '../scan/fields';
+import { inputHash, loadSpineInputs, searchInputs } from './inputs';
 import {
   discogsForSpines,
   ENDED_WITHOUT_RESULT,
@@ -264,5 +266,70 @@ describe('discogsForSpines and listCandidates (D-10)', () => {
     expect(discogsForSpines(db, [{ id: 's2' }]).get('s2')?.state).toBe(
       'searching',
     );
+  });
+});
+
+describe('fieldsChanged (D-14)', () => {
+  useTempDataDir();
+
+  /** A finished search of the spine's current inputs. */
+  function searchNow(
+    spineId: string,
+    kind: 'auto' | 'again',
+    status: 'done' | 'no_match' | 'not_connected' = 'done',
+  ): void {
+    const db = getDb().$client;
+    const inputs = loadSpineInputs(db, spineId);
+    const id = createSearch(db, {
+      spineId,
+      kind,
+      inputs,
+      inputHash: inputHash(inputs),
+    });
+    finishSearch(db, id, { status });
+  }
+
+  function changed(spineId: string): boolean | undefined {
+    return discogsForSpines(getDb().$client, [{ id: spineId }]).get(spineId)
+      ?.fieldsChanged;
+  }
+
+  it('a never-searched spine has fieldsChanged false, even after an edit', async () => {
+    const { spineIds } = await orphanScenario();
+    expect(changed(spineIds[0])).toBe(false);
+    expect(updateSpineField(spineIds[0], 'title', 'Other').ok).toBe(true);
+    expect(changed(spineIds[0])).toBe(false);
+  });
+
+  it('an edit that normalizes differently flips it to true', async () => {
+    const { spineIds } = await orphanScenario();
+    searchNow(spineIds[0], 'auto');
+    expect(changed(spineIds[0])).toBe(false);
+    expect(updateSpineField(spineIds[0], 'title', 'A New Title').ok).toBe(true);
+    expect(changed(spineIds[0])).toBe(true);
+  });
+
+  it('an edit that only adds whitespace keeps it false', async () => {
+    const { spineIds } = await orphanScenario();
+    updateSpineField(spineIds[1], 'title', 'Same Title');
+    searchNow(spineIds[1], 'auto', 'no_match');
+    updateSpineField(spineIds[1], 'title', '  Same   Title ');
+    expect(changed(spineIds[1])).toBe(false);
+  });
+
+  it('a newer again search with the current values clears it', async () => {
+    const { spineIds } = await orphanScenario();
+    searchNow(spineIds[2], 'auto');
+    updateSpineField(spineIds[2], 'catalog_number', 'XYZ-9');
+    expect(changed(spineIds[2])).toBe(true);
+    searchNow(spineIds[2], 'again');
+    expect(changed(spineIds[2])).toBe(false);
+  });
+
+  it('a latest search that never reached Discogs is no baseline', async () => {
+    const { spineIds } = await orphanScenario();
+    searchNow(spineIds[0], 'auto', 'not_connected');
+    updateSpineField(spineIds[0], 'artist', 'Someone Else');
+    expect(changed(spineIds[0])).toBe(false);
   });
 });

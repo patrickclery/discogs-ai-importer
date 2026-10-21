@@ -17,6 +17,7 @@ import {
 import {
   enqueueAutoSearch,
   enqueueAutoSearchesForPhoto,
+  enqueueExplicitSearch,
   enqueueMissingSearches,
 } from './enqueue';
 import { finishSearch } from './store';
@@ -322,6 +323,86 @@ describe('discogs enqueue', () => {
       enqueueMissingSearches({ includeAuthFailed: true });
       expect(autoSearches(sc.cd[0])).toHaveLength(1);
       expect(discogsJobs()).toBe(before + 3);
+    });
+  });
+
+  describe('enqueueExplicitSearch (Search again / Retry, Pitfall 1)', () => {
+    type Explicit = {
+      id: string;
+      kind: string;
+      input_hash: string;
+      job_id: string;
+      dedupe_key: string;
+    };
+    function explicitSearches(spineId: string): Explicit[] {
+      return getDb()
+        .$client.prepare(
+          `SELECT s.id, s.kind, s.input_hash, s.job_id, j.dedupe_key
+           FROM discogs_searches s JOIN jobs j ON j.id = s.job_id
+           WHERE s.spine_id = @spineId AND s.kind = 'again'
+           ORDER BY s.created_at, s.id`,
+        )
+        .all({ spineId }) as Explicit[];
+    }
+    function finishJob(searchId: string, jobId: string): void {
+      const db = getDb().$client;
+      finishSearch(db, searchId, { status: 'done' });
+      db.prepare("UPDATE jobs SET status = 'succeeded' WHERE id = ?").run(
+        jobId,
+      );
+    }
+
+    it('two calls with identical inputs create two searches and two jobs', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      const a = enqueueExplicitSearch(db, { spineId: sc.cd[0], kind: 'again' });
+      expect(a.status).toBe('ok');
+      const [first] = explicitSearches(sc.cd[0]);
+      finishJob(first.id, first.job_id);
+      const b = enqueueExplicitSearch(db, { spineId: sc.cd[0], kind: 'again' });
+      expect(b.status).toBe('ok');
+      const rows = explicitSearches(sc.cd[0]);
+      expect(rows).toHaveLength(2);
+      expect(rows[0].input_hash).toBe(rows[1].input_hash);
+      expect(rows[0].job_id).not.toBe(rows[1].job_id);
+      expect(rows.map((r) => r.dedupe_key)).toEqual(
+        rows.map((r) => `search:${r.id}`),
+      );
+      expect(discogsJobs()).toBe(2);
+    });
+
+    it('refuses while the latest search is queued, and for unknown or superseded spines', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      expect(enqueueAutoSearch(db, sc.cd[1])).toBe(true);
+      expect(
+        enqueueExplicitSearch(db, { spineId: sc.cd[1], kind: 'again' }),
+      ).toEqual({ status: 'busy' });
+      expect(
+        enqueueExplicitSearch(db, { spineId: 'nope', kind: 'again' }),
+      ).toEqual({ status: 'not_found' });
+      expect(
+        enqueueExplicitSearch(db, { spineId: sc.supersededId, kind: 'again' }),
+      ).toEqual({ status: 'not_searchable' });
+      expect(
+        enqueueExplicitSearch(db, { spineId: sc.orphanId, kind: 'again' })
+          .status,
+      ).toBe('ok');
+      expect(discogsJobs()).toBe(2);
+    });
+
+    it('a failed latest search can be retried', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      expect(enqueueAutoSearch(db, sc.cd[2])).toBe(true);
+      endSearch(sc.cd[2], 'failed');
+      expect(
+        enqueueExplicitSearch(db, { spineId: sc.cd[2], kind: 'again' }).status,
+      ).toBe('ok');
+      expect(explicitSearches(sc.cd[2])).toHaveLength(1);
     });
   });
 });
