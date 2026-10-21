@@ -17,6 +17,8 @@
 // again searches the new values, and repeated identical re-searches run.
 // Plan 03-11: (h) a pasted release link fetches exactly that release once,
 // and adding it pins it first as a manual candidate.
+// Plan 03-12: (i) a typed dialog search is one paced CD-only request of 25
+// that lists results with covers and writes no candidate rows.
 // Plans 03-05, 03-08, 03-09, 03-10, 03-11 and 03-12 add their own named
 // steps here; step letters are stable across plans.
 // Run: node scripts/verify-discogs-search.ts   (VERIFY_SKIP_BUILD=1 reuses
@@ -826,7 +828,8 @@ type DialogSearch = {
   kind: string;
   state: string;
   releaseId: number | null;
-  results: { releaseId: number; alreadyListed: boolean }[];
+  results: { releaseId: number; alreadyListed: boolean; hasThumb: boolean }[];
+  totalCount?: number;
 };
 
 /** Polls GET /api/discogs/searches/{id} until the search has ended. */
@@ -939,6 +942,103 @@ async function stepPasteRelease(ctx: Ctx, photoId: string): Promise<void> {
   );
 }
 
+/** Every candidate row of the spine as 'source:release_id', in rank order. */
+function candidateKeys(ctx: Ctx, spineId: string): string[] {
+  return withDb(ctx, (db) =>
+    (
+      db
+        .prepare(
+          `SELECT source, release_id FROM discogs_candidates
+           WHERE spine_id = ? ORDER BY source, rank, release_id`,
+        )
+        .all(spineId) as { source: string; release_id: number }[]
+    ).map((r) => `${r.source}:${r.release_id}`),
+  );
+}
+
+/** POST /api/spines/{id}/search with a dialog body; the started search id. */
+async function startDialogSearch(
+  ctx: Ctx,
+  spineId: string,
+  body: Record<string, string>,
+): Promise<string> {
+  const res = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spineId)}/search`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  const started = (await res.json()) as { searchId?: string };
+  assert(
+    res.status === 201 && typeof started.searchId === 'string',
+    `POST ${JSON.stringify(body)} returned ${res.status} ${JSON.stringify(started)}`,
+  );
+  return started.searchId;
+}
+
+// (i) Plan 03-12 (DISC-06, D-15, D-16): free text in the dialog runs one
+// manual search through the paced lane: q, CDs only, 25 per page. Its
+// results stay on the search row (no candidate rows change), a release
+// already among the spine's candidates is flagged, and its cover is served
+// from the stored results.
+async function stepTextSearch(ctx: Ctx, photoId: string): Promise<void> {
+  step('(i) a typed dialog search lists results with covers; no rows change');
+  const spine = spineSearches(ctx, photoId).find(
+    (s) => s.artist === 'Static Bloom',
+  );
+  assert(spine, 'no Static Bloom spine');
+  const rowsBefore = candidateKeys(ctx, spine.spineId);
+  const before = fakeLog(ctx).length;
+  const searchId = await startDialogSearch(ctx, spine.spineId, {
+    mode: 'text',
+    value: 'Static Bloom',
+  });
+  const ended = await waitDialogSearch(ctx, searchId);
+  assert(
+    ended.kind === 'manual' &&
+      ended.state === 'done' &&
+      ended.results.length === 1 &&
+      ended.results[0].releaseId === 1041 &&
+      ended.results[0].alreadyListed &&
+      ended.results[0].hasThumb &&
+      ended.totalCount === 1,
+    `manual search ${JSON.stringify(ended)}, expected done with 1041 already listed`,
+  );
+  const sent = fakeLog(ctx)
+    .slice(before)
+    .filter((e) => e.surface === 'api' && e.path === '/database/search');
+  assert(
+    sent.length === 1 &&
+      sent[0].query.q === 'Static Bloom' &&
+      sent[0].query.type === 'release' &&
+      sent[0].query.format === 'CD' &&
+      sent[0].query.per_page === '25' &&
+      sent[0].query.page === '1' &&
+      sent[0].signatureMethod === 'PLAINTEXT' &&
+      sent[0].userAgent === PROJECT_USER_AGENT,
+    `manual search requests ${JSON.stringify(sent)}, expected one signed q=Static Bloom per_page=25`,
+  );
+  const rowsAfter = candidateKeys(ctx, spine.spineId);
+  assert(
+    JSON.stringify(rowsAfter) === JSON.stringify(rowsBefore),
+    `candidate rows ${JSON.stringify(rowsAfter)}, expected unchanged ${JSON.stringify(rowsBefore)}`,
+  );
+  const cover = await fetch(
+    `${ctx.baseUrl}/api/discogs/searches/${encodeURIComponent(searchId)}/thumb/1041`,
+    { redirect: 'manual' },
+  );
+  const location = cover.headers.get('location') ?? '';
+  assert(
+    cover.status === 307 && location.startsWith('/api/files/discogs-thumbs/'),
+    `dialog cover answered ${cover.status} ${location}, expected 307 to /api/files/discogs-thumbs/`,
+  );
+  check(
+    'text search done with 1 result (already listed), one signed q=Static Bloom per_page=25; candidate rows unchanged; cover 307',
+  );
+}
+
 // (f) a revoked sign-in mid-backlog: one 401, then every remaining search
 // short-circuits to auth_failed without a request (RESEARCH Pitfall 7).
 // Keep this step last: it leaves the app needing a reconnect.
@@ -1020,6 +1120,7 @@ runMain('verify-discogs-search', async (onCleanup) => {
   await step429Resume(ctx);
   await stepSearchAgain(ctx, photoId);
   await stepPasteRelease(ctx, photoId);
+  await stepTextSearch(ctx, photoId);
   // Later plans insert their steps here, before (f).
   await stepRevoked(ctx);
 

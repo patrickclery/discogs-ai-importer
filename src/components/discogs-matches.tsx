@@ -3,12 +3,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { CircleX, Clock, PencilLine, RotateCw, Unplug } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { CandidateList } from '@/components/candidate-list';
 import { DiscogsSearchDialog } from '@/components/discogs-search-dialog';
 import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useSecondsUntil } from '@/components/use-seconds-until';
 import {
   pausedLine,
   QUEUED_LINE,
@@ -61,23 +62,6 @@ function Line({
  * future and `active`; 0 once it passes (the interval is cleared then and on
  * unmount).
  */
-function useSecondsUntil(until: number | null, active: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    setNow(Date.now());
-    if (!active || until === null || until <= Date.now()) return;
-    const id = setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-      if (t >= until) clearInterval(id);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [until, active]);
-  if (!active || until === null) return 0;
-  const left = until - now;
-  return left > 0 ? Math.ceil(left / 1000) : 0;
-}
-
 /**
  * The not-connected, fields-changed, paused or failed line, at most one
  * (UI-SPEC order).

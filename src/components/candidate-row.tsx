@@ -62,11 +62,15 @@ export function CandidateThumb({
 export function CandidateRowContent({
   candidate,
   thumbSrc,
+  alreadyListed = false,
 }: {
   candidate: CandidateDto;
   thumbSrc?: string;
+  /** Dialog only: the release is already among the spine's candidates. */
+  alreadyListed?: boolean;
 }) {
-  const hasTags = candidate.catnoMatch || candidate.source === 'manual';
+  const hasTags =
+    candidate.catnoMatch || candidate.source === 'manual' || alreadyListed;
   return (
     <>
       <CandidateThumb candidate={candidate} src={thumbSrc} />
@@ -90,6 +94,9 @@ export function CandidateRowContent({
             ) : null}
             {candidate.source === 'manual' ? (
               <Badge variant="secondary">Added manually</Badge>
+            ) : null}
+            {alreadyListed ? (
+              <Badge variant="secondary">Already listed</Badge>
             ) : null}
           </div>
         ) : null}

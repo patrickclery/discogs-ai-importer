@@ -1,12 +1,15 @@
 import 'server-only';
 import { z } from 'zod';
+import { DIALOG_RESULTS_MAX } from '@/lib/discogs-types';
 import { getDb } from '../../db/client';
 import { getDiscogsAuth, isAuthInvalid } from '../../discogs/auth';
 import { type DiscogsFetchDeps, discogsFetch } from '../../discogs/client';
 import { discogsGate } from '../../discogs/gate';
 import type { SearchInputs } from '../../discogs/inputs';
 import {
+  type CascadeResult,
   type CascadeSearch,
+  MANUAL_PARAMS,
   parseSearchResponse,
   rankCandidates,
   runCascade,
@@ -34,6 +37,11 @@ import { type JobContext, JobDeferredError } from '../types';
 // error or 5xx is recorded and rethrown for the worker's 2 s / 4 s retry,
 // and any other 4xx finishes failed at once. Errors are compared by name:
 // HMR can leave two copies of each class alive.
+//
+// A manual (dialog) search runs the same checks but sends exactly one
+// request: q = the typed text, CDs only, 25 per page (D-15, A-03-23). Its
+// results stay on the search row for the owner to pick from; it never
+// writes discogs_candidates (D-16).
 
 export const SearchSpinePayload = z.object({
   searchId: z.string().min(1),
@@ -163,9 +171,30 @@ export async function runSearchSpine(
     },
   };
 
-  let outcome: Awaited<ReturnType<typeof runCascade>>;
+  const manualQuery = (search.query_text ?? inputs.rawText ?? '').trim();
+
+  let outcome: CascadeResult;
   try {
-    outcome = await runCascade(inputs, api, ctx.signal);
+    if (search.kind === 'manual') {
+      if (!manualQuery) {
+        finish('failed', { errorKind: 'rejected', error: 'empty search' });
+        return;
+      }
+      const { results, total } = await api.search(
+        { q: manualQuery, ...MANUAL_PARAMS },
+        ctx.signal,
+      );
+      outcome =
+        results.length > 0
+          ? {
+              stage: 'text',
+              results: results.slice(0, DIALOG_RESULTS_MAX),
+              total,
+            }
+          : { stage: null, results: [], total: 0 };
+    } else {
+      outcome = await runCascade(inputs, api, ctx.signal);
+    }
   } catch (err) {
     switch (errName(err)) {
       case 'NotCurrentError':
@@ -230,7 +259,7 @@ export async function runSearchSpine(
     // Another run finished this search first: leave its candidates alone.
     if (!finished) return;
     // D-16: a manual (dialog) search only stores its results on the row;
-    // the owner picks from them. Plan 03-12 gives it its own request shape.
+    // the owner picks from them.
     if (search.kind !== 'auto' && search.kind !== 'again') return;
     replaceAutoCandidates(db, {
       spineId: search.spine_id,

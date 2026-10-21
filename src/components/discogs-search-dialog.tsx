@@ -26,11 +26,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { QUEUED_LINE, SEARCHING_LINE } from '@/lib/candidate-format';
+import { useSecondsUntil } from '@/components/use-seconds-until';
+import {
+  pausedLine,
+  QUEUED_LINE,
+  SEARCHING_LINE,
+} from '@/lib/candidate-format';
 import { MASTER_REFUSAL, parseDiscogsRef } from '@/lib/discogs-ref';
 import {
   type CandidateDto,
   DIALOG_INPUT_MAX,
+  DIALOG_RESULTS_MAX,
   type DialogSearchDto,
   type DialogSearchState,
   type SearchResultDto,
@@ -49,7 +55,8 @@ import { cn } from '@/lib/utils';
 // is added until the owner picks a row and clicks Add to candidates, which
 // sends only { searchId, releaseId } (T-03-31). Its query key has its own
 // prefix: the field editor rewrites every ['spines', …] query.
-// Plan 03-12 adds the text-results, empty, paused and error copy.
+// Results areas follow the UI-SPEC dialog state table; a visually hidden
+// polite status announces the result count when a search ends.
 
 export const SEARCH_DISCOGS_TOOLTIP = 'Connect Discogs in Settings first';
 export const DIALOG_DESCRIPTION =
@@ -57,8 +64,27 @@ export const DIALOG_DESCRIPTION =
 export const BEFORE_SEARCH_LINE = 'Results from Discogs appear here.';
 export const RELEASE_CHECK_LINE =
   'Check that this is the CD you meant. Discogs numbers releases and masters separately, so a number can point to a different record.';
+export const MORE_RESULTS_LINE = `Showing the first ${DIALOG_RESULTS_MAX} results. Add a word or the catalog number to narrow it down.`;
 /** Placeholder for ended searches with nothing to pick (Plan 03-12 copy). */
 const NOTHING_TO_ADD_LINE = 'Nothing to add from this search.';
+
+/** UI-SPEC "Dialog no results", quoting the searched text. */
+export function noResultsLine(query: string | null): string {
+  return `Nothing on Discogs matches “${query ?? ''}”. Try fewer words, or just the catalog number.`;
+}
+
+/** '1 result', '{n} results'. */
+export function resultsCount(n: number): string {
+  return `${n} ${n === 1 ? 'result' : 'results'}`;
+}
+
+/** What the polite status announces once a search ends ('' before). */
+export function searchAnnouncement(data: DialogSearchDto | undefined): string {
+  if (!data) return '';
+  if (data.state === 'done') return resultsCount(data.results.length);
+  if (data.state === 'no_match') return noResultsLine(data.query);
+  return '';
+}
 
 const POLL_MS = 1500;
 const TERMINAL: ReadonlySet<DialogSearchState> = new Set([
@@ -150,6 +176,11 @@ function Results({
   onSelect: (releaseId: number) => void;
   disabled: boolean;
 }) {
+  const data = query.data;
+  const pausedSeconds = useSecondsUntil(
+    data?.pausedUntil ?? null,
+    data?.state === 'queued',
+  );
   if (!searchId) {
     return (
       <p className="py-8 text-center text-xs text-muted-foreground">
@@ -157,7 +188,6 @@ function Results({
       </p>
     );
   }
-  const data = query.data;
   if (!data) {
     if (query.isError) {
       const reason =
@@ -174,7 +204,11 @@ function Results({
   }
   switch (data.state) {
     case 'queued':
-      return <Line icon={<Clock aria-hidden="true" />}>{QUEUED_LINE}</Line>;
+      return (
+        <Line icon={<Clock aria-hidden="true" />}>
+          {pausedSeconds > 0 ? pausedLine(pausedSeconds) : QUEUED_LINE}
+        </Line>
+      );
     case 'searching':
       return (
         <Line icon={<Spinner aria-hidden="true" role="presentation" />}>
@@ -183,6 +217,8 @@ function Results({
       );
     case 'done':
       break;
+    case 'no_match':
+      return <Line>{noResultsLine(data.query)}</Line>;
     default:
       return <Line>{NOTHING_TO_ADD_LINE}</Line>;
   }
@@ -218,11 +254,15 @@ function Results({
               <CandidateRowContent
                 candidate={asCandidate(r, searchId)}
                 thumbSrc={`/api/discogs/searches/${encodeURIComponent(searchId)}/thumb/${r.releaseId}`}
+                alreadyListed={r.alreadyListed}
               />
             </label>
           );
         })}
       </RadioGroup>
+      {data.totalCount > DIALOG_RESULTS_MAX ? (
+        <p className="text-xs text-muted-foreground">{MORE_RESULTS_LINE}</p>
+      ) : null}
     </div>
   );
 }
@@ -454,6 +494,9 @@ export function DiscogsSearchDialog({
             {`Couldn't start the search: ${startError}.`}
           </p>
         ) : null}
+        <p role="status" aria-live="polite" className="sr-only">
+          {searchId ? searchAnnouncement(query.data) : ''}
+        </p>
         <div className="max-h-[50vh] min-h-40 overflow-y-auto">
           <Results
             searchId={searchId}
