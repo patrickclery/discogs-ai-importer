@@ -178,3 +178,37 @@ export function clearSecret(key: SecretKey): void {
   delete next[key];
   writeFileMap(file, next);
 }
+
+// updateSecretsFile and readSecretsFileKey exist only for
+// src/server/discogs/auth.ts: the OAuth token keys live in the same file but
+// are never part of SECRET_KEYS, so the editable credentials form never lists
+// them (RESEARCH Pattern 1).
+
+/**
+ * Synchronous read-modify-write of the secrets file (temp + rename, 0600).
+ * The mutator gets a copy; returning null or an unchanged map writes nothing.
+ */
+export function updateSecretsFile(
+  mutate: (current: Record<string, string>) => Record<string, string> | null,
+): void {
+  const file = secretsFile();
+  const current = readFileMap(file);
+  const next = mutate({ ...current });
+  if (next === null) return;
+  const keys = new Set([...Object.keys(current), ...Object.keys(next)]);
+  let changed = false;
+  for (const k of keys) {
+    if (current[k] !== next[k]) {
+      changed = true;
+      break;
+    }
+  }
+  if (!changed) return;
+  writeFileMap(file, next);
+}
+
+/** One raw value from the secrets file (no env override), or null. */
+export function readSecretsFileKey(name: string): string | null {
+  const v = readFileMap(secretsFile())[name];
+  return v ? v : null;
+}
