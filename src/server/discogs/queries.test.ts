@@ -326,6 +326,36 @@ describe('fieldsChanged (D-14)', () => {
     expect(changed(spineIds[2])).toBe(false);
   });
 
+  // Nyquist gap audit (WR-01): fieldsChanged must use the same baseline as
+  // the enqueue (the latest auto/again search not in not_connected,
+  // auth_failed or skipped). it.fails while WR-01 is open.
+  it.fails('WR-01: a not_connected latest search over an older done one still compares against the done one', async () => {
+    const { spineIds } = await orphanScenario();
+    const id = spineIds[0];
+    searchNow(id, 'auto');
+    updateSpineField(id, 'title', 'Changed After Search');
+    searchNow(id, 'auto', 'not_connected');
+    // The candidates on screen came from the done search's inputs.
+    expect(changed(id)).toBe(true);
+  });
+
+  it.fails('WR-01: an auth_failed latest search is no baseline, like in the enqueue', async () => {
+    const { spineIds } = await orphanScenario();
+    const id = spineIds[1];
+    searchNow(id, 'auto');
+    updateSpineField(id, 'title', 'Changed After Search');
+    const db = getDb().$client;
+    const inputs = loadSpineInputs(db, id);
+    const again = createSearch(db, {
+      spineId: id,
+      kind: 'again',
+      inputs,
+      inputHash: inputHash(inputs),
+    });
+    finishSearch(db, again, { status: 'auth_failed' });
+    expect(changed(id)).toBe(true);
+  });
+
   it('a latest search that never reached Discogs is no baseline', async () => {
     const { spineIds } = await orphanScenario();
     searchNow(spineIds[0], 'auto', 'not_connected');

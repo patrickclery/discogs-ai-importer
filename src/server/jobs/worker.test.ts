@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
 
@@ -20,6 +23,11 @@ vi.mock('./queue', async (importOriginal) => {
   };
 });
 
+import { clearAuthInvalid, saveDiscogsAuth } from '../discogs/auth';
+import { resetDiscogsGateForTests } from '../discogs/gate';
+import { createSearch, setSearchJob } from '../discogs/store';
+import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
+import { runSearchSpine } from './handlers/search-spine';
 import { claimNext, enqueue, recoverRunningJobs } from './queue';
 import { JobDeferredError, type JobHandler } from './types';
 import {
@@ -245,5 +253,110 @@ describe('429 deferral and the lane gate (D-06, RESEARCH Pattern 3)', () => {
     expect(until).toBeGreaterThan(Date.now());
     expect(laneWaitMs('discogs', Date.now(), laneGates)).toBeGreaterThan(9000);
     resetDiscogsGateForTests();
+  });
+});
+
+// Nyquist gap audit (WR-02, D-06): a 429 from a route (Test connection,
+// Connect, paste-code) pauses the shared gate while a search_spine job is
+// between cascade stages. The job must defer, never time out on the pause
+// and spend an attempt. it.fails while WR-02 is open.
+describe('a rate-limit pause during a running search (WR-02)', () => {
+  useTempDataDir();
+  let dir = '';
+  const names = [
+    'SECRETS_FILE',
+    'DISCOGS_API_BASE',
+    ...Object.values(SECRET_ENV_NAMES),
+  ];
+  const saved: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    for (const n of names) {
+      saved[n] = process.env[n];
+      delete process.env[n];
+    }
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dai-worker-wr02-'));
+    process.env.SECRETS_FILE = path.join(dir, 'secrets.json');
+    saveSecrets({
+      discogsConsumerKey: 'CANARYDISCOGSKEY-0123456789wxyz',
+      discogsConsumerSecret: 'CANARYDISCOGSSECRET-0123456789abcd',
+    });
+    saveDiscogsAuth({
+      token: 'CANARYTOKEN-0123456789efgh',
+      tokenSecret: 'CANARYTOKENSECRET-0123456789ijkl',
+      username: 'fake-owner',
+    });
+  });
+  afterEach(() => {
+    clearAuthInvalid();
+    for (const n of names) {
+      if (saved[n] === undefined) delete process.env[n];
+      else process.env[n] = saved[n];
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it.fails('WR-02: a pause longer than the job timeout defers the job instead of failing an attempt', async () => {
+    const db = getDb().$client;
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO photos (id, sha256, original_name, mime, bytes,
+         original_path, created_at, updated_at)
+       VALUES ('photo-1', 'abc', 'shelf.jpg', 'image/jpeg', 1, 'photos/x.jpg',
+         ?, ?)`,
+    ).run(now, now);
+    db.prepare(
+      `INSERT INTO spines (id, photo_id, state, created_at, updated_at)
+       VALUES ('spine-1', 'photo-1', 'active', ?, ?)`,
+    ).run(now, now);
+    const searchId = createSearch(db, {
+      spineId: 'spine-1',
+      kind: 'auto',
+      inputs: {
+        artist: 'Nova Lane',
+        title: 'Blue Hour',
+        catno: 'TR-200',
+        rawText: 'Nova Lane - Blue Hour TR-200',
+      },
+      inputHash: 'hash-1',
+    });
+    const job = enqueue({
+      lane: 'discogs',
+      type: 'search_spine',
+      payload: { searchId },
+      dedupeKey: 'search:auto:spine-1:hash-1',
+    });
+    setSearchJob(db, searchId, job.id);
+
+    // Real clock: the gate's sleep is the one the job's timeout aborts.
+    const gate = resetDiscogsGateForTests();
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls += 1;
+      // A route's 429 pauses the shared gate for 120 s mid-cascade.
+      gate.pause(120_000);
+      return new Response(
+        JSON.stringify({
+          pagination: { items: 0, page: 1, pages: 0, per_page: 10 },
+          results: [],
+        }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+    const search: JobHandler = {
+      timeoutMs: 300,
+      run: (payload, ctx) =>
+        runSearchSpine(payload, ctx, { fetch: { fetchImpl, gate } }),
+    };
+
+    const res = await processNext('discogs', {
+      handlers: { search_spine: search },
+      abortGraceMs: 1000,
+    });
+    expect(calls).toBe(1);
+    expect(res).toBe('deferred');
+    const row = db
+      .prepare('SELECT status, attempts FROM jobs WHERE id = ?')
+      .get(job.id) as { status: string; attempts: number };
+    expect(row.status).toBe('queued');
   });
 });

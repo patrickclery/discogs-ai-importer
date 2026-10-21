@@ -119,4 +119,37 @@ describe('GET /api/discogs/searches/{id}/thumb/{releaseId}', () => {
     expect(res.headers.get('x-content-type-options')).toBe('nosniff');
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('an uncached cover is fetched once from the stored URL only, cached, then served from cache', async () => {
+    seedSearch('s-release', 'release', [result(1001, COVER)]);
+    const jpeg = await sharp({
+      create: { width: 16, height: 16, channels: 3, background: '#933' },
+    })
+      .jpeg()
+      .toBuffer();
+    fetchSpy.mockImplementation(
+      async () =>
+        new Response(new Uint8Array(jpeg), {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        }),
+    );
+    const res = await thumb('s-release', '1001');
+    expect(res.status).toBe(307);
+    const rel = `discogs-thumbs/${thumbKey(COVER)}.webp`;
+    expect(res.headers.get('location')).toBe(`/api/files/${rel}`);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0][0])).toBe(COVER);
+    expect(fs.existsSync(path.join(root(), rel))).toBe(true);
+    const again = await thumb('s-release', '1001');
+    expect(again.status).toBe(307);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('a cover the image host refuses is a 404, not a redirect', async () => {
+    seedSearch('s-manual', 'manual', [result(1001, COVER)]);
+    const res = await thumb('s-manual', '1001');
+    expect(res.status).toBe(404);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
 });

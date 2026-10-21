@@ -12,9 +12,11 @@ import {
 import { useTempDataDir } from '../../../../test/helpers/temp-data-dir';
 import { getDb } from '../../db/client';
 import type { JobRow } from '../../db/schema';
+import { saveDiscogsAuth } from '../../discogs/auth';
 import type { ImageKind } from '../../images/normalize';
 import { ingestUpload } from '../../scan/ingest';
 import { listSpines } from '../../scan/queries';
+import { saveSecrets } from '../../secrets';
 import { reasonFor, type ScanErrorKind } from '../../vision/reasons';
 import type { JobContext } from '../types';
 import { runScanPhoto } from './scan-photo';
@@ -151,6 +153,55 @@ describe('runScanPhoto', () => {
       expect(s.crop && s.crop.width > s.crop.height).toBe(true);
       for (const f of s.fields) expect(f.aiValue).toBe(f.value);
     }
+  });
+
+  it('a finished scan queues one Discogs auto search per CD spine when connected (D-08)', async () => {
+    const previous = process.env.SECRETS_FILE;
+    const secretsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dai-scan-dc-'));
+    process.env.SECRETS_FILE = path.join(secretsDir, 'secrets.json');
+    try {
+      saveSecrets({
+        discogsConsumerKey: 'CANARYDISCOGSKEY-0123456789wxyz',
+        discogsConsumerSecret: 'CANARYDISCOGSSECRET-0123456789abcd',
+      });
+      saveDiscogsAuth({
+        token: 'CANARYTOKEN-0123456789efgh',
+        tokenSecret: 'CANARYTOKENSECRET-0123456789ijkl',
+        username: 'fake-owner',
+      });
+      await runScanPhoto({ photoId, runId }, ctx());
+      expect(runRow().status).toBe('done');
+      const db = getDb().$client;
+      const searched = db
+        .prepare(
+          `SELECT s.spine_id, j.type, j.lane FROM discogs_searches s
+           JOIN jobs j ON j.id = s.job_id
+           WHERE s.kind = 'auto' AND s.status = 'queued'`,
+        )
+        .all() as { spine_id: string; type: string; lane: string }[];
+      expect(searched).toHaveLength(layout.spines.length);
+      expect(new Set(searched.map((r) => r.spine_id))).toEqual(
+        new Set(listSpines().map((s) => s.id)),
+      );
+      for (const r of searched) {
+        expect([r.lane, r.type]).toEqual(['discogs', 'search_spine']);
+      }
+    } finally {
+      if (previous === undefined) delete process.env.SECRETS_FILE;
+      else process.env.SECRETS_FILE = previous;
+      fs.rmSync(secretsDir, { recursive: true, force: true });
+    }
+  });
+
+  it('a finished scan queues no Discogs search while not connected', async () => {
+    await runScanPhoto({ photoId, runId }, ctx());
+    expect(runRow().status).toBe('done');
+    const n = (
+      getDb()
+        .$client.prepare('SELECT COUNT(*) AS n FROM discogs_searches')
+        .get() as { n: number }
+    ).n;
+    expect(n).toBe(0);
   });
 
   it('does not spawn when the claim is no longer current', async () => {

@@ -2,11 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { orphanScenario } from '../../../test/helpers/scan-runs';
+import { fieldOf, orphanScenario } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
-import { releaseDedupeKey } from '../jobs/queue';
+import { runSearchSpine } from '../jobs/handlers/search-spine';
+import { claimNext, releaseDedupeKey } from '../jobs/queue';
 import { updateSpineField } from '../scan/fields';
+import { reattachSpine } from '../scan/orphans';
 import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
 import {
   clearAuthInvalid,
@@ -20,6 +22,7 @@ import {
   enqueueExplicitSearch,
   enqueueMissingSearches,
 } from './enqueue';
+import { resetDiscogsGateForTests } from './gate';
 import { finishSearch } from './store';
 
 // Every automatic enqueue point (D-08, RESEARCH Pattern 5): one search per
@@ -403,6 +406,99 @@ describe('discogs enqueue', () => {
         enqueueExplicitSearch(db, { spineId: sc.cd[2], kind: 'again' }).status,
       ).toBe('ok');
       expect(explicitSearches(sc.cd[2])).toHaveLength(1);
+    });
+  });
+
+  // Nyquist gap audit (Phase 3, CR-01 / WR-01). These assert the CORRECT
+  // behaviour from 03-REVIEW.md; they are it.fails while the open findings
+  // stand, and turn red (flip to it) once the fix lands.
+  describe('skipped searches and the single baseline rule (CR-01, WR-01)', () => {
+    /** Ends a queued auto search skipped and releases its key (the CR-01 fix). */
+    function endSkippedReleased(spineId: string): void {
+      const db = getDb().$client;
+      const [s] = autoSearches(spineId).filter((r) => r.status === 'queued');
+      expect(s).toBeDefined();
+      finishSearch(db, s.id, { status: 'skipped' });
+      db.prepare("UPDATE jobs SET status = 'succeeded' WHERE id = ?").run(
+        s.job_id,
+      );
+      releaseDedupeKey(s.job_id);
+    }
+
+    it.fails('CR-01: the backfill re-picks a spine whose latest search ended skipped', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+      endSkippedReleased(sc.cd[0]);
+      enqueueMissingSearches({ includeAuthFailed: false });
+      expect(autoSearches(sc.cd[0]).map((r) => r.status)).toEqual([
+        'skipped',
+        'queued',
+      ]);
+    });
+
+    it.fails('CR-01: a skipped latest search is no baseline for enqueueAutoSearch', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+      endSkippedReleased(sc.cd[0]);
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+    });
+
+    it.fails('CR-01 end to end: auto queued, spine orphaned, job runs, re-attach, a new auto search is queued', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      // The orphan's auto search was queued before the re-scan orphaned it.
+      expect(enqueueAutoSearch(db, sc.orphanId)).toBe(true);
+      const job = claimNext('discogs');
+      if (!job) throw new Error('no job claimed');
+      const [queued] = autoSearches(sc.orphanId);
+      const fetchImpl = (async () => {
+        throw new Error('no request expected');
+      }) as unknown as typeof fetch;
+      await runSearchSpine(
+        { searchId: queued.id },
+        { job, signal: new AbortController().signal, isCurrent: () => true },
+        { fetch: { fetchImpl, gate: resetDiscogsGateForTests() } },
+      );
+      expect(autoSearches(sc.orphanId).map((r) => r.status)).toEqual([
+        'skipped',
+      ]);
+      expect(reattachSpine(sc.orphanId, sc.vId).status).toBe('ok');
+      // The lease-tick safety net (or any later enqueue point) must queue it.
+      enqueueMissingSearches({ includeAuthFailed: false });
+      expect(autoSearches(sc.orphanId).map((r) => r.status)).toEqual([
+        'skipped',
+        'queued',
+      ]);
+    });
+
+    it.fails('WR-01: a backfill no-op (baseline already equals the current inputs) takes no write lock', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      enqueueMissingSearches({ includeAuthFailed: false });
+      endSearch(sc.cd[0], 'done');
+      const original = fieldOf(sc.cd[0], 'title').value ?? '';
+      updateSpineField(sc.cd[0], 'title', 'Some Other Title');
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+      endSearch(sc.cd[0], 'not_connected');
+      updateSpineField(sc.cd[0], 'title', original);
+      let transactions = 0;
+      const counted = new Proxy(db, {
+        get(target, prop) {
+          if (prop === 'transaction') transactions += 1;
+          const v = Reflect.get(target, prop);
+          return typeof v === 'function' ? v.bind(target) : v;
+        },
+      });
+      expect(
+        enqueueMissingSearches({ includeAuthFailed: false }, counted),
+      ).toBe(0);
+      expect(transactions).toBe(0);
     });
   });
 });

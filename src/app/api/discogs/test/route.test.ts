@@ -34,14 +34,21 @@ vi.mock('@/server/discogs/client', async (importOriginal) => {
   };
 });
 
+import { getDb } from '@/server/db/client';
 import {
+  clearAuthInvalid,
   isAuthInvalid,
   markAuthInvalid,
   saveDiscogsAuth,
 } from '@/server/discogs/auth';
 import { discogsFetch } from '@/server/discogs/client';
+import { enqueueMissingSearches } from '@/server/discogs/enqueue';
 import { resetDiscogsGateForTests } from '@/server/discogs/gate';
+import { finishSearch } from '@/server/discogs/store';
+import { releaseDedupeKey } from '@/server/jobs/queue';
 import { SECRET_ENV_NAMES, saveSecrets } from '@/server/secrets';
+import { orphanScenario } from '../../../../../test/helpers/scan-runs';
+import { useTempDataDir } from '../../../../../test/helpers/temp-data-dir';
 import { POST } from './route';
 
 // POST /api/discogs/test (D-01, T-03-10, T-03-11): JSON only (415), 409
@@ -201,5 +208,79 @@ describe('POST /api/discogs/test', () => {
     const { body } = await call();
     expect(body).toMatchObject({ ok: false, kind: 'other' });
     expect((body as { reason: string }).reason.length).toBeLessThanOrEqual(160);
+  });
+});
+
+// Nyquist gap audit (WR-04): a passing Test connection clears Reconnect
+// needed, so the spines a revoked sign-in left auth_failed must be queued
+// again, as finishing a connect does. it.fails while WR-04 is open.
+describe('POST /api/discogs/test re-queues auth_failed spines (WR-04)', () => {
+  useTempDataDir();
+  let dir = '';
+  const names = ['SECRETS_FILE', ...Object.values(SECRET_ENV_NAMES)];
+  const saved: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const n of names) {
+      saved[n] = process.env[n];
+      delete process.env[n];
+    }
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dai-discogs-test-wr04-'));
+    process.env.SECRETS_FILE = path.join(dir, 'secrets.json');
+    saveSecrets({
+      discogsConsumerKey: CANARY_KEY,
+      discogsConsumerSecret: CANARY_SECRET,
+    });
+    let t = 1_800_000_000_000;
+    resetDiscogsGateForTests({
+      now: () => t,
+      sleep: async (ms: number) => {
+        t += ms;
+      },
+    });
+    stub.respond = null;
+  });
+
+  afterEach(() => {
+    clearAuthInvalid();
+    for (const n of names) {
+      if (saved[n] === undefined) delete process.env[n];
+      else process.env[n] = saved[n];
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it.fails('WR-04: a passing test queues a new search for each auth_failed spine', async () => {
+    const sc = await orphanScenario();
+    connect();
+    const db = getDb().$client;
+    expect(enqueueMissingSearches({ includeAuthFailed: true })).toBeGreaterThan(
+      0,
+    );
+    // A 401 ended every queued search auth_failed (search_spine's path).
+    const queued = db
+      .prepare(
+        "SELECT id, job_id FROM discogs_searches WHERE status = 'queued'",
+      )
+      .all() as { id: string; job_id: string }[];
+    for (const q of queued) {
+      finishSearch(db, q.id, { status: 'auth_failed' });
+      db.prepare("UPDATE jobs SET status = 'succeeded' WHERE id = ?").run(
+        q.job_id,
+      );
+      releaseDedupeKey(q.job_id);
+    }
+    markAuthInvalid();
+    stub.respond = () => json(200, { id: 1, username: 'fake-owner' });
+    const { body } = await call();
+    expect(body).toEqual({ ok: true, username: 'fake-owner' });
+    expect(isAuthInvalid()).toBe(false);
+    const requeued = db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM discogs_searches
+         WHERE status = 'queued' AND spine_id = @spineId`,
+      )
+      .get({ spineId: sc.spineIds[0] }) as { n: number };
+    expect(requeued.n).toBe(1);
   });
 });

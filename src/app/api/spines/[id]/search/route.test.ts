@@ -180,6 +180,20 @@ describe('POST /api/spines/{id}/search', () => {
     expect(searchCount(spineIds[0])).toBe(0);
   });
 
+  // Nyquist gap audit (WR-05): while a Reconnect is needed the card shows
+  // Discogs as connected, so the refusal must say to reconnect, not to
+  // connect. it.fails while WR-05 is open.
+  it.fails('WR-05: 409 while Reconnect is needed tells the owner to reconnect', async () => {
+    const { spineIds } = await orphanScenario();
+    connect();
+    markAuthInvalid();
+    const res = await search(spineIds[0], { mode: 'again' });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { message: string };
+    expect(body.message).toMatch(/reconnect/i);
+    expect(searchCount(spineIds[0])).toBe(0);
+  });
+
   it('409 busy while the latest search is queued or running', async () => {
     const { spineIds } = await orphanScenario();
     connect();

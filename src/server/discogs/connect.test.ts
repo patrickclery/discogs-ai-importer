@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { orphanScenario } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 
 vi.mock('next/server', async (importOriginal) => ({
@@ -46,6 +47,7 @@ vi.mock('@/server/discogs/client', async (importOriginal) => {
 
 import { z } from 'zod';
 import { POST as finish } from '@/app/api/discogs/finish/route';
+import { getDb } from '@/server/db/client';
 import {
   clearPendingConnect,
   getDiscogsAuth,
@@ -199,6 +201,44 @@ describe('discogs connect', () => {
         username: 'fake-owner',
       });
       expect(getSetting('discogs_exchange_form', z.string())).toBe('standard');
+    });
+
+    it('connecting queues the backfill: one auto search per already-scanned active CD spine (D-08)', async () => {
+      const sc = await orphanScenario();
+      const db = getDb().$client;
+      const count = (sql: string) => (db.prepare(sql).get() as { n: number }).n;
+      expect(count('SELECT COUNT(*) AS n FROM discogs_searches')).toBe(0);
+      stub.queue.push(ACCESS_OK, IDENTITY_OK);
+      await completeConnect({
+        oauthToken: RT,
+        verifier: CODE,
+        pending: pendingEntry(),
+        via: 'callback',
+      });
+      const activeCd = count(
+        `SELECT COUNT(*) AS n FROM spines s
+         JOIN spine_detections d ON d.id = s.current_detection_id
+         WHERE s.state = 'active' AND d.media_kind = 'cd'`,
+      );
+      expect(activeCd).toBeGreaterThan(0);
+      const searched = (
+        db
+          .prepare(
+            `SELECT spine_id FROM discogs_searches
+             WHERE kind = 'auto' AND status = 'queued'`,
+          )
+          .all() as { spine_id: string }[]
+      ).map((r) => r.spine_id);
+      expect(searched).toHaveLength(activeCd);
+      expect(searched).not.toContain(sc.orphanId);
+      expect(searched).not.toContain(sc.supersededId);
+      expect(
+        count(
+          "SELECT COUNT(*) AS n FROM jobs WHERE lane = 'discogs' AND type = 'search_spine'",
+        ),
+      ).toBe(activeCd);
+      // Only the exchange and identity: the backfill only queues.
+      expect(stub.sent).toHaveLength(2);
     });
 
     it('retries the exchange once with the docs signature after a 401', async () => {
