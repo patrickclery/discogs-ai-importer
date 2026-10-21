@@ -1,11 +1,15 @@
+import { CircleCheck, TriangleAlert } from 'lucide-react';
 import {
   CONNECT_BUTTON_ID,
   ConnectDiscogsButton,
 } from '@/components/connect-discogs-button';
 import { DiscogsCredentials } from '@/components/secret-field';
+import { TestDiscogsButton } from '@/components/test-discogs-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -19,14 +23,61 @@ import type { SecretStatus } from '@/server/secrets';
 // It is rendered from the consumer-key statuses and getDiscogsConnection()
 // only: a username and booleans. No token or secret ever reaches it (D-02).
 
+function ConnectionBadge({
+  connection,
+}: {
+  connection: DiscogsConnection | null;
+}) {
+  if (connection?.connected && connection.needsReconnect) {
+    return (
+      <Badge variant="outline">
+        <TriangleAlert aria-hidden="true" className="text-warning" />
+        Reconnect needed
+      </Badge>
+    );
+  }
+  if (connection?.connected) {
+    return (
+      <Badge variant="outline">
+        <CircleCheck aria-hidden="true" className="text-success" />
+        Connected
+      </Badge>
+    );
+  }
+  return <Badge variant="outline">Not connected</Badge>;
+}
+
+function ConnectedSection({ username }: { username: string }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-sm">
+          {'Connected as '}
+          <a
+            href={`https://www.discogs.com/user/${encodeURIComponent(username)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-primary underline underline-offset-4"
+          >
+            {username}
+          </a>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {
+            'Matches appear on the Spines page as each CD is looked up. Large batches take a few minutes, because Discogs allows about one lookup per second.'
+          }
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <TestDiscogsButton />
+      </div>
+    </div>
+  );
+}
+
 function AccountSection({ connection }: { connection: DiscogsConnection }) {
   if (connection.connected && connection.username) {
-    return (
-      <p className="text-sm">
-        {'Connected as '}
-        <span className="font-medium">{connection.username}</span>
-      </p>
-    );
+    return <ConnectedSection username={connection.username} />;
   }
   return (
     <div className="flex flex-col gap-4">
@@ -56,6 +107,9 @@ export function DiscogsCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Discogs</CardTitle>
+        <CardAction>
+          <ConnectionBadge connection={connection} />
+        </CardAction>
         <CardDescription>
           {
             'Connect your Discogs account so the app can look up each CD on Discogs. The consumer key and secret come from your Discogs app at '

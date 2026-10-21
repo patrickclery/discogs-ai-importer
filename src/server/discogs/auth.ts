@@ -129,6 +129,11 @@ export function markAuthInvalid(): void {
   g.__discogsAuthInvalid = true;
 }
 
+/** A signed request with the stored token worked again (Test connection). */
+export function clearAuthInvalid(): void {
+  g.__discogsAuthInvalid = false;
+}
+
 export function isAuthInvalid(): boolean {
   return g.__discogsAuthInvalid === true;
 }

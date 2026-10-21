@@ -8,7 +8,8 @@
 // docs-form access-token signature still connects after one retry, and an
 // identity failure ends at error. Nothing but connected stores a token.
 // Plan 03-02: (a) the Settings card shows Connect Discogs before and
-// "Connected as fake-owner" after (b). Step letters are stable across
+// "Connected as fake-owner" after (b), and (j0) Test connection signs one
+// /oauth/identity with the stored sign-in. Step letters are stable across
 // plans: (g) is the paste-code path (Plan 03-04).
 // Run: node scripts/verify-discogs.ts   (VERIFY_SKIP_BUILD=1 reuses the build)
 // It builds and starts from NEXT_DIST_DIR, default .next/verify, so a
@@ -179,6 +180,47 @@ export async function stepConnect(ctx: Ctx): Promise<ConnectTrace> {
   );
   check(`connected; callback ${expected}`);
   return trace;
+}
+
+function identityRequests(ctx: Ctx): FakeLogEntry[] {
+  return fakeLog(ctx).filter(
+    (e) =>
+      e.surface === 'api' && e.method === 'GET' && e.path === '/oauth/identity',
+  );
+}
+
+// (j0) Test connection: one signed /oauth/identity with the stored sign-in.
+export async function stepTestConnection(ctx: Ctx): Promise<void> {
+  step('(j0) Test connection signs one /oauth/identity and names the owner');
+  const before = identityRequests(ctx).length;
+  const res = await fetch(`${ctx.baseUrl}/api/discogs/test`, {
+    method: 'POST',
+    headers: { origin: ctx.origin, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  const text = await res.text();
+  assertNoLeak('POST /api/discogs/test body', text);
+  assert(res.status === 200, `POST /api/discogs/test answered ${res.status}`);
+  const body = JSON.parse(text) as { ok?: unknown; username?: unknown };
+  assert(
+    body.ok === true && body.username === 'fake-owner',
+    `POST /api/discogs/test answered ${text}`,
+  );
+  const sent = identityRequests(ctx).slice(before);
+  assert(
+    sent.length === 1,
+    `the test sent ${sent.length} /oauth/identity requests, expected 1`,
+  );
+  const [e] = sent;
+  assert(
+    e.userAgent === PROJECT_USER_AGENT,
+    `the test sent User-Agent ${e.userAgent}`,
+  );
+  assert(
+    e.signatureMethod === 'PLAINTEXT' && e.oauthParams.includes('oauth_token'),
+    'the test /oauth/identity request was not signed with the stored token',
+  );
+  check('{ ok: true, username: fake-owner }; one signed /oauth/identity');
 }
 
 // (c) The three token keys are in the temp secrets file, mode 0600.
@@ -380,6 +422,7 @@ runMain('verify-discogs', async (onCleanup) => {
   await stepSettingsBefore(ctx);
   await stepConnect(ctx);
   await stepSettingsAfter(ctx);
+  await stepTestConnection(ctx);
   stepSecretsFile(ctx);
   stepUserAgent(ctx);
   await stepDenied(ctx);
