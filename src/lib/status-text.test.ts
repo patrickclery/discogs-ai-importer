@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { StatusResponse } from './status-types';
 import {
   discogsTooltipLines,
   headerInputs,
   headerParts,
   partsText,
 } from './status-text';
+import type { StatusResponse } from './status-types';
 
 // Header status text (UI-SPEC "Header status indicator", D-07, Pitfall 8).
 // Numbers are returned as numbers so the component renders them in Num.

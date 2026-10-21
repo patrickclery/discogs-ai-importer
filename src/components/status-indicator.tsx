@@ -7,6 +7,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  discogsTooltipLines,
+  headerInputs,
+  headerParts,
+  type Part,
+} from '@/lib/status-text';
 import type {
   StatusJobStatus,
   StatusLane,
@@ -14,7 +20,7 @@ import type {
 } from '@/lib/status-types';
 
 const POLL_MS = 5000;
-const LANES: StatusLane[] = ['anthropic', 'discogs'];
+const COUNTDOWN_MS = 1000;
 
 /** Fired by any client code that just changed job state (e.g. DevJobTrigger). */
 export const STATUS_REFRESH_EVENT = 'app:status-refresh';
@@ -37,11 +43,44 @@ function Num({ value }: { value: number }) {
   return <span className="font-mono tabular-nums">{value}</span>;
 }
 
+/** Text parts with every number in the mono tabular-nums Num. */
+function Parts({ parts }: { parts: Part[] }) {
+  return parts.map((p, i) =>
+    typeof p === 'number' ? (
+      // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
+      <Num key={i} value={p} />
+    ) : (
+      // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
+      <span key={i}>{p}</span>
+    ),
+  );
+}
+
 /**
- * Header worker status (D-17). Polls /api/status every 5 s by setTimeout
- * chaining (one request in flight at a time), pauses while the tab is hidden,
- * and refetches at once on the app:status-refresh window event.
- * Not an aria-live region: polling must not spam screen readers.
+ * Wall-clock ms, ticking once a second only while until is in the future
+ * (the paused countdown); the interval stops at until and on unmount.
+ */
+function useNowUntil(until: number | null): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    if (until === null || until <= Date.now()) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= until) clearInterval(id);
+    }, COUNTDOWN_MS);
+    return () => clearInterval(id);
+  }, [until]);
+  return now;
+}
+
+/**
+ * Header worker status (D-17, Phase 3 D-07). Polls /api/status every 5 s by
+ * setTimeout chaining (one request in flight at a time), pauses while the
+ * tab is hidden, and refetches at once on the app:status-refresh window
+ * event. Shows the Discogs backlog and a 429 pause with a client-side
+ * countdown. Not an aria-live region: polling must not spam screen readers.
  */
 export function StatusIndicator() {
   const [state, setState] = useState<State>({ kind: 'loading' });
@@ -102,6 +141,10 @@ export function StatusIndicator() {
     };
   }, []);
 
+  const pausedUntil =
+    state.kind === 'ok' ? (state.data.discogs?.pausedUntil ?? null) : null;
+  const now = useNowUntil(pausedUntil);
+
   let dot = 'bg-muted-foreground';
   let text: React.ReactNode;
   let tooltip: React.ReactNode;
@@ -114,43 +157,42 @@ export function StatusIndicator() {
     tooltip = "Couldn't reach /api/status. Retrying every 5 seconds.";
   } else {
     const { data } = state;
-    tooltip = LANES.map((lane) => (
-      <div key={lane}>
-        {lane} — <Num value={count(data, lane, 'queued')} /> queued,{' '}
-        <Num value={count(data, lane, 'running')} /> running,{' '}
-        <Num value={count(data, lane, 'failed')} /> failed
-      </div>
-    ));
+    const input = headerInputs(data, now);
+    const discogsLines = discogsTooltipLines({
+      connected: data.discogs?.connected ?? false,
+      d: input.d,
+      failedSpines: data.discogs?.failedSpines ?? 0,
+      pausedSeconds: input.pausedSeconds,
+    });
+    tooltip = (
+      <>
+        <div>
+          anthropic — <Num value={count(data, 'anthropic', 'queued')} /> queued,{' '}
+          <Num value={count(data, 'anthropic', 'running')} /> running,{' '}
+          <Num value={count(data, 'anthropic', 'failed')} /> failed
+        </div>
+        {discogsLines.map((line) => (
+          <div key={String(line[0])}>
+            <Parts parts={line} />
+          </div>
+        ))}
+      </>
+    );
     if (!data.worker) {
       dot = 'bg-destructive';
       text = 'Worker stopped';
     } else {
-      const active = LANES.reduce(
-        (n, lane) =>
-          n + count(data, lane, 'queued') + count(data, lane, 'running'),
-        0,
-      );
-      const failed = LANES.reduce(
-        (n, lane) => n + count(data, lane, 'failed'),
-        0,
-      );
+      const parts = headerParts(input);
       dot =
-        active > 0
+        input.a + input.d > 0
           ? 'bg-success animate-pulse motion-reduce:animate-none'
           : 'bg-success';
       text = (
         <>
-          {active > 0 ? (
-            <>
-              Working · <Num value={active} /> queued
-            </>
-          ) : (
-            'Worker idle'
-          )}
-          {failed > 0 ? (
+          <Parts parts={parts.main} />
+          {parts.failed ? (
             <span className="text-destructive">
-              {' '}
-              · <Num value={failed} /> failed
+              <Parts parts={parts.failed} />
             </span>
           ) : null}
         </>

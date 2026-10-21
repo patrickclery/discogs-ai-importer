@@ -17,4 +17,15 @@ export type StatusResponse = {
   jobs: Record<StatusLane, Record<StatusJobStatus, number>>;
   /** Current worker_lease holder (any process on this DATA_DIR), or null. */
   lease: { bootId: string; pid: number; heartbeatAt: number } | null;
+  /**
+   * Discogs part (D-07): backlog is queued + running on the discogs lane,
+   * failedSpines the active or orphaned spines whose latest automatic
+   * search failed; the pause field is the epoch ms a 429 pause ends, or null.
+   */
+  discogs: {
+    connected: boolean;
+    backlog: number;
+    pausedUntil: number | null;
+    failedSpines: number;
+  };
 };
