@@ -16,7 +16,9 @@
 // shows the "Code from Discogs" field only while that connect is pending,
 // (j) no on-screen Settings text uses a technical word in the not
 // connected, connected and reconnect-needed states (and on each ?discogs=
-// result), and (k) Settings shows this server's own callback URL.
+// result), (k) Settings shows this server's own callback URL, and (i) no
+// page, RSC payload or route body carries the consumer secret, a token
+// secret or the verifier while pending or connected (D-02).
 // Run: node scripts/verify-discogs.ts   (VERIFY_SKIP_BUILD=1 reuses the build)
 // It builds and starts from NEXT_DIST_DIR, default .next/verify, so a
 // long-running `next start` on the default .next keeps working meanwhile.
@@ -482,6 +484,76 @@ export async function stepPasteCode(ctx: Ctx): Promise<void> {
   check('no Code from Discogs after connecting; a reused code is expired');
 }
 
+/** Fails when any needle appears in a body the app produced. */
+function assertNoneOf(label: string, text: string, needles: string[]): void {
+  assertNoLeak(label, text);
+  for (const needle of needles) {
+    assert(!text.includes(needle), `${label} contains a secret value`);
+  }
+}
+
+async function sweepPages(ctx: Ctx, needles: string[]): Promise<number> {
+  const gets: Array<[string, Record<string, string>]> = [
+    ['/settings', {}],
+    ['/settings', { RSC: '1' }],
+    ['/api/status', {}],
+  ];
+  for (const [route, headers] of gets) {
+    const res = await fetch(`${ctx.baseUrl}${route}`, { headers });
+    const text = await res.text();
+    const label = `GET ${route}${headers.RSC ? ' (RSC payload)' : ''}`;
+    assert(res.status === 200, `${label} answered ${res.status}`);
+    if (headers.RSC) {
+      assert(
+        (res.headers.get('content-type') ?? '').includes('text/x-component'),
+        `${label} is not an RSC payload`,
+      );
+    }
+    assertNoneOf(label, text, needles);
+  }
+  return gets.length;
+}
+
+// (i) Canary sweep: no secret reaches the browser (D-02, T-03-03).
+export async function stepCanarySweep(ctx: Ctx): Promise<void> {
+  step('(i) no page, RSC payload or route body carries a secret');
+  clearConnection(ctx);
+  let code = '';
+  try {
+    code = await startCodeConnect(ctx);
+  } finally {
+    await ctx.fake.control({ reset: true });
+  }
+  let swept = 1;
+  swept += await sweepPages(ctx, [code]);
+
+  const wrong = await postFinish(ctx, 'not-the-code-1111');
+  assertNoneOf('POST /api/discogs/finish (rejected)', wrong.text, [code]);
+  const ok = await postFinish(ctx, code);
+  assert(ok.status === 200, `the pasted code answered ${ok.status}`);
+  assertNoneOf('POST /api/discogs/finish (connected)', ok.text, [code]);
+  swept += 2;
+
+  const saved = readSecrets(ctx);
+  const needles = [
+    code,
+    saved.discogsOAuthToken,
+    saved.discogsOAuthTokenSecret,
+  ].filter(Boolean);
+  assert(needles.length === 3, 'the pasted code saved no tokens');
+  swept += await sweepPages(ctx, needles);
+  const test = await postJson(ctx, '/api/discogs/test');
+  assertNoneOf('POST /api/discogs/test', test.text, needles);
+  const busy = await fetch(`${ctx.baseUrl}/api/discogs/connect`, {
+    method: 'POST',
+    headers: { origin: ctx.origin, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  assertNoneOf('POST /api/discogs/connect', await busy.text(), needles);
+  swept += 2;
+  check(`${swept} responses, pending and connected: no secret, token or code`);
+}
+
 // (c) The three token keys are in the temp secrets file, mode 0600.
 export function stepSecretsFile(ctx: Ctx): void {
   step('(c) tokens saved to the temp secrets file, mode 0600');
@@ -691,6 +763,7 @@ runMain('verify-discogs', async (onCleanup) => {
   await stepPasteCode(ctx);
   await stepCallbackUrl(ctx);
   await stepPlainWords(ctx);
+  await stepCanarySweep(ctx);
   // (d) again: the extra connects above kept the User-Agent and PLAINTEXT.
   stepUserAgent(ctx);
 
