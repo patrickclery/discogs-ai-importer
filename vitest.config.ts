@@ -16,5 +16,6 @@ export default defineConfig({
     // better-sqlite3 is a native addon; forks isolate each file's handle.
     pool: 'forks',
     include: ['src/**/*.test.ts'],
+    setupFiles: ['test/setup/isolate-secrets.ts'],
   },
 });
