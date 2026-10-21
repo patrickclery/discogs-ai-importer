@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Discogs Match
 status: executing
-stopped_at: Completed 03-09-PLAN.md
-last_updated: "2026-10-21T05:24:46.555Z"
+stopped_at: Completed 03-10-PLAN.md
+last_updated: "2026-10-21T05:32:57.150Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 3 execution started
-state_head: 81d6db4e2d1a58c45e87346f092feae85ce5751b
+state_head: 9d611e133725d090dabca23db91f4784d5598ad8
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 29
+  completed_plans: 30
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 3 (Discogs Match) — EXECUTING
-Plan: 10 of 13
+Plan: 11 of 13
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 3 execution started
 
@@ -86,6 +86,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P07 | 10min | 2 tasks | 14 files |
 | Phase 03 P08 | 6 min | 1 tasks | 15 files |
 | Phase 03 P09 | 6min | 3 tasks | 12 files |
+| Phase 03 P10 | 6min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-08: Discogs summaries cover every listed spine (before the review filter) so discogsActive keeps polling for hidden spines
 - [Phase 03]: 03-09: candidates route lists only active/orphaned spines; unknown, superseded, dismissed share the 404 NOT_FOUND body
 - [Phase 03]: 03-09: Show all fetches ['discogs-candidates', spineId] only when opened; spinesRefetchInterval is the single /spines polling rule (fastest applicable wins)
+- [Phase 03]: fieldsChanged ignores a latest search that ended not_connected or skipped (it never reached Discogs)
+- [Phase 03]: Explicit searches (Search again/Retry) use dedupe key search:{searchId}; busy and state checks run inside the same IMMEDIATE transaction
 
 ### Pending Todos
 
@@ -191,6 +194,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T05:24:46.421Z
-Stopped at: Completed 03-09-PLAN.md
+Last session: 2026-10-21T05:32:57.015Z
+Stopped at: Completed 03-10-PLAN.md
 Resume file: None
