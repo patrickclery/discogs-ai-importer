@@ -1,6 +1,6 @@
 ---
 milestone: v1
-audited: 2026-10-21T20:30:00Z
+audited: 2026-10-21T22:00:00Z
 status: gaps_found
 scores:
   requirements: 20/28
@@ -66,21 +66,21 @@ gaps:
       verification_status: "missing"
       evidence: "Phase 4 not started; no instance ID storage"
   integration:
-    - "Forward risk (IMP-02, IMP-04): Discogs client read-only allowlist (src/server/discogs/client.ts:106-107) must be extended for add-to-collection"
+    - "Forward risk (IMP-02, IMP-04): Discogs client read-only allowlist (src/server/discogs/client.ts:106-107) must be extended for add-to-collection — allow that one endpoint only"
+    - "Forward risk (IMP-01..04): add-to-collection job must go through the Discogs lane gate and carry an idempotency key (repeat add creates a duplicate copy)"
+    - "Forward risk (REV-04, REV-05): review queue must exclude orphaned/merged spines the same way the CR-01 fix does"
   flows: []
 tech_debt:
   - phase: 01-foundation
     items:
       - "14 behavior-unverified UI truths (settings secret UX, Test Claude render, header status states, theme, 360px layout, error page) awaiting browser check"
       - "Prohibition sign-offs open: Next telemetry, Discogs secret never sent"
-      - "No 01-VALIDATION.md (Nyquist missing)"
   - phase: 02-shelf-scan
     items:
       - "WR-01: unmount-flush save fails silently (spine-field.tsx:131)"
       - "WR-02: no flush on pagehide/visibilitychange (field-commit.ts)"
       - "UAT re-runs pending for G-02-3 and G-02-5; UAT 8 and 11 never exercised"
       - "Backlog 999.1-999.4: deskew tilted spines, sticky filter bar, manual orphan/re-scan checks"
-      - "No 02-VALIDATION.md (Nyquist missing)"
   - phase: 03-discogs-match
     items:
       - "Re-verification needed after CR-01/WR-01..05 fixes (REVIEW-FIX marks CR-01 'requires human verification')"
@@ -89,11 +89,11 @@ tech_debt:
       - "IN-01 (info) open"
       - "429 backoff not observed live (A3); lane gate + handler pause sharing one gate proven only by unit tests"
 nyquist:
-  compliant_phases: ["03"]
+  compliant_phases: ["01", "02", "03"]
   partial_phases: []
   not_validated_phases: []
-  missing_phases: ["01", "02"]
-  overall: partial
+  missing_phases: []
+  overall: compliant
 ---
 
 # v1 Milestone Audit — Discogs AI Importer
@@ -119,18 +119,18 @@ REQUIREMENTS.md checkboxes agree with this (DISC-* and Phase 4 items unchecked).
 
 ## Integration (Phases 1–3)
 
-All cross-phase links are wired: worker ↔ Discogs lane gate, maintenance hook → backfill searches, scan finish → auto search, data folder → DB and `discogs-thumbs`, connect → backfill, and every API route has a UI caller. All six E2E flows complete (restart and data-folder copy checked statically). CR-01 confirmed closed in code; enqueue and search-spine tests 45/45.
+All cross-phase links are wired: worker ↔ Discogs lane gate, maintenance hook → backfill searches, scan finish → auto search, data folder → DB and `discogs-thumbs`, connect → backfill, and every API route has a UI caller. All six E2E flows complete (restart and data-folder copy checked statically). CR-01 confirmed closed in code. Re-audit 2026-10-21T22:00Z: no source changes since 8909d0f; full suite 938/938 tests pass.
 
-Forward risk for Phase 4: `src/server/discogs/client.ts:106-107` allows only GET plus the access-token POST; the add-to-collection POST will be refused until extended.
+Forward risk for Phase 4: `src/server/discogs/client.ts:106-107` allows only GET plus the access-token POST; the add-to-collection POST will be refused until extended. The new job must also use the Discogs lane gate with an idempotency key, and the review queue must skip orphaned/merged spines.
 
 ## Nyquist
 
 | Phase | VALIDATION.md | Compliant | Action |
 |-------|---------------|-----------|--------|
-| 01 | missing | — | `/gsd-validate-phase 1` |
-| 02 | missing | — | `/gsd-validate-phase 2` |
+| 01 | exists | true | — |
+| 02 | exists | true | — |
 | 03 | exists | true | — |
 
 ## Tech debt
 
-See frontmatter `tech_debt` (13 items across 3 phases).
+See frontmatter `tech_debt` (11 items across 3 phases).
