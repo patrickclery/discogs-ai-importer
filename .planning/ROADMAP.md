@@ -115,7 +115,7 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans:** 10/13 plans executed
+**Plans:** 11/13 plans executed
 
 Plans:
 **Wave 1**
@@ -141,7 +141,7 @@ Plans:
 - [x] 03-10-PLAN.md — Fields changed since last search, Search again and Retry search (wave 6)
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 03-11-PLAN.md — Search Discogs… dialog: pasted release link or number, master refusal, add as pinned manual candidate (wave 7)
+- [x] 03-11-PLAN.md — Search Discogs… dialog: pasted release link or number, master refusal, add as pinned manual candidate (wave 7)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 03-12-PLAN.md — Search Discogs… dialog: free-text search, result covers, error states, refusal tests, manual picks survive re-search (wave 8)
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
-| 3. Discogs Match | 10/13 | In Progress | - |
+| 3. Discogs Match | 11/13 | In Progress | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
 
 ## Backlog
