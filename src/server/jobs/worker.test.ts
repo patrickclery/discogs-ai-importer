@@ -21,8 +21,13 @@ vi.mock('./queue', async (importOriginal) => {
 });
 
 import { claimNext, enqueue, recoverRunningJobs } from './queue';
-import type { JobHandler } from './types';
-import { processNext, reapStrandedJobs, strandedAfterMs } from './worker';
+import { type JobHandler, JobDeferredError } from './types';
+import {
+  laneWaitMs,
+  processNext,
+  reapStrandedJobs,
+  strandedAfterMs,
+} from './worker';
 
 const T0 = 1_700_000_000_000;
 const ok: JobHandler = { timeoutMs: 1000, run: async () => {} };
@@ -132,5 +137,113 @@ describe('status writes and stranded jobs (WR-05)', () => {
       'running',
       'running',
     ]);
+  });
+});
+
+function job(id: string) {
+  return getDb()
+    .$client.prepare(
+      'SELECT status, attempts, run_after, last_error, locked_at FROM jobs WHERE id = ?',
+    )
+    .get(id) as {
+    status: string;
+    attempts: number;
+    run_after: number;
+    last_error: string | null;
+    locked_at: number | null;
+  };
+}
+
+describe('429 deferral and the lane gate (D-06, RESEARCH Pattern 3)', () => {
+  useTempDataDir();
+
+  it('a handler throwing JobDeferredError ends deferred: queued at runAfter, attempts unchanged, no failOrRetry', async () => {
+    const { id } = enqueue({ lane: 'discogs', type: 'slow', runAfter: T0 });
+    const slow: JobHandler = {
+      timeoutMs: 1000,
+      run: async () => {
+        throw new JobDeferredError(T0 + 60_000);
+      },
+    };
+    for (let i = 0; i < 4; i += 1) {
+      const now = i === 0 ? T0 : T0 + 60_000;
+      const res = await processNext('discogs', { now, handlers: { slow } });
+      expect(res).toBe('deferred');
+      expect(job(id)).toMatchObject({
+        status: 'queued',
+        attempts: 0,
+        run_after: T0 + 60_000,
+        locked_at: null,
+      });
+      expect(job(id).last_error).toMatch(/^deferred/);
+    }
+    expect(await processNext('discogs', { now: T0 + 59_999 })).toBe('idle');
+  });
+
+  it('a JobDeferredError from another class copy (HMR) is matched by name', async () => {
+    const { id } = enqueue({ lane: 'discogs', type: 'copy', runAfter: T0 });
+    const copy: JobHandler = {
+      timeoutMs: 1000,
+      run: async () => {
+        throw Object.assign(new Error('slow down'), {
+          name: 'JobDeferredError',
+          runAfter: T0 + 5000,
+        });
+      },
+    };
+    expect(await processNext('discogs', { now: T0, handlers: { copy } })).toBe(
+      'deferred',
+    );
+    expect(job(id)).toMatchObject({ status: 'queued', run_after: T0 + 5000 });
+  });
+
+  it('a 5xx-style plain error still goes through failOrRetry: 2 s, then 4 s, then failed at attempt 3', async () => {
+    const { id } = enqueue({ lane: 'discogs', type: 'down', runAfter: T0 });
+    const down: JobHandler = {
+      timeoutMs: 1000,
+      run: async () => {
+        throw new Error('Discogs GET /database/search answered 502');
+      },
+    };
+    expect(await processNext('discogs', { now: T0, handlers: { down } })).toBe(
+      'failed',
+    );
+    expect(job(id)).toMatchObject({
+      status: 'queued',
+      attempts: 1,
+      run_after: T0 + 2000,
+    });
+    const t1 = T0 + 2000;
+    await processNext('discogs', { now: t1, handlers: { down } });
+    expect(job(id)).toMatchObject({
+      status: 'queued',
+      attempts: 2,
+      run_after: t1 + 4000,
+    });
+    await processNext('discogs', { now: t1 + 4000, handlers: { down } });
+    expect(job(id)).toMatchObject({ status: 'failed', attempts: 3 });
+  });
+
+  it('laneWaitMs is the time left on a lane gate, and 0 with no gate, no pause or a past pause', () => {
+    const gates = { discogs: () => T0 + 500 };
+    expect(laneWaitMs('discogs', T0, gates)).toBe(500);
+    expect(laneWaitMs('discogs', T0 + 499, gates)).toBe(1);
+    expect(laneWaitMs('discogs', T0 + 500, gates)).toBe(0);
+    expect(laneWaitMs('discogs', T0 + 501, gates)).toBe(0);
+    expect(laneWaitMs('anthropic', T0, gates)).toBe(0);
+    expect(laneWaitMs('discogs', T0, { discogs: () => null })).toBe(0);
+    expect(laneWaitMs('discogs', T0, {})).toBe(0);
+  });
+
+  it('the discogs lane gate reads the shared pacing gate pause', async () => {
+    const { laneGates } = await import('./handlers');
+    const { resetDiscogsGateForTests } = await import('../discogs/gate');
+    const gate = resetDiscogsGateForTests();
+    expect(laneGates.discogs?.()).toBeNull();
+    gate.pause(10_000);
+    const until = laneGates.discogs?.() ?? 0;
+    expect(until).toBeGreaterThan(Date.now());
+    expect(laneWaitMs('discogs', Date.now(), laneGates)).toBeGreaterThan(9000);
+    resetDiscogsGateForTests();
   });
 });

@@ -9,11 +9,13 @@ import {
   claimNext,
   complete,
   countsByLaneStatus,
+  deferJob,
   enqueue,
   failJob,
   failOrRetry,
   listJobs,
   recoverRunningJobs,
+  releaseDedupeKey,
 } from './queue';
 import { JOB_STATUSES, type JobContext, type JobHandler, LANES } from './types';
 import { processNext } from './worker';
@@ -92,6 +94,7 @@ function rawJob(id: string) {
     locked_at: number | null;
     last_error: string | null;
     finished_at: number | null;
+    dedupe_key: string | null;
   };
 }
 
@@ -378,5 +381,99 @@ describe('noop handler (failTimes, writeFile)', () => {
       runNoop({ writeFile: '../escape.txt' }, ctx(1)),
     ).rejects.toThrow('path escapes DATA_DIR');
     expect(fs.existsSync(outside)).toBe(false);
+  });
+});
+
+describe('deferJob and releaseDedupeKey (D-06, RESEARCH Pattern 3)', () => {
+  useTempDataDir();
+
+  it('deferJob puts a running job back to queued at run_after, restores attempts and returns deferred', () => {
+    const { id } = enqueue({ lane: 'discogs', type: 'noop', runAfter: T0 });
+    const claimed = claimNext('discogs', T0);
+    expect(claimed?.attempts).toBe(1);
+    expect(deferJob(id, T0 + 60_000, 'deferred: 429', T0 + 5, 1)).toBe(
+      'deferred',
+    );
+    expect(rawJob(id)).toMatchObject({
+      status: 'queued',
+      attempts: 0,
+      run_after: T0 + 60_000,
+      locked_at: null,
+      last_error: 'deferred: 429',
+      finished_at: null,
+    });
+    expect(claimNext('discogs', T0 + 59_999)).toBeUndefined();
+    expect(claimNext('discogs', T0 + 60_000)?.attempts).toBe(1);
+  });
+
+  it('a 429 deferral never counts toward max_attempts', () => {
+    const { id } = enqueue({
+      lane: 'discogs',
+      type: 'noop',
+      runAfter: T0,
+      maxAttempts: 1,
+    });
+    for (let i = 0; i < 5; i += 1) {
+      const t = T0 + i * 1000;
+      expect(claimNext('discogs', t)?.attempts).toBe(1);
+      expect(deferJob(id, t + 1000, 'deferred', t, 1)).toBe('deferred');
+    }
+    expect(claimNext('discogs', T0 + 5000)?.attempts).toBe(1);
+    expect(complete(id, T0 + 5000, 1)).toBe(true);
+  });
+
+  it('a stale attempt or a job that is not running returns stale and changes nothing', () => {
+    const { id } = enqueue({ lane: 'discogs', type: 'noop', runAfter: T0 });
+    expect(deferJob(id, T0 + 1000, 'deferred', T0, 1)).toBe('stale');
+    expect(rawJob(id)).toMatchObject({ status: 'queued', attempts: 0 });
+
+    claimNext('discogs', T0);
+    expect(deferJob(id, T0 + 1000, 'deferred', T0, 2)).toBe('stale');
+    expect(rawJob(id)).toMatchObject({
+      status: 'running',
+      attempts: 1,
+      run_after: T0,
+      last_error: null,
+    });
+
+    complete(id, T0, 1);
+    expect(deferJob(id, T0 + 1000, 'deferred', T0, 1)).toBe('stale');
+    expect(rawJob(id).status).toBe('succeeded');
+  });
+
+  it('a deferred job moves behind jobs whose run_after is earlier, then claim order resumes', () => {
+    const a = enqueue({ lane: 'discogs', type: 'noop', runAfter: T0 }).id;
+    const b = enqueue({ lane: 'discogs', type: 'noop', runAfter: T0 }).id;
+    expect(claimNext('discogs', T0)?.id).toBe(a);
+    deferJob(a, T0 + 1000, 'deferred', T0, 1);
+    const c = enqueue({ lane: 'discogs', type: 'noop', runAfter: T0 + 500 }).id;
+    const order = [1, 2, 3].map(() => claimNext('discogs', T0 + 1000)?.id);
+    expect(order).toEqual([b, c, a]);
+  });
+
+  it('a restart during a pause leaves the deferred job queued and never claims it early', () => {
+    const { id } = enqueue({ lane: 'discogs', type: 'noop', runAfter: T0 });
+    claimNext('discogs', T0);
+    deferJob(id, T0 + 30_000, 'deferred', T0, 1);
+    // kill -9 then boot: recovery only touches running jobs.
+    expect(recoverRunningJobs(T0 + 1000)).toEqual({ requeued: 0, failed: 0 });
+    expect(rawJob(id)).toMatchObject({
+      status: 'queued',
+      run_after: T0 + 30_000,
+    });
+    expect(claimNext('discogs', T0 + 29_999)).toBeUndefined();
+    expect(claimNext('discogs', T0 + 30_000)?.id).toBe(id);
+  });
+
+  it('releaseDedupeKey frees the key so the same key can be enqueued again', () => {
+    const a = enqueue({ lane: 'discogs', type: 'noop', dedupeKey: 'k' });
+    expect(enqueue({ lane: 'discogs', type: 'noop', dedupeKey: 'k' })).toEqual(
+      { id: a.id, created: false },
+    );
+    releaseDedupeKey(a.id);
+    expect(rawJob(a.id).dedupe_key).toBeNull();
+    const b = enqueue({ lane: 'discogs', type: 'noop', dedupeKey: 'k' });
+    expect(b.created).toBe(true);
+    expect(b.id).not.toBe(a.id);
   });
 });
