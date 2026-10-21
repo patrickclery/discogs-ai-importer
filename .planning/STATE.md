@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Discogs Match
 status: executing
-stopped_at: Completed 03-06-PLAN.md
-last_updated: "2026-10-21T01:59:10.476Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-10-21T02:10:13.047Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 03 execution started
-state_head: 542f3b35d8bdc0e4ad50874e47e5f7043b2904a2
+state_head: 4442b31b0b45f69d81cbc60448506e7a33b6773c
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 26
+  completed_plans: 27
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Discogs Match) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 03 execution started
 
@@ -83,6 +83,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P04 | 7min | 3 tasks | 11 files |
 | Phase 03 P05 | 9min | 2 tasks | 14 files |
 | Phase 03 P06 | 6min | 2 tasks | 17 files |
+| Phase 03 P07 | 10min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Cover URLs are fetched only when protocol and host (incl. port) equal imageBase(); covers skip the API pacing gate but cap at 4 concurrent downloads, one per URL
 - [Phase 03]: discogsStatus treats an unreadable secrets file as not connected so /api/status never 500s
 - [Phase 03]: Header failed suffix counts anthropic jobs only; Discogs failures are spines whose latest auto/again search failed (tooltip only)
+- [Phase 03]: 03-07: enqueueAutoSearch's same-hash baseline is the newest auto/again search not ended not_connected/auth_failed (A-03-27); the maintenance backfill never re-picks auth_failed or failed spines
+- [Phase 03]: 03-07: Discogs strings are capped in code points (capCodePoints), never splitting a surrogate pair
 
 ### Pending Todos
 
@@ -182,6 +185,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T01:59:10.344Z
-Stopped at: Completed 03-06-PLAN.md
+Last session: 2026-10-21T02:10:12.915Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None

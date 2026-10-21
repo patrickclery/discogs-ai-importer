@@ -115,7 +115,7 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans:** 6/13 plans executed
+**Plans:** 7/13 plans executed
 
 Plans:
 **Wave 1**
@@ -131,7 +131,7 @@ Plans:
 - [x] 03-06-PLAN.md — Cover cache in the data folder and the header's Discogs backlog and pause countdown (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 03-07-PLAN.md — Connect backfill of already-scanned spines (verify-discogs-backfill) and cascade, mapping, pin and enqueue tests (wave 4)
+- [x] 03-07-PLAN.md — Connect backfill of already-scanned spines (verify-discogs-backfill) and cascade, mapping, pin and enqueue tests (wave 4)
 - [ ] 03-08-PLAN.md — Candidates on the spine card: search-state badge, Discogs matches top 3, state lines (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
-| 3. Discogs Match | 6/13 | In Progress | - |
+| 3. Discogs Match | 7/13 | In Progress | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
 
 ## Backlog
