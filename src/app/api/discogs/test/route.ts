@@ -6,6 +6,7 @@ import {
   isAuthInvalid,
 } from '@/server/discogs/auth';
 import { discogsFetch } from '@/server/discogs/client';
+import { enqueueMissingSearches } from '@/server/discogs/enqueue';
 import { discogsGate } from '@/server/discogs/gate';
 
 // Test connection (D-01; fulfils Phase 1 D-10). One signed GET
@@ -80,8 +81,16 @@ export async function POST(req: Request) {
         reason: 'Discogs answered without a username',
       });
     }
-    // The stored sign-in works again, so drop any Reconnect needed state.
-    if (isAuthInvalid()) clearAuthInvalid();
+    // The stored sign-in works again, so drop any Reconnect needed state
+    // and queue the spines it left auth_failed, as a connect does (WR-04).
+    if (isAuthInvalid()) {
+      clearAuthInvalid();
+      try {
+        enqueueMissingSearches({ includeAuthFailed: true });
+      } catch (err) {
+        console.error('[discogs] test backfill failed:', err);
+      }
+    }
     return result({ ok: true, username: identity.data.username });
   } catch (err) {
     const name = (err as Error | null)?.name;

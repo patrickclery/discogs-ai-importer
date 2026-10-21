@@ -213,7 +213,7 @@ describe('POST /api/discogs/test', () => {
 
 // Nyquist gap audit (WR-04): a passing Test connection clears Reconnect
 // needed, so the spines a revoked sign-in left auth_failed must be queued
-// again, as finishing a connect does. it.fails while WR-04 is open.
+// again, as finishing a connect does.
 describe('POST /api/discogs/test re-queues auth_failed spines (WR-04)', () => {
   useTempDataDir();
   let dir = '';
@@ -250,7 +250,7 @@ describe('POST /api/discogs/test re-queues auth_failed spines (WR-04)', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it.fails('WR-04: a passing test queues a new search for each auth_failed spine', async () => {
+  it('WR-04: a passing test queues a new search for each auth_failed spine', async () => {
     const sc = await orphanScenario();
     connect();
     const db = getDb().$client;
