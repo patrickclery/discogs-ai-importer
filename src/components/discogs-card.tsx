@@ -1,8 +1,11 @@
 import { CircleCheck, TriangleAlert } from 'lucide-react';
+import { Suspense } from 'react';
+import { CallbackUrlField } from '@/components/callback-url-field';
 import {
   CONNECT_BUTTON_ID,
   ConnectDiscogsButton,
 } from '@/components/connect-discogs-button';
+import { DiscogsConnectNotice } from '@/components/discogs-connect-notice';
 import { DisconnectDiscogsButton } from '@/components/disconnect-discogs-button';
 import { PasteCodeForm } from '@/components/paste-code-form';
 import { DiscogsCredentials } from '@/components/secret-field';
@@ -53,7 +56,7 @@ function ConnectedSection({ username }: { username: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <p className="text-sm">
+        <p className="text-sm break-words">
           {'Connected as '}
           <a
             href={`https://www.discogs.com/user/${encodeURIComponent(username)}`}
@@ -131,10 +134,13 @@ export function DiscogsCard({
   statuses,
   connection,
   secretsError,
+  callbackUrl,
 }: {
   statuses: SecretStatus[] | null;
   connection: DiscogsConnection | null;
   secretsError?: string;
+  /** http://{host}/api/discogs/callback for this request (D-03). */
+  callbackUrl: string | null;
 }) {
   return (
     <Card>
@@ -158,7 +164,10 @@ export function DiscogsCard({
           .
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent className="flex min-w-0 flex-col gap-4">
+        <Suspense fallback={null}>
+          <DiscogsConnectNotice username={connection?.username ?? null} />
+        </Suspense>
         {statuses && connection ? (
           <>
             {connection.connected && connection.needsReconnect ? (
@@ -168,6 +177,7 @@ export function DiscogsCard({
               statuses={statuses}
               connected={connection.connected}
             />
+            {callbackUrl ? <CallbackUrlField url={callbackUrl} /> : null}
             <Separator />
             <AccountSection connection={connection} />
           </>

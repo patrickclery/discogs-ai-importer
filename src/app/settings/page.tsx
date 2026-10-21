@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { connection } from 'next/server';
 import { ClaudeCliCard } from '@/components/claude-cli-card';
 import { DevJobTrigger } from '@/components/dev-job-trigger';
@@ -16,6 +17,7 @@ import {
   type DiscogsConnection,
   getDiscogsConnection,
 } from '@/server/discogs/auth';
+import { callbackUrlFor } from '@/server/discogs/connect';
 import {
   listSecretStatus,
   type SecretStatus,
@@ -52,8 +54,19 @@ function secretsPathOrNull(): string | null {
   }
 }
 
+/** The callback URL for this request's Host (D-03), or null without one. */
+async function callbackUrlOrNull(): Promise<string | null> {
+  // The proxy already limits Host to 127.0.0.1 or localhost (T-03-39).
+  try {
+    return callbackUrlFor((await headers()).get('host'));
+  } catch {
+    return null;
+  }
+}
+
 export default async function SettingsPage() {
   await connection();
+  const callbackUrl = await callbackUrlOrNull();
   const showDeveloper = devHooksEnabled();
   const secrets = readDiscogs();
   const claude = await getClaudeCliStatus({ maxAgeMs: 0 });
@@ -73,6 +86,7 @@ export default async function SettingsPage() {
           statuses={secrets.ok ? secrets.statuses : null}
           connection={secrets.ok ? secrets.connection : null}
           secretsError={secrets.ok ? undefined : secrets.reason}
+          callbackUrl={callbackUrl}
         />
         <Card>
           <CardHeader>

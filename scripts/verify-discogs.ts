@@ -13,7 +13,10 @@
 // Reconnect on Settings and Disconnect forgets the sign-in. Step letters are stable across
 // plans. Plan 03-04: (g) a connect that ends on a code page is finished by
 // pasting the code (a wrong code first answers rejected), and (l) Settings
-// shows the "Code from Discogs" field only while that connect is pending.
+// shows the "Code from Discogs" field only while that connect is pending,
+// (j) no on-screen Settings text uses a technical word in the not
+// connected, connected and reconnect-needed states (and on each ?discogs=
+// result), and (k) Settings shows this server's own callback URL.
 // Run: node scripts/verify-discogs.ts   (VERIFY_SKIP_BUILD=1 reuses the build)
 // It builds and starts from NEXT_DIST_DIR, default .next/verify, so a
 // long-running `next start` on the default .next keeps working meanwhile.
@@ -281,6 +284,103 @@ export async function stepReconnectAndDisconnect(ctx: Ctx): Promise<void> {
   );
   assert(!after.includes('Connected as'), 'Settings still says Connected as');
   check('disconnected; token keys gone, Settings shows Connect Discogs');
+}
+
+/** Words the owner never sees on screen (phase prohibition, DISC-01). */
+const FORBIDDEN_WORDS = [
+  'token',
+  'oauth',
+  'verifier',
+  'queue',
+  'job',
+  'lane',
+  '429',
+  'rate limit',
+];
+
+/** The visible text of a page: scripts, styles and tags removed. */
+export function visibleText(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&#x27;|&#39;/gi, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&[a-z]+;|&#x?[0-9a-f]+;/gi, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+async function assertPlainWords(ctx: Ctx, query = ''): Promise<string> {
+  const res = await fetch(`${ctx.baseUrl}/settings${query}`);
+  const html = await res.text();
+  assert(res.status === 200, `GET /settings${query} answered ${res.status}`);
+  assertNoLeak(`GET /settings${query}`, html);
+  const text = visibleText(html);
+  for (const word of FORBIDDEN_WORDS) {
+    const re = new RegExp(`\\b${word.replace(' ', '\\s+')}\\b`, 'i');
+    const m = re.exec(text);
+    assert(
+      !m,
+      `/settings${query} shows "${m?.[0]}" near "${text
+        .slice(Math.max(0, (m?.index ?? 0) - 40), (m?.index ?? 0) + 40)
+        .replace(/\s+/g, ' ')}"`,
+    );
+  }
+  return text;
+}
+
+// (j) Plain words on Settings in every connection state.
+export async function stepPlainWords(ctx: Ctx): Promise<void> {
+  step('(j) Settings shows no technical words in any connection state');
+  clearConnection(ctx);
+  await assertPlainWords(ctx);
+  const notices: Array<[string, string]> = [
+    ['denied', "Discogs wasn't connected"],
+    ['expired', 'The connection timed out'],
+    ['error', "Couldn't connect to Discogs"],
+  ];
+  for (const [value, title] of notices) {
+    const text = await assertPlainWords(ctx, `?discogs=${value}`);
+    assert(text.includes(title), `/settings?discogs=${value} lacks "${title}"`);
+  }
+  check('not connected (and each ?discogs= Alert): plain words only');
+
+  assertSettingsLocation(ctx, (await connectTrace(ctx)).location, 'connected');
+  await assertPlainWords(ctx);
+  check('connected: plain words only');
+
+  await ctx.fake.control({ revoked: true });
+  try {
+    const test = await postJson(ctx, '/api/discogs/test');
+    assert(
+      test.status === 200 && JSON.parse(test.text).kind === 'rejected',
+      `a revoked test answered ${test.status} ${test.text}`,
+    );
+  } finally {
+    await ctx.fake.control({ reset: true });
+  }
+  const text = await assertPlainWords(ctx);
+  assert(
+    text.includes('Reconnect needed'),
+    'Settings is not in the reconnect-needed state',
+  );
+  check('reconnect needed: plain words only');
+}
+
+// (k) The callback URL well shows this server's own address (D-03).
+export async function stepCallbackUrl(ctx: Ctx): Promise<void> {
+  step('(k) Settings shows the callback URL for this port');
+  const res = await fetch(`${ctx.baseUrl}/settings`);
+  const html = await res.text();
+  const expected = `http://127.0.0.1:${ctx.port}/api/discogs/callback`;
+  assert(html.includes(expected), `Settings does not show ${expected}`);
+  assert(
+    visibleText(html).includes('Callback URL'),
+    'Settings has no Callback URL label',
+  );
+  check(`Callback URL ${expected}`);
 }
 
 /** Starts a connect whose (fake) discogs.com page shows the code. */
@@ -589,6 +689,8 @@ runMain('verify-discogs', async (onCleanup) => {
   await stepDocsSignature(ctx);
   await stepReconnectAndDisconnect(ctx);
   await stepPasteCode(ctx);
+  await stepCallbackUrl(ctx);
+  await stepPlainWords(ctx);
   // (d) again: the extra connects above kept the User-Agent and PLAINTEXT.
   stepUserAgent(ctx);
 
