@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Discogs Match
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-10-21T00:55:10.192Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-10-21T01:09:08.232Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 03 execution started
-state_head: 4af064412dcccf38c5364814dcb5a8448ad2c38d
+state_head: ac07c7742acaa71d6e8b4463a805f27af96b24d1
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 33
-  completed_plans: 20
+  completed_plans: 21
   percent: 50
 ---
 
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Discogs Match) — EXECUTING
-Plan: 1 of 13
-Status: Executing Phase 03
+Plan: 2 of 13
+Status: Ready to execute
 Last activity: 2026-10-20 — Phase 03 execution started
 
 Progress: [█████░░░░░] 50%
@@ -77,6 +77,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P12 | 5min | 3 tasks | 14 files |
 | Phase 02 P13 | 2min | 2 tasks | 7 files |
 | Phase 02 P14 | 3min | 2 tasks | 5 files |
+| Phase 03 P01 | 11min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ Recent decisions affecting current work:
 - [Phase 02]: photosRefetchInterval status parameter is required so typecheck catches non-error-aware call sites
 - [Phase 02]: Field blur commits are deferred with setTimeout 0 (createFieldCommit) so Escape cancels them in either event order; no skip flag (G-02-5)
 - [Phase 02]: A pending field save is flushed on SpineField unmount, not dropped
+- [Phase 03]: Discogs auth 'oauth' uses the stored token and is the only mode whose 401 sets the auth-invalid flag; connect uses 'request' with explicit tokens
+- [Phase 03]: Verify builds go to NEXT_DIST_DIR (.next/verify) so the owner's running next start on .next is never rebuilt
 
 ### Pending Todos
 
@@ -159,6 +162,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T23:47:25.187Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-discogs-match/03-UI-SPEC.md
+Last session: 2026-10-21T01:09:08.111Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
