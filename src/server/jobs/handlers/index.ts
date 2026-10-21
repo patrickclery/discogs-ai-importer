@@ -3,6 +3,7 @@ import { enqueueMissingSearches } from '../../discogs/enqueue';
 import { discogsGate } from '../../discogs/gate';
 import { reconcileVisionRuns } from '../../scan/reconcile';
 import type { JobHandler, Lane } from '../types';
+import { runFetchRelease } from './fetch-release';
 import { runNoop } from './noop';
 import { runScanPhoto } from './scan-photo';
 import { runSearchSpine } from './search-spine';
@@ -18,6 +19,11 @@ export const handlers: Record<string, JobHandler> = {
   search_spine: {
     run: (payload, ctx) => runSearchSpine(payload, ctx),
     timeoutMs: 90_000,
+  },
+  // Discogs lane: one paced GET /releases/{id} for a pasted release (D-15).
+  fetch_release: {
+    run: (payload, ctx) => runFetchRelease(payload, ctx),
+    timeoutMs: 60_000,
   },
 };
 

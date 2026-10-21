@@ -101,3 +101,51 @@ export type SpineDiscogsDto = {
 
 /** GET /api/spines/{id}/candidates: the full ordered list. */
 export type CandidatesResponse = { candidates: CandidateDto[] };
+
+/** One result of a Search Discogs dialog search (manual or release). */
+export type SearchResultDto = {
+  releaseId: number;
+  /** Discogs' combined "Artist - Title", verbatim. */
+  title: string;
+  year: number | null;
+  country: string | null;
+  labels: string[];
+  catno: string | null;
+  formats: CandidateFormat[];
+  /** A cover URL is stored; the dialog's thumb route serves it. */
+  hasThumb: boolean;
+  /** The release is already among the spine's candidates. */
+  alreadyListed: boolean;
+};
+
+/** Where a dialog search stands, from its row and its job. */
+export type DialogSearchState =
+  | 'queued'
+  | 'searching'
+  | 'done'
+  | 'no_match'
+  | 'not_found'
+  | 'failed';
+
+/** GET /api/discogs/searches/{id}: a manual or release search. */
+export type DialogSearchDto = {
+  id: string;
+  kind: 'manual' | 'release';
+  state: DialogSearchState;
+  /** The searched text (manual) or the pasted value (release). */
+  query: string | null;
+  releaseId: number | null;
+  /** At most DIALOG_RESULTS_MAX. */
+  results: SearchResultDto[];
+  totalCount: number;
+  /** A short reason, only when state is failed. */
+  failure: string | null;
+  /** The Discogs gate's pause end (epoch ms), or null. */
+  pausedUntil: number | null;
+};
+
+/** Results a dialog search lists. */
+export const DIALOG_RESULTS_MAX = 25;
+
+/** The longest value the dialog's input sends (T-03-33). */
+export const DIALOG_INPUT_MAX = 500;

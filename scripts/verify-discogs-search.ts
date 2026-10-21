@@ -15,6 +15,8 @@
 // in the inline order, and an unknown spine is a 404.
 // Plan 03-10: (g) an edit starts no search but flags fieldsChanged; Search
 // again searches the new values, and repeated identical re-searches run.
+// Plan 03-11: (h) a pasted release link fetches exactly that release once,
+// and adding it pins it first as a manual candidate.
 // Plans 03-05, 03-08, 03-09, 03-10, 03-11 and 03-12 add their own named
 // steps here; step letters are stable across plans.
 // Run: node scripts/verify-discogs-search.ts   (VERIFY_SKIP_BUILD=1 reuses
@@ -819,6 +821,124 @@ async function stepSearchAgain(ctx: Ctx, photoId: string): Promise<void> {
   );
 }
 
+type DialogSearch = {
+  id: string;
+  kind: string;
+  state: string;
+  releaseId: number | null;
+  results: { releaseId: number; alreadyListed: boolean }[];
+};
+
+/** Polls GET /api/discogs/searches/{id} until the search has ended. */
+async function waitDialogSearch(
+  ctx: Ctx,
+  searchId: string,
+): Promise<DialogSearch> {
+  return waitFor(
+    'the dialog search to end',
+    async () => {
+      const res = await fetch(
+        `${ctx.baseUrl}/api/discogs/searches/${encodeURIComponent(searchId)}`,
+        { cache: 'no-store' },
+      );
+      assert(res.status === 200, `GET search returned ${res.status}`);
+      const body = (await res.json()) as DialogSearch;
+      return body.state === 'queued' || body.state === 'searching'
+        ? undefined
+        : body;
+    },
+    { timeoutMs: 30_000, intervalMs: 200 },
+  );
+}
+
+// (h) Plan 03-11 (DISC-06, D-15, D-16): a pasted release link becomes one
+// fetch_release job with one signed GET /releases/{id}; the dialog search
+// shows that release, not yet listed; adding it copies it from the stored
+// results as a manual candidate that lists first.
+async function stepPasteRelease(ctx: Ctx, photoId: string): Promise<void> {
+  step('(h) a pasted release link fetches that release; Add pins it first');
+  const spine = spineSearches(ctx, photoId).find((s) => s.catno === 'TR-201');
+  assert(spine, 'no TR-201 spine');
+  const before = fakeLog(ctx).length;
+  const res = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spine.spineId)}/search`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'ref',
+        value: 'https://www.discogs.com/release/1820636-Nirvana-Nevermind',
+      }),
+    },
+  );
+  const started = (await res.json()) as { searchId?: string };
+  assert(
+    res.status === 201 && typeof started.searchId === 'string',
+    `POST ref search returned ${res.status} ${JSON.stringify(started)}`,
+  );
+  const searchId = started.searchId;
+  const ended = await waitDialogSearch(ctx, searchId);
+  assert(
+    ended.kind === 'release' &&
+      ended.state === 'done' &&
+      ended.releaseId === 1820636 &&
+      ended.results.length === 1 &&
+      ended.results[0].releaseId === 1820636 &&
+      !ended.results[0].alreadyListed,
+    `release search ${JSON.stringify(ended)}, expected done with release 1820636`,
+  );
+  const row = searchRows(ctx, spine.spineId).find((r) => r.id === searchId);
+  assert(
+    row?.kind === 'release' && row.dedupe_key === `search:${searchId}`,
+    `search row ${JSON.stringify(row)}, expected a release search keyed search:${searchId}`,
+  );
+  const autoBefore = spine.candidates.filter((c) => c.source === 'auto');
+
+  const add = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spine.spineId)}/candidates`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ searchId, releaseId: 1820636 }),
+    },
+  );
+  const added = (await add.json()) as {
+    candidate?: { releaseId: number; source: string };
+  };
+  assert(
+    add.status === 201 &&
+      added.candidate?.releaseId === 1820636 &&
+      added.candidate.source === 'manual',
+    `POST candidates returned ${add.status} ${JSON.stringify(added)}`,
+  );
+  const list = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spine.spineId)}/candidates`,
+    { cache: 'no-store' },
+  );
+  const { candidates } = (await list.json()) as {
+    candidates: { releaseId: number; source: string }[];
+  };
+  assert(
+    candidates[0]?.releaseId === 1820636 &&
+      candidates[0].source === 'manual' &&
+      candidates.length === autoBefore.length + 1,
+    `candidates ${JSON.stringify(candidates)}, expected 1820636 manual first above ${autoBefore.length} auto`,
+  );
+  const fetched = fakeLog(ctx)
+    .slice(before)
+    .filter((e) => e.surface === 'api' && e.path.startsWith('/releases/'));
+  assert(
+    fetched.length === 1 &&
+      fetched[0].path === '/releases/1820636' &&
+      fetched[0].method === 'GET' &&
+      fetched[0].userAgent === PROJECT_USER_AGENT,
+    `release requests ${JSON.stringify(fetched)}, expected one GET /releases/1820636 with the project User-Agent`,
+  );
+  check(
+    'ref search done with release 1820636 (one GET, project UA); added as manual and listed first',
+  );
+}
+
 // (f) a revoked sign-in mid-backlog: one 401, then every remaining search
 // short-circuits to auth_failed without a request (RESEARCH Pitfall 7).
 // Keep this step last: it leaves the app needing a reconnect.
@@ -899,6 +1019,7 @@ runMain('verify-discogs-search', async (onCleanup) => {
   stepRequests(ctx);
   await step429Resume(ctx);
   await stepSearchAgain(ctx, photoId);
+  await stepPasteRelease(ctx, photoId);
   // Later plans insert their steps here, before (f).
   await stepRevoked(ctx);
 

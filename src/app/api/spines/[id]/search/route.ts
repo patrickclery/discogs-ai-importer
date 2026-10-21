@@ -1,17 +1,78 @@
 import { connection } from 'next/server';
 import { z } from 'zod';
+import { MASTER_REFUSAL, parseDiscogsRef } from '@/lib/discogs-ref';
+import { DIALOG_INPUT_MAX } from '@/lib/discogs-types';
 import { getDb } from '@/server/db/client';
-import { discogsReady, enqueueExplicitSearch } from '@/server/discogs/enqueue';
+import {
+  discogsReady,
+  type ExplicitSearchInput,
+  enqueueExplicitSearch,
+} from '@/server/discogs/enqueue';
 
-// Start an explicit Discogs search for one spine (DISC-05, D-14, D-06).
-// mode 'again' is Search again and Retry search: a new search from the
-// spine's current fields with a per-search dedupe key (RESEARCH Pitfall 1).
-// Plan 03-11 turns Body into a discriminated union with text and ref modes.
-// T-03-29: JSON only (forces a CORS preflight) with a strict body; the proxy
-// adds the same-origin check. T-03-30: 409 busy while a search of the spine
-// is queued or running, so repeated clicks never stack searches.
+// Start an explicit Discogs search for one spine (DISC-05, DISC-06, D-14,
+// D-15, D-06). mode 'again' is Search again and Retry search: a new search
+// from the spine's current fields with a per-search dedupe key (RESEARCH
+// Pitfall 1). Modes 'text' and 'ref' come from the Search Discogs dialog:
+// the server re-runs parseDiscogsRef and its answer is authoritative
+// (T-03-33). A master is refused with 400 before any request (Pitfall 5);
+// text that reads as a release becomes a release search; ref text that is
+// no release reference is a 400. Dialog searches work for active and
+// orphaned spines of any media kind and are not blocked by a queued
+// automatic search.
+// T-03-29 / T-03-35: JSON only (forces a CORS preflight) with a strict,
+// discriminated body capped at 500 characters; the proxy adds the
+// same-origin check. T-03-30: 409 busy while an automatic or again search
+// of the spine is queued or running, so repeated clicks never stack.
 
-const Body = z.strictObject({ mode: z.literal('again') });
+const Value = z.string().max(DIALOG_INPUT_MAX);
+
+const Body = z.discriminatedUnion('mode', [
+  z.strictObject({ mode: z.literal('again') }),
+  z.strictObject({ mode: z.literal('text'), value: Value }),
+  z.strictObject({ mode: z.literal('ref'), value: Value }),
+]);
+type Body = z.infer<typeof Body>;
+
+/** The enqueue input for a body, or the 400 answer that refuses it. */
+function explicitInput(
+  spineId: string,
+  body: Body,
+): ExplicitSearchInput | Response {
+  if (body.mode === 'again') return { spineId, kind: 'again' };
+  const value = body.value.trim();
+  if (!value) {
+    return Response.json(
+      { error: 'invalid_body', message: 'Type something to search for.' },
+      { status: 400 },
+    );
+  }
+  const ref = parseDiscogsRef(value);
+  switch (ref.kind) {
+    case 'master':
+      return Response.json(
+        { error: 'master', message: MASTER_REFUSAL },
+        { status: 400 },
+      );
+    case 'release':
+      return {
+        spineId,
+        kind: 'release',
+        releaseId: ref.id,
+        queryText: value,
+      };
+    default:
+      if (body.mode === 'ref') {
+        return Response.json(
+          {
+            error: 'invalid_ref',
+            message: 'That is not a Discogs release link or number.',
+          },
+          { status: 400 },
+        );
+      }
+      return { spineId, kind: 'manual', queryText: ref.q };
+  }
+}
 
 const NOT_FOUND = {
   error: 'not_found',
@@ -47,6 +108,8 @@ export async function POST(
     );
   }
   const { id } = await params;
+  const input = explicitInput(id, parsed.data);
+  if (input instanceof Response) return input;
   const db = getDb().$client;
   const spine = db
     .prepare('SELECT state FROM spines WHERE id = @id')
@@ -61,7 +124,7 @@ export async function POST(
       { status: 409 },
     );
   }
-  const result = enqueueExplicitSearch(db, { spineId: id, kind: 'again' });
+  const result = enqueueExplicitSearch(db, input);
   switch (result.status) {
     case 'not_found':
       return Response.json(NOT_FOUND, { status: 404 });

@@ -22,7 +22,14 @@ export function releaseUrl(releaseId: number): string {
  * when the route answers anything but an image, a muted square with a
  * Disc3 icon (never a broken-image glyph). Fixed size: no layout shift.
  */
-export function CandidateThumb({ candidate }: { candidate: CandidateDto }) {
+export function CandidateThumb({
+  candidate,
+  src,
+}: {
+  candidate: Pick<CandidateDto, 'id' | 'hasThumb'>;
+  /** Overrides the candidate cover route (the dialog's search results). */
+  src?: string;
+}) {
   const [failed, setFailed] = useState(false);
   if (!candidate.hasThumb || failed) {
     return (
@@ -34,7 +41,7 @@ export function CandidateThumb({ candidate }: { candidate: CandidateDto }) {
   return (
     // biome-ignore lint/performance/noImgElement: covers stream from a route handler; next/image would re-encode them
     <img
-      src={`/api/discogs/thumb/${encodeURIComponent(candidate.id)}`}
+      src={src ?? `/api/discogs/thumb/${encodeURIComponent(candidate.id)}`}
       alt=""
       width={64}
       height={64}
@@ -47,16 +54,22 @@ export function CandidateThumb({ candidate }: { candidate: CandidateDto }) {
 }
 
 /**
- * One candidate release (DISC-04, D-12): cover, the verbatim Discogs title,
- * the details line, tags and a link to the release on discogs.com. Listed
- * only: no select or confirm control, and the row is not clickable (Phase 4
- * adds the explicit confirm). Discogs strings render as React text (T-03-21).
+ * One candidate release's content (DISC-04, D-12): cover, the verbatim
+ * Discogs title, the details line, tags and a link to the release on
+ * discogs.com. Discogs strings render as React text (T-03-21). The Search
+ * Discogs dialog reuses it inside a radio option with its own cover route.
  */
-export function CandidateRow({ candidate }: { candidate: CandidateDto }) {
+export function CandidateRowContent({
+  candidate,
+  thumbSrc,
+}: {
+  candidate: CandidateDto;
+  thumbSrc?: string;
+}) {
   const hasTags = candidate.catnoMatch || candidate.source === 'manual';
   return (
-    <li className="flex items-start gap-4 py-2">
-      <CandidateThumb candidate={candidate} />
+    <>
+      <CandidateThumb candidate={candidate} src={thumbSrc} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p
           className="line-clamp-2 text-sm font-medium break-words"
@@ -96,6 +109,18 @@ export function CandidateRow({ candidate }: { candidate: CandidateDto }) {
         </TooltipTrigger>
         <TooltipContent>Open on discogs.com</TooltipContent>
       </Tooltip>
+    </>
+  );
+}
+
+/**
+ * One candidate row on the card. Listed only: no select or confirm
+ * control, and the row is not clickable (Phase 4 adds the explicit confirm).
+ */
+export function CandidateRow({ candidate }: { candidate: CandidateDto }) {
+  return (
+    <li className="flex items-start gap-4 py-2">
+      <CandidateRowContent candidate={candidate} />
     </li>
   );
 }

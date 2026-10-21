@@ -5,18 +5,24 @@ import { CircleX, Clock, PencilLine, RotateCw, Unplug } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useState } from 'react';
 import { CandidateList } from '@/components/candidate-list';
+import { DiscogsSearchDialog } from '@/components/discogs-search-dialog';
 import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { searchFailureText } from '@/lib/candidate-format';
+import {
+  pausedLine,
+  QUEUED_LINE,
+  SEARCHING_LINE,
+  searchFailureText,
+} from '@/lib/candidate-format';
 import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
 import type { SpineDto } from '@/lib/scan-types';
 
 // The card footer's "Discogs matches" section (D-12, UI-SPEC Spine card:
 // Discogs matches). Header row, at most one notice line, then the body by
-// search state. Plan 03-10 adds Search again / Retry search (POST
-// /api/spines/{id}/search { mode: 'again' }); Plan 03-11 adds Search
-// Discogs….
+// search state. Search again / Retry search post { mode: 'again' } to
+// /api/spines/{id}/search (Plan 03-10); Search Discogs… opens the dialog
+// for a typed search or a pasted release (Plan 03-11).
 
 export const NOT_SEARCHED_LINE =
   "Not looked up yet. It's waiting its turn, or use Search Discogs… to look it up now.";
@@ -24,13 +30,6 @@ export const UNSURE_MEDIA_LINE =
   "This spine may not be a CD, so it wasn't looked up automatically. Use Search Discogs… if it is one.";
 export const ORPHANED_LINE =
   "Spines the latest scan didn't find aren't looked up automatically. Use Search Discogs… if you need it.";
-export const QUEUED_LINE =
-  'Waiting its turn. Discogs allows about one lookup per second.';
-export const SEARCHING_LINE = 'Searching Discogs…';
-/** UI-SPEC Paused line, `{s}` counting down client-side from pausedUntil. */
-export function pausedLine(seconds: number): string {
-  return `Discogs asked the app to slow down. Searching picks up again in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
-}
 export const FIELDS_CHANGED_LINE = 'Fields changed since last search.';
 export const NO_MATCHES_LINE =
   'Discogs found nothing for this spine. Check the artist, title and catalog number against the crop, then search again, or use Search Discogs….';
@@ -277,7 +276,6 @@ export function DiscogsMatches({
           <h3 className="text-xs font-medium text-muted-foreground">
             Discogs matches
           </h3>
-          {/* Plan 03-11 adds Search Discogs… after these. */}
           <div className="ml-auto flex flex-wrap justify-end gap-2">
             {action ? (
               <Button
@@ -300,6 +298,7 @@ export function DiscogsMatches({
                 )}
               </Button>
             ) : null}
+            <DiscogsSearchDialog spine={spine} connected={connected} />
           </div>
         </div>
         {again.error ? (

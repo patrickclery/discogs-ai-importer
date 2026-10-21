@@ -229,6 +229,9 @@ export async function runSearchSpine(
     });
     // Another run finished this search first: leave its candidates alone.
     if (!finished) return;
+    // D-16: a manual (dialog) search only stores its results on the row;
+    // the owner picks from them. Plan 03-12 gives it its own request shape.
+    if (search.kind !== 'auto' && search.kind !== 'again') return;
     replaceAutoCandidates(db, {
       spineId: search.spine_id,
       searchId,

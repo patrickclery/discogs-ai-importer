@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import { getDb } from '../db/client';
 import { enqueue } from '../jobs/queue';
 import { getDiscogsAuth, isAuthInvalid } from './auth';
-import { inputHash, loadSpineInputs } from './inputs';
+import { inputHash, loadSpineInputs, type SearchInputs } from './inputs';
 import { createSearch, setSearchJob } from './store';
 
 // Automatic search enqueue points (D-08, RESEARCH Pattern 5). The dedupe key
@@ -154,8 +154,18 @@ export function enqueueMissingSearches(
   return tx.immediate();
 }
 
-/** Search kinds the owner starts explicitly (Plan 03-11 adds more). */
-export type ExplicitSearchKind = 'again';
+/** The fetch_release job: one GET /releases/{id} for a pasted release. */
+export const FETCH_RELEASE_JOB_TYPE = 'fetch_release';
+
+/** Search kinds the owner starts explicitly. */
+export type ExplicitSearchKind = 'again' | 'manual' | 'release';
+
+export type ExplicitSearchInput =
+  | { spineId: string; kind: 'again' }
+  /** Free text from the Search Discogs dialog (already trimmed). */
+  | { spineId: string; kind: 'manual'; queryText: string }
+  /** A pasted release link or number; queryText is the pasted value. */
+  | { spineId: string; kind: 'release'; releaseId: number; queryText?: string };
 
 export type ExplicitSearchResult =
   | { status: 'ok'; searchId: string }
@@ -163,18 +173,32 @@ export type ExplicitSearchResult =
   | { status: 'not_searchable' }
   | { status: 'busy' };
 
+const NO_INPUTS: SearchInputs = {
+  artist: null,
+  title: null,
+  catno: null,
+  rawText: null,
+};
+
 /**
- * The owner's Search again or Retry search (D-14, D-06): a new search row
- * from the spine's current inputs and a job keyed search:{searchId}, so it
- * always runs, even when the inputs equal an earlier search's (RESEARCH
- * Pitfall 1). Refuses an unknown spine, a superseded or dismissed one, and
- * a spine whose latest auto or again search is still queued or running
- * (T-03-30). Checks and writes share one IMMEDIATE transaction, so two
- * clicks cannot both pass the busy check.
+ * The owner's explicit searches, each a new search row and a job keyed
+ * search:{searchId}, so it always runs, even when its inputs equal an
+ * earlier search's (RESEARCH Pitfall 1). Refuses an unknown spine and a
+ * superseded or dismissed one.
+ *
+ * - again (Search again, Retry search; D-14, D-06): the spine's current
+ *   inputs on the search_spine job. Refused while the latest auto or again
+ *   search is still queued or running (T-03-30).
+ * - manual (D-15): the typed text on the search_spine job. Its inputs carry
+ *   only rawText, so it searches that text alone.
+ * - release (D-15): one GET /releases/{id} on the fetch_release job.
+ * Manual and release searches are never blocked by a queued automatic one,
+ * and work for orphaned spines of any media kind. Checks and writes share
+ * one IMMEDIATE transaction, so two clicks cannot both pass the busy check.
  */
 export function enqueueExplicitSearch(
   db: Database.Database,
-  input: { spineId: string; kind: ExplicitSearchKind },
+  input: ExplicitSearchInput,
 ): ExplicitSearchResult {
   const tx = db.transaction((): ExplicitSearchResult => {
     const spine = db
@@ -184,30 +208,57 @@ export function enqueueExplicitSearch(
     if (spine.state !== 'active' && spine.state !== 'orphaned') {
       return { status: 'not_searchable' };
     }
-    const busy = db
-      .prepare(
-        `SELECT 1 FROM discogs_searches s
-         LEFT JOIN jobs j ON j.id = s.job_id
-         WHERE s.id = (
-           SELECT x.id FROM discogs_searches x
-           WHERE x.spine_id = @spineId AND x.kind IN ('auto', 'again')
-           ORDER BY x.created_at DESC, x.id DESC
-           LIMIT 1)
-           AND s.status = 'queued'
-           AND (j.id IS NULL OR j.status IN ('queued', 'running'))`,
-      )
-      .get({ spineId: input.spineId });
-    if (busy) return { status: 'busy' };
-    const inputs = loadSpineInputs(db, input.spineId);
-    const searchId = createSearch(db, {
-      spineId: input.spineId,
-      kind: input.kind,
-      inputs,
-      inputHash: inputHash(inputs),
-    });
+    let searchId: string;
+    let type = SEARCH_JOB_TYPE;
+    switch (input.kind) {
+      case 'again': {
+        const busy = db
+          .prepare(
+            `SELECT 1 FROM discogs_searches s
+             LEFT JOIN jobs j ON j.id = s.job_id
+             WHERE s.id = (
+               SELECT x.id FROM discogs_searches x
+               WHERE x.spine_id = @spineId AND x.kind IN ('auto', 'again')
+               ORDER BY x.created_at DESC, x.id DESC
+               LIMIT 1)
+               AND s.status = 'queued'
+               AND (j.id IS NULL OR j.status IN ('queued', 'running'))`,
+          )
+          .get({ spineId: input.spineId });
+        if (busy) return { status: 'busy' };
+        const inputs = loadSpineInputs(db, input.spineId);
+        searchId = createSearch(db, {
+          spineId: input.spineId,
+          kind: 'again',
+          inputs,
+          inputHash: inputHash(inputs),
+        });
+        break;
+      }
+      case 'manual':
+        searchId = createSearch(db, {
+          spineId: input.spineId,
+          kind: 'manual',
+          inputs: { ...NO_INPUTS, rawText: input.queryText },
+          inputHash: null,
+          queryText: input.queryText,
+        });
+        break;
+      case 'release':
+        searchId = createSearch(db, {
+          spineId: input.spineId,
+          kind: 'release',
+          inputs: NO_INPUTS,
+          inputHash: null,
+          queryText: input.queryText ?? null,
+          releaseId: input.releaseId,
+        });
+        type = FETCH_RELEASE_JOB_TYPE;
+        break;
+    }
     const job = enqueue({
       lane: 'discogs',
-      type: SEARCH_JOB_TYPE,
+      type,
       payload: { searchId },
       dedupeKey: `search:${searchId}`,
     });

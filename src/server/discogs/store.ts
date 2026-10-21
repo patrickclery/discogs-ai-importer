@@ -1,9 +1,11 @@
 import 'server-only';
 import type Database from 'better-sqlite3';
-import type {
-  SearchKind,
-  SearchStage,
-  SearchStatus,
+import { z } from 'zod';
+import {
+  SEARCH_STAGES,
+  type SearchKind,
+  type SearchStage,
+  type SearchStatus,
 } from '@/lib/discogs-types';
 import { newId } from '../ids';
 import type { SearchInputs } from './inputs';
@@ -204,4 +206,130 @@ export function latestAutoSearch(
        LIMIT 1`,
     )
     .get({ spineId }) as SearchRowRaw | undefined;
+}
+
+const StoredFormat = z.object({
+  name: z.string(),
+  qty: z.string().nullable(),
+  descriptions: z.array(z.string()),
+  text: z.string().nullable(),
+});
+
+/** One entry of results_json, as the search handlers stored it. */
+const StoredCandidate = z.object({
+  releaseId: z.number().int().positive(),
+  rank: z.number().int(),
+  title: z.string(),
+  artist: z.string().nullable(),
+  year: z.number().int().nullable(),
+  country: z.string().nullable(),
+  labels: z.array(z.string()),
+  catno: z.string().nullable(),
+  formats: z.array(StoredFormat),
+  thumbUrl: z.string().nullable(),
+  masterId: z.number().int().nullable(),
+  stage: z.enum(SEARCH_STAGES),
+  catnoMatch: z.boolean(),
+});
+
+/**
+ * A search row's stored results in their stored order. An unreadable entry
+ * is dropped, and an unreadable list is empty.
+ */
+export function parseStoredResults(json: string | null): Candidate[] {
+  if (!json) return [];
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(raw)) return [];
+  const out: Candidate[] = [];
+  for (const item of raw) {
+    const c = StoredCandidate.safeParse(item);
+    if (c.success) out.push(c.data);
+  }
+  return out;
+}
+
+export type AddManualResult =
+  | { status: 'ok'; candidateId: string }
+  /** No such search, a search of another spine, or an automatic one. */
+  | { status: 'search_not_found' }
+  /** The search has not finished with results. */
+  | { status: 'not_done' }
+  /** The release is not among that search's stored results. */
+  | { status: 'release_not_found' };
+
+/**
+ * Pins a release the owner picked in the Search Discogs dialog as a manual
+ * candidate (D-15, D-16). The browser sends only { searchId, releaseId }:
+ * the candidate is copied from that spine's own done manual or release
+ * search, never from the request (RESEARCH anti-pattern, T-03-31).
+ * Re-adding the same release refreshes its fields, search_id and
+ * created_at, so it moves to the top. Automatic searches never touch
+ * manual rows (replaceAutoCandidates deletes source 'auto' only).
+ */
+export function addManualCandidate(
+  db: Database.Database,
+  input: { spineId: string; searchId: string; releaseId: number },
+): AddManualResult {
+  const tx = db.transaction((): AddManualResult => {
+    const search = getSearch(db, input.searchId);
+    if (
+      !search ||
+      search.spine_id !== input.spineId ||
+      (search.kind !== 'manual' && search.kind !== 'release')
+    ) {
+      return { status: 'search_not_found' };
+    }
+    if (search.status !== 'done') return { status: 'not_done' };
+    const c = parseStoredResults(search.results_json).find(
+      (r) => r.releaseId === input.releaseId,
+    );
+    if (!c) return { status: 'release_not_found' };
+    db.prepare(
+      `INSERT INTO discogs_candidates (id, spine_id, search_id, source,
+         release_id, rank, title, artist, year, country, labels_json, catno,
+         formats_json, thumb_url, master_id, stage, catno_match, created_at)
+       VALUES (@id, @spineId, @searchId, 'manual', @releaseId, 0, @title,
+         @artist, @year, @country, @labelsJson, @catno, @formatsJson,
+         @thumbUrl, @masterId, @stage, 0, @now)
+       ON CONFLICT(spine_id, source, release_id) DO UPDATE SET
+         search_id = excluded.search_id, title = excluded.title,
+         artist = excluded.artist, year = excluded.year,
+         country = excluded.country, labels_json = excluded.labels_json,
+         catno = excluded.catno, formats_json = excluded.formats_json,
+         thumb_url = excluded.thumb_url, master_id = excluded.master_id,
+         stage = excluded.stage, created_at = excluded.created_at`,
+    ).run({
+      id: newId(),
+      spineId: input.spineId,
+      searchId: input.searchId,
+      releaseId: c.releaseId,
+      title: c.title,
+      artist: c.artist,
+      year: c.year,
+      country: c.country,
+      labelsJson: JSON.stringify(c.labels),
+      catno: c.catno,
+      formatsJson: JSON.stringify(c.formats),
+      thumbUrl: c.thumbUrl,
+      masterId: c.masterId,
+      stage: c.stage,
+      now: Date.now(),
+    });
+    const row = db
+      .prepare(
+        `SELECT id FROM discogs_candidates
+         WHERE spine_id = @spineId AND source = 'manual'
+           AND release_id = @releaseId`,
+      )
+      .get({ spineId: input.spineId, releaseId: c.releaseId }) as {
+      id: string;
+    };
+    return { status: 'ok', candidateId: row.id };
+  });
+  return tx.immediate();
 }

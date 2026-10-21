@@ -59,3 +59,12 @@ export function searchFailureText(failure: SearchFailure | null): string {
     failure?.reason?.trim().replace(/[.\s]+$/u, '') || 'something went wrong';
   return `Search failed: ${reason}. Retry the search.`;
 }
+
+/** The queued line on a card and in the Search Discogs dialog. */
+export const QUEUED_LINE =
+  'Waiting its turn. Discogs allows about one lookup per second.';
+export const SEARCHING_LINE = 'Searching Discogs…';
+/** UI-SPEC Paused line, `{s}` counting down client-side from pausedUntil. */
+export function pausedLine(seconds: number): string {
+  return `Discogs asked the app to slow down. Searching picks up again in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
+}
