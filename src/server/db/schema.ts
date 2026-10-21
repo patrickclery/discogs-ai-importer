@@ -7,6 +7,12 @@ import {
   text,
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
+import {
+  CANDIDATE_SOURCES,
+  SEARCH_KINDS,
+  SEARCH_STAGES,
+  SEARCH_STATUSES,
+} from '@/lib/discogs-types';
 import { PHOTO_STATUSES, SPINE_STATES } from '@/lib/scan-types';
 import { SPINE_FIELDS } from '@/lib/vision-contract';
 
@@ -200,3 +206,80 @@ export type VisionRunRow = typeof visionRuns.$inferSelect;
 export type SpineDetectionRow = typeof spineDetections.$inferSelect;
 export type SpineRow = typeof spines.$inferSelect;
 export type SpineFieldRow = typeof spineFields.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Phase 3: Discogs match (D-08, D-10, D-16). One row per search attempt, and
+// one candidate table for auto and manual candidates.
+
+/** One Discogs search (or release lookup) for one spine. */
+export const discogsSearches = sqliteTable(
+  'discogs_searches',
+  {
+    id: text('id').primaryKey(),
+    spineId: text('spine_id')
+      .notNull()
+      .references(() => spines.id),
+    kind: text('kind', { enum: SEARCH_KINDS }).notNull(),
+    /** sha256 of the normalized inputs; null for manual and release kinds. */
+    inputHash: text('input_hash'),
+    inputsJson: text('inputs_json').notNull().default('{}'),
+    queryText: text('query_text'),
+    releaseId: integer('release_id'),
+    status: text('status', { enum: SEARCH_STATUSES })
+      .notNull()
+      .default('queued'),
+    stage: text('stage', { enum: SEARCH_STAGES }),
+    resultCount: integer('result_count'),
+    totalCount: integer('total_count'),
+    resultsJson: text('results_json'),
+    errorKind: text('error_kind'),
+    error: text('error'),
+    jobId: text('job_id'),
+    createdAt: integer('created_at').notNull(),
+    finishedAt: integer('finished_at'),
+  },
+  (t) => [index('discogs_searches_spine_idx').on(t.spineId, t.createdAt)],
+);
+
+/** A candidate Discogs release for a spine; rank keeps Discogs order. */
+export const discogsCandidates = sqliteTable(
+  'discogs_candidates',
+  {
+    id: text('id').primaryKey(),
+    spineId: text('spine_id')
+      .notNull()
+      .references(() => spines.id),
+    searchId: text('search_id')
+      .notNull()
+      .references(() => discogsSearches.id),
+    source: text('source', { enum: CANDIDATE_SOURCES }).notNull(),
+    releaseId: integer('release_id').notNull(),
+    rank: integer('rank').notNull(),
+    /** Discogs' combined "Artist - Title", shown verbatim. */
+    title: text('title').notNull(),
+    artist: text('artist'),
+    year: integer('year'),
+    country: text('country'),
+    labelsJson: text('labels_json').notNull().default('[]'),
+    catno: text('catno'),
+    formatsJson: text('formats_json').notNull().default('[]'),
+    thumbUrl: text('thumb_url'),
+    masterId: integer('master_id'),
+    stage: text('stage', { enum: SEARCH_STAGES }),
+    catnoMatch: integer('catno_match', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    createdAt: integer('created_at').notNull(),
+  },
+  (t) => [
+    uniqueIndex('discogs_candidates_spine_source_release_idx').on(
+      t.spineId,
+      t.source,
+      t.releaseId,
+    ),
+    index('discogs_candidates_spine_idx').on(t.spineId),
+  ],
+);
+
+export type DiscogsSearchRow = typeof discogsSearches.$inferSelect;
+export type DiscogsCandidateRow = typeof discogsCandidates.$inferSelect;

@@ -42,7 +42,7 @@ export type FakeState = {
 
 export type FakeLogEntry = {
   t: number;
-  surface: 'api' | 'web';
+  surface: 'api' | 'web' | 'img';
   method: string;
   path: string;
   query: Record<string, string>;
@@ -50,6 +50,8 @@ export type FakeLogEntry = {
   accept: string | null;
   oauthParams: string[];
   signatureMethod: string | null;
+  /** The status the fake answered (null on web requests). */
+  status: number | null;
 };
 
 export async function startFakeDiscogs(opts: {

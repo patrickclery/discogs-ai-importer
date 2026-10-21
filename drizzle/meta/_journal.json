@@ -15,6 +15,13 @@
       "when": 1792467268744,
       "tag": "0001_shelf_scan",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792545695728,
+      "tag": "0002_discogs_match",
+      "breakpoints": true
     }
   ]
 }

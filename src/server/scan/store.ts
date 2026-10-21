@@ -6,6 +6,7 @@ import {
   SPINE_MEDIA_KINDS,
 } from '@/lib/vision-contract';
 import { getDb } from '../db/client';
+import { enqueueAutoSearchesForPhoto } from '../discogs/enqueue';
 import { newId } from '../ids';
 import type { Box } from '../images/crop';
 import { reasonFor, type ScanErrorKind } from '../vision/reasons';
@@ -127,7 +128,9 @@ function usageJson(envelope: CliEnvelope): string {
  * unsure detection (ai_value = value, D-10), and the run set done. Identical
  * reads stay separate spines (no dedup). A re-scan (run_no > 1) inserts its
  * detections unlinked and hands them to mergeRunIntoSpines in the same
- * transaction (D-13..D-16), so earlier runs are never touched.
+ * transaction (D-13..D-16), so earlier runs are never touched. When
+ * Discogs is connected, the photo's CD spines get their auto searches
+ * enqueued in the same transaction (D-08).
  */
 export function persistRunResult(input: {
   runId: string;
@@ -209,6 +212,10 @@ export function persistRunResult(input: {
         newDetections: detections,
       }).spineCount;
     }
+    // D-08: one Discogs search per active CD spine, in this transaction, so
+    // a done run always has its searches queued. A re-scan only enqueues
+    // spines whose inputs changed (the input-hash check).
+    enqueueAutoSearchesForPhoto(db, run.photo_id);
 
     const done = db
       .prepare(

@@ -3,6 +3,7 @@ import { reconcileVisionRuns } from '../../scan/reconcile';
 import type { JobHandler } from '../types';
 import { runNoop } from './noop';
 import { runScanPhoto } from './scan-photo';
+import { runSearchSpine } from './search-spine';
 
 export const handlers: Record<string, JobHandler> = {
   noop: { run: runNoop, timeoutMs: 120000 },
@@ -10,6 +11,11 @@ export const handlers: Record<string, JobHandler> = {
   scan_photo: {
     run: (payload, ctx) => runScanPhoto(payload, ctx),
     timeoutMs: 720_000,
+  },
+  // Discogs lane: up to 3 paced requests (one per cascade stage).
+  search_spine: {
+    run: (payload, ctx) => runSearchSpine(payload, ctx),
+    timeoutMs: 90_000,
   },
 };
 

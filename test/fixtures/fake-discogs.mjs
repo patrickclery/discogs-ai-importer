@@ -18,39 +18,82 @@
 //        =docs expects consumer_secret& instead and refuses the other form.
 //   GET  /oauth/identity  { id, username: FAKE_DISCOGS_USERNAME or
 //        'fake-owner', resource_url }.
+//
+// Data API (Plan 03-03, RESEARCH "Search" and "Release"):
+//   GET  /database/search  signed with a live access token only (401
+//        otherwise). Deterministic default scenario, matched on the query:
+//          catno TR-200 (normalized: upper case, letters and digits) -> two
+//            results in the order { id 1002, catno 'TR-200 X' } then
+//            { id 1001, catno 'TR200' }, so the exact-catno pin must
+//            reorder them;
+//          catno TR-201 -> one result (id 1011);
+//          artist 'Juniper Vale' with any release_title -> three results
+//            (ids 1031, 1032, 1033);
+//          q containing 'Static Bloom' -> one result (id 1041);
+//          anything else -> 200 { pagination: { items: 0 }, results: [] }.
+//        Every result carries title 'Artist - Title', year as a string,
+//        country, a label array (with a repeat), catno, formats, master_id
+//        and thumb = this server's base URL + /img/{id}.jpeg.
+//   GET  /releases/{id}  a release shaped like the real one for ids up to
+//        899999999; 404 { message: 'That release does not exist or may have
+//        been deleted.' } otherwise.
+//   GET  /img/{name}.jpeg  a small JPEG rendered once with sharp at startup.
+//        No rate-limit headers; never counted against the limit.
 // Every API answer carries X-Discogs-Ratelimit (FAKE_DISCOGS_LIMIT, default
 // 600 so tests run fast), -Remaining and -Used over a moving 60 s window.
 //
 // Test control (not part of Discogs):
-//   POST /__control  JSON { authorize?, accessSignature?, revoked?, reset? }
-//        changes modes at runtime; revoked: true makes every request signed
-//        with an access token answer 401 JSON. Answers the current state.
+//   POST /__control  JSON { authorize?, accessSignature?, revoked?, reset?,
+//        at429?, retryAfter?, at5xx?, limit? } changes modes at runtime;
+//        revoked: true makes every request signed with an access token
+//        answer 401 JSON. at429: N answers the N-th API request from now
+//        (1 = the next) with 429 and an empty body, carrying Retry-After
+//        when retryAfter (seconds) is a number; at5xx: N does the same with
+//        a 502. limit changes X-Discogs-Ratelimit. Answers the current state.
 //   GET  /__control  the current state, including the last oauth_callback
 //        received (a URL, not a secret).
 // Issued values carry fixed prefixes (fake-rt-, fake-rts-, fake-verifier-,
 // fake-at-, fake-ats-) so tests can scan responses for leaks.
 //
 // When FAKE_DISCOGS_LOG is set, one JSON line per API or web request is
-// appended to that file: method, path, query keys and values, User-Agent,
-// the oauth parameter names present and oauth_signature_method. No secret
-// value (consumer secret, token secrets, signature, verifier) is logged.
+// appended to that file: method, path, query keys and values (the search
+// stage's catno, artist, release_title, q, type, format, per_page, page),
+// User-Agent, the oauth parameter names present, oauth_signature_method and
+// the answered status. Image requests are logged with surface 'img'. No
+// secret value (consumer secret, token secrets, signature, verifier) is
+// logged.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
+import sharp from 'sharp';
 
 const CONSUMER_KEY =
   process.env.FAKE_DISCOGS_CONSUMER_KEY || 'fake-consumer-key';
 const CONSUMER_SECRET =
   process.env.FAKE_DISCOGS_CONSUMER_SECRET || 'fake-consumer-secret';
 const USERNAME = process.env.FAKE_DISCOGS_USERNAME || 'fake-owner';
-const LIMIT = Number(process.env.FAKE_DISCOGS_LIMIT) || 600;
+const DEFAULT_LIMIT = Number(process.env.FAKE_DISCOGS_LIMIT) || 600;
 const LOG = process.env.FAKE_DISCOGS_LOG || '';
 
 const initialModes = () => ({
   authorize: process.env.FAKE_DISCOGS_AUTHORIZE || 'ok',
   accessSignature: process.env.FAKE_DISCOGS_ACCESS_SIGNATURE || 'standard',
   revoked: false,
+  /** API requests left before a 429 (1 = the next one), or null. */
+  at429: null,
+  /** Retry-After seconds sent with the injected 429, or null for none. */
+  retryAfter: null,
+  /** API requests left before a 502, or null. */
+  at5xx: null,
+  limit: DEFAULT_LIMIT,
 });
+
+/** The thumbnail every /img/*.jpeg answers with. */
+const THUMB = await sharp({
+  create: { width: 150, height: 150, channels: 3, background: '#3a6ea5' },
+})
+  .jpeg({ quality: 80 })
+  .toBuffer();
 
 let modes = initialModes();
 let lastCallback = null;
@@ -84,7 +127,7 @@ function parseOAuth(header) {
   return out;
 }
 
-function log(req, url, surface, oauth) {
+function log(req, url, surface, oauth, status, t = Date.now()) {
   if (!LOG || surface === 'control') return;
   const query = {};
   for (const [k, v] of url.searchParams) {
@@ -92,7 +135,7 @@ function log(req, url, surface, oauth) {
     query[k] = k === 'oauth_verifier' ? '[present]' : v;
   }
   const entry = {
-    t: Date.now(),
+    t,
     surface,
     method: req.method,
     path: url.pathname,
@@ -101,6 +144,7 @@ function log(req, url, surface, oauth) {
     accept: req.headers.accept ?? null,
     oauthParams: oauth ? Object.keys(oauth).sort() : [],
     signatureMethod: oauth?.oauth_signature_method ?? null,
+    status: status ?? null,
   };
   fs.appendFileSync(LOG, `${JSON.stringify(entry)}\n`);
 }
@@ -111,9 +155,9 @@ function rateHeaders() {
   hits.push(now);
   const used = hits.length;
   return {
-    'x-discogs-ratelimit': String(LIMIT),
+    'x-discogs-ratelimit': String(modes.limit),
     'x-discogs-ratelimit-used': String(used),
-    'x-discogs-ratelimit-remaining': String(Math.max(0, LIMIT - used)),
+    'x-discogs-ratelimit-remaining': String(Math.max(0, modes.limit - used)),
   };
 }
 
@@ -187,6 +231,18 @@ async function handleControl(req, res) {
       modes.accessSignature = patch.accessSignature;
     }
     if (typeof patch.revoked === 'boolean') modes.revoked = patch.revoked;
+    const count = (v) => (Number.isInteger(v) && v > 0 ? v : null);
+    if ('at429' in patch) modes.at429 = count(patch.at429);
+    if ('at5xx' in patch) modes.at5xx = count(patch.at5xx);
+    if ('retryAfter' in patch) {
+      modes.retryAfter =
+        typeof patch.retryAfter === 'number' && patch.retryAfter >= 0
+          ? patch.retryAfter
+          : null;
+    }
+    if (Number.isInteger(patch.limit) && patch.limit > 0) {
+      modes.limit = patch.limit;
+    }
   }
   sendJson(res, 200, {}, controlState());
 }
@@ -293,6 +349,146 @@ function handleIdentity(res, oauth, rate) {
   });
 }
 
+/** Discogs' fuzzy catno match, approximated: upper case, letters and digits. */
+const normCatno = (s) => (s ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+const SEARCH_FIXTURES = [
+  {
+    match: (p) => normCatno(p.get('catno')) === 'TR200',
+    results: [
+      {
+        id: 1002,
+        artist: 'Nova Lane',
+        title: 'Blue Hour (Deluxe)',
+        catno: 'TR-200 X',
+      },
+      { id: 1001, artist: 'Nova Lane', title: 'Blue Hour', catno: 'TR200' },
+    ],
+  },
+  {
+    match: (p) => normCatno(p.get('catno')) === 'TR201',
+    results: [
+      {
+        id: 1011,
+        artist: 'Echo Harbor',
+        title: 'Glass Rivers',
+        catno: 'TR-201',
+      },
+    ],
+  },
+  {
+    match: (p) => (p.get('artist') ?? '').toLowerCase() === 'juniper vale',
+    results: [
+      { id: 1031, artist: 'Juniper Vale', title: 'Low Orbit', catno: 'JV-1' },
+      {
+        id: 1032,
+        artist: 'Juniper Vale',
+        title: 'Low Orbit (Remastered)',
+        catno: 'JV-2',
+      },
+      {
+        id: 1033,
+        artist: 'Juniper Vale',
+        title: 'Low Orbit Live',
+        catno: 'JV-3',
+      },
+    ],
+  },
+  {
+    match: (p) => (p.get('q') ?? '').includes('Static Bloom'),
+    results: [
+      {
+        id: 1041,
+        artist: 'Static Bloom',
+        title: 'Paper Moons',
+        catno: 'SB-41',
+      },
+    ],
+  },
+];
+
+function searchResult(base, r) {
+  return {
+    id: r.id,
+    type: 'release',
+    title: `${r.artist} - ${r.title}`,
+    year: '1999',
+    country: 'UK',
+    label: ['Fake Label', 'Fake Label', 'Other Imprint'],
+    catno: r.catno,
+    format: ['CD', 'Album'],
+    formats: [{ name: 'CD', qty: '1', descriptions: ['Album'] }],
+    master_id: r.id + 50_000,
+    master_url: `https://api.discogs.com/masters/${r.id + 50_000}`,
+    uri: `/release/${r.id}-${r.artist.replace(/\W+/g, '-')}`,
+    resource_url: `https://api.discogs.com/releases/${r.id}`,
+    thumb: `${base}/img/${r.id}.jpeg`,
+    cover_image: `${base}/img/${r.id}.jpeg`,
+  };
+}
+
+function handleSearch(res, url, oauth, rate, base) {
+  if (!accessOk(oauth)) {
+    unauthorized(res, rate);
+    return 401;
+  }
+  const fixture = SEARCH_FIXTURES.find((f) => f.match(url.searchParams));
+  const results = (fixture?.results ?? []).map((r) => searchResult(base, r));
+  sendJson(res, 200, rate, {
+    pagination: {
+      page: 1,
+      pages: results.length > 0 ? 1 : 0,
+      per_page: Number(url.searchParams.get('per_page')) || 50,
+      items: results.length,
+      urls: {},
+    },
+    results,
+  });
+  return 200;
+}
+
+function handleRelease(res, idText, rate, base) {
+  const id = Number(idText);
+  if (!/^\d+$/.test(idText) || id < 1 || id > 899_999_999) {
+    sendJson(res, 404, rate, {
+      message: 'That release does not exist or may have been deleted.',
+    });
+    return 404;
+  }
+  sendJson(res, 200, rate, {
+    id,
+    title: `Release ${id}`,
+    artists: [
+      { name: 'Fake Artist', anv: '', join: '&' },
+      { name: 'Guest (2)', anv: '', join: '' },
+    ],
+    artists_sort: 'Fake Artist & Guest (2)',
+    year: 2001,
+    country: 'Germany',
+    labels: [
+      { name: 'Fake Label', catno: `FK-${id}`, entity_type_name: 'Label' },
+      { name: 'Fake Label', catno: `FK-${id}`, entity_type_name: 'Label' },
+    ],
+    formats: [{ name: 'CD', qty: '1', descriptions: ['Album'] }],
+    master_id: 0,
+    thumb: `${base}/img/r${id}.jpeg`,
+    images: [{ type: 'primary', uri150: `${base}/img/r${id}-150.jpeg` }],
+    uri: `https://www.discogs.com/release/${id}-Fake-Artist-Release-${id}`,
+    resource_url: `https://api.discogs.com/releases/${id}`,
+    status: 'Accepted',
+  });
+  return 200;
+}
+
+/** Counts an injected failure down; true when this request is the one. */
+function injected(key) {
+  if (modes[key] === null) return false;
+  modes[key] -= 1;
+  if (modes[key] > 0) return false;
+  modes[key] = null;
+  return true;
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -306,32 +502,20 @@ const server = http.createServer(async (req, res) => {
       handleAuthorize(res, url);
       return;
     }
-    log(req, url, 'api', oauth);
-    const rate = rateHeaders();
-    // Revoked access: every request signed with an access token is refused.
-    if (
-      modes.revoked &&
-      oauth?.oauth_token &&
-      accessTokens.has(oauth.oauth_token)
-    ) {
-      unauthorized(res, rate);
+    if (url.pathname.startsWith('/img/')) {
+      log(req, url, 'img', null, 200);
+      if (req.method !== 'GET' || !/^\/img\/[\w-]+\.jpeg$/.test(url.pathname)) {
+        send(res, 404, { 'content-type': 'text/plain' }, 'not found');
+        return;
+      }
+      send(res, 200, { 'content-type': 'image/jpeg' }, THUMB);
       return;
     }
-    switch (url.pathname) {
-      case '/oauth/request_token':
-        handleRequestToken(res, oauth, rate);
-        return;
-      case '/oauth/access_token':
-        handleAccessToken(req, res, oauth, rate);
-        return;
-      case '/oauth/identity':
-        handleIdentity(res, oauth, rate);
-        return;
-      default:
-        sendJson(res, 404, rate, {
-          message: 'The requested resource was not found.',
-        });
-    }
+    // t is the arrival time, so the log measures request spacing.
+    const t = Date.now();
+    const rate = rateHeaders();
+    const status = await answerApi(req, res, url, oauth, rate);
+    log(req, url, 'api', oauth, status, t);
   } catch (err) {
     send(
       res,
@@ -341,6 +525,54 @@ const server = http.createServer(async (req, res) => {
     );
   }
 });
+
+/** Answers one API request; returns the status sent. */
+async function answerApi(req, res, url, oauth, rate) {
+  if (injected('at429')) {
+    const headers = { ...rate, 'content-type': 'application/json' };
+    if (modes.retryAfter !== null) {
+      headers['retry-after'] = String(modes.retryAfter);
+    }
+    send(res, 429, headers, '');
+    return 429;
+  }
+  if (injected('at5xx')) {
+    sendJson(res, 502, rate, { message: 'Bad gateway.' });
+    return 502;
+  }
+  // Revoked access: every request signed with an access token is refused.
+  if (
+    modes.revoked &&
+    oauth?.oauth_token &&
+    accessTokens.has(oauth.oauth_token)
+  ) {
+    unauthorized(res, rate);
+    return 401;
+  }
+  const base = `http://${req.headers.host ?? '127.0.0.1'}`;
+  const release = /^\/releases\/([^/]+)$/.exec(url.pathname);
+  if (release && req.method === 'GET') {
+    return handleRelease(res, release[1], rate, base);
+  }
+  switch (url.pathname) {
+    case '/oauth/request_token':
+      handleRequestToken(res, oauth, rate);
+      return res.statusCode;
+    case '/oauth/access_token':
+      handleAccessToken(req, res, oauth, rate);
+      return res.statusCode;
+    case '/oauth/identity':
+      handleIdentity(res, oauth, rate);
+      return res.statusCode;
+    case '/database/search':
+      return handleSearch(res, url, oauth, rate, base);
+    default:
+      sendJson(res, 404, rate, {
+        message: 'The requested resource was not found.',
+      });
+      return 404;
+  }
+}
 
 const port = Number(process.argv[2] ?? process.env.FAKE_DISCOGS_PORT ?? 0);
 server.listen(port, '127.0.0.1', () => {
