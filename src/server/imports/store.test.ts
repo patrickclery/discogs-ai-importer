@@ -12,9 +12,11 @@ import { cancelQueuedJob } from '../jobs/queue';
 import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
 import {
   ADD_TO_COLLECTION_JOB_TYPE,
+  addAnotherCopy,
   cancelImport,
   createImport,
   enqueueImport,
+  linkExisting,
   retrySpine,
 } from './store';
 
@@ -774,6 +776,197 @@ describe('retrySpine (REV-04, D-13)', () => {
 
   it('not_found for an unknown spine', () => {
     expect(retrySpine(db(), 'no-such-spine')).toEqual({
+      status: 'not_found',
+    });
+  });
+});
+
+/**
+ * A confirmed import held already_in_collection by its finished job (D-05),
+ * with the copies Discogs listed, ascending by instance id.
+ */
+function heldImport(
+  spineId: string,
+  existing: { instanceId: number; folderId: number }[],
+  releaseId = 1031,
+): { importId: string; jobId: string } {
+  const made = confirm(spineId, releaseId);
+  setJob(made.jobId, 'succeeded');
+  setImport(made.importId, {
+    status: 'already_in_collection',
+    existing_json: JSON.stringify(
+      existing.map((e) => ({ ...e, dateAdded: '2015-11-30T10:54:13-08:00' })),
+    ),
+  });
+  return made;
+}
+
+/** Another spine's imported import recording that copy. */
+function recordedCopy(spineId: string, instanceId: number): void {
+  const made = confirm(spineId, 2042);
+  setJob(made.jobId, 'succeeded');
+  setImport(made.importId, { status: 'imported', instance_id: instanceId });
+}
+
+type LinkedRow = ImportRowLite & {
+  instance_id: number | null;
+  linked: number;
+  imported_at: number | null;
+};
+
+describe('linkExisting (Link existing copy, D-05)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it("links the first copy no import records, with that copy's folder", async () => {
+    const { spineIds } = await orphanScenario();
+    recordedCopy(spineIds[1], 7001);
+    const { importId } = heldImport(spineIds[0], [
+      { instanceId: 7001, folderId: 1 },
+      { instanceId: 7002, folderId: 3 },
+    ]);
+    const jobs = count('jobs');
+    const res = linkExisting(db(), spineIds[0]);
+    expect(res).toEqual({ status: 'ok', importId, instanceId: 7002 });
+    const row = importRow(importId) as LinkedRow;
+    expect(row).toMatchObject({
+      status: 'imported',
+      instance_id: 7002,
+      folder_id: 3,
+      linked: 1,
+      error: null,
+      error_kind: null,
+    });
+    expect(row.imported_at).toBeGreaterThan(0);
+    // No new job: linking writes nothing to Discogs.
+    expect(count('jobs')).toBe(jobs);
+  });
+
+  it('with no copy recorded, links the lowest instance id', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId } = heldImport(spineIds[0], [
+      { instanceId: 7001, folderId: 1 },
+      { instanceId: 7002, folderId: 3 },
+    ]);
+    expect(linkExisting(db(), spineIds[0])).toEqual({
+      status: 'ok',
+      importId,
+      instanceId: 7001,
+    });
+    expect(importRow(importId)?.folder_id).toBe(1);
+  });
+
+  it('every listed copy already recorded gives no_existing and changes nothing', async () => {
+    const { spineIds } = await orphanScenario();
+    recordedCopy(spineIds[1], 7001);
+    heldImport(spineIds[0], [{ instanceId: 7001, folderId: 1 }]);
+    const before = snapshot();
+    expect(linkExisting(db(), spineIds[0]).status).toBe('no_existing');
+    expect(snapshot()).toBe(before);
+  });
+
+  it('an empty or unreadable copy list gives no_existing', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId } = heldImport(spineIds[0], []);
+    expect(linkExisting(db(), spineIds[0])).toEqual({ status: 'no_existing' });
+    setImport(importId, { existing_json: 'not json' });
+    expect(linkExisting(db(), spineIds[0])).toEqual({ status: 'no_existing' });
+    setImport(importId, { existing_json: null });
+    expect(linkExisting(db(), spineIds[0])).toEqual({ status: 'no_existing' });
+  });
+
+  it.each(['pending', 'importing', 'imported', 'failed'])(
+    'a %s import gives not_held and changes nothing',
+    async (status) => {
+      const { spineIds } = await orphanScenario();
+      const { importId } = heldImport(spineIds[0], [
+        { instanceId: 7001, folderId: 1 },
+      ]);
+      setImport(importId, { status });
+      const before = snapshot();
+      expect(linkExisting(db(), spineIds[0])).toEqual({ status: 'not_held' });
+      expect(snapshot()).toBe(before);
+    },
+  );
+
+  it('no import, or an unknown spine, gives not_found', async () => {
+    const { spineIds } = await orphanScenario();
+    expect(linkExisting(db(), spineIds[0])).toEqual({ status: 'not_found' });
+    expect(linkExisting(db(), 'no-such-spine')).toEqual({
+      status: 'not_found',
+    });
+  });
+});
+
+describe('addAnotherCopy (Add another copy, D-05 remote)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it('a held import goes back to pending with allow_duplicate 1 and one queued job', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId, jobId } = heldImport(spineIds[0], [
+      { instanceId: 7001, folderId: 1 },
+    ]);
+    setImport(importId, { error: 'old', error_kind: 'other' });
+    const res = addAnotherCopy(db(), spineIds[0]);
+    expect(res.status === 'ok' && res.importId).toBe(importId);
+    if (res.status !== 'ok') return;
+    expect(res.jobId).not.toBe(jobId);
+    expect(importRow(importId)).toMatchObject({
+      status: 'pending',
+      allow_duplicate: 1,
+      error: null,
+      error_kind: null,
+      job_id: res.jobId,
+    });
+    expect(job(res.jobId)).toMatchObject({
+      status: 'queued',
+      type: ADD_TO_COLLECTION_JOB_TYPE,
+      dedupe_key: `import:${spineIds[0]}:1031`,
+    });
+    expect(
+      count('jobs', `type = 'add_to_collection' AND status = 'queued'`),
+    ).toBe(1);
+    expect(count('imports')).toBe(1);
+  });
+
+  it('a second call while the job is queued returns the same job', async () => {
+    const { spineIds } = await orphanScenario();
+    heldImport(spineIds[0], [{ instanceId: 7001, folderId: 1 }]);
+    const first = addAnotherCopy(db(), spineIds[0]);
+    const jobs = count('jobs');
+    const second = addAnotherCopy(db(), spineIds[0]);
+    expect(second).toEqual(first);
+    expect(count('jobs')).toBe(jobs);
+  });
+
+  it('once its job is running, a second call gives not_held', async () => {
+    const { spineIds } = await orphanScenario();
+    heldImport(spineIds[0], [{ instanceId: 7001, folderId: 1 }]);
+    const first = addAnotherCopy(db(), spineIds[0]);
+    if (first.status !== 'ok') throw new Error(first.status);
+    setJob(first.jobId, 'running');
+    const before = snapshot();
+    expect(addAnotherCopy(db(), spineIds[0])).toEqual({ status: 'not_held' });
+    expect(snapshot()).toBe(before);
+  });
+
+  it.each(['pending', 'importing', 'imported', 'failed'])(
+    'a %s import the owner did not hold gives not_held and changes nothing',
+    async (status) => {
+      const { spineIds } = await orphanScenario();
+      const { importId } = confirm(spineIds[0]);
+      setImport(importId, { status });
+      const before = snapshot();
+      expect(addAnotherCopy(db(), spineIds[0])).toEqual({ status: 'not_held' });
+      expect(snapshot()).toBe(before);
+    },
+  );
+
+  it('no import, or an unknown spine, gives not_found', async () => {
+    const { spineIds } = await orphanScenario();
+    expect(addAnotherCopy(db(), spineIds[0])).toEqual({ status: 'not_found' });
+    expect(addAnotherCopy(db(), 'no-such-spine')).toEqual({
       status: 'not_found',
     });
   });

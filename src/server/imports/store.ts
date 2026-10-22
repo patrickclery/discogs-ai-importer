@@ -492,3 +492,30 @@ export function retrySpine(
   });
   return tx.immediate();
 }
+
+export type LinkExistingResult =
+  | { status: 'ok'; importId: string; instanceId: number }
+  | { status: 'not_found' }
+  | { status: 'not_held' }
+  | { status: 'no_existing' };
+
+/** Link existing copy (D-05). Stub until Plan 04-04 Task 2 GREEN. */
+export function linkExisting(
+  _db: Database.Database,
+  _spineId: string,
+): LinkExistingResult {
+  return { status: 'not_found' };
+}
+
+export type AddAnotherCopyResult =
+  | { status: 'ok'; importId: string; jobId: string }
+  | { status: 'not_found' }
+  | { status: 'not_held' };
+
+/** Add another copy (D-05, remote). Stub until Plan 04-04 Task 2 GREEN. */
+export function addAnotherCopy(
+  _db: Database.Database,
+  _spineId: string,
+): AddAnotherCopyResult {
+  return { status: 'not_found' };
+}
