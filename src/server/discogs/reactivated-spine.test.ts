@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { matchesAction } from '@/components/discogs-matches';
 import {
   type Output,
@@ -19,8 +19,18 @@ import { complete, listJobs } from '../jobs/queue';
 import { updateSpineField } from '../scan/fields';
 import { reattachSpine } from '../scan/orphans';
 import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
-import { clearAuthInvalid, saveDiscogsAuth } from './auth';
-import { enqueueAutoSearch } from './enqueue';
+import {
+  clearAuthInvalid,
+  isAuthInvalid,
+  PENDING_CONNECT_TTL_MS,
+  saveDiscogsAuth,
+} from './auth';
+import { completeConnect } from './connect';
+import {
+  enqueueAutoSearch,
+  enqueueExplicitSearch,
+  enqueueMissingSearches,
+} from './enqueue';
 import { resetDiscogsGateForTests } from './gate';
 import { inputHash, loadSpineInputs } from './inputs';
 import { discogsForSpines } from './queries';
@@ -144,6 +154,57 @@ function fixtureResponse(file: string): Respond {
 
 const empty = fixtureResponse('search-empty.json');
 const hit = fixtureResponse('search-hit.json');
+
+function jsonResponse(status: number, body: unknown): Respond {
+  return () =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+}
+
+/** A revoked sign-in: the client marks it invalid (DiscogsAuthError). */
+const unauthorized = jsonResponse(401, {
+  message: 'You must authenticate to access this resource.',
+});
+/** DiscogsRequestError: the search finishes failed, error_kind rejected. */
+const rejected = jsonResponse(422, { message: 'Invalid query.' });
+/** connect.test.ts ACCESS_OK and IDENTITY_OK, with fake canary tokens. */
+const accessOk: Respond = () =>
+  new Response(
+    'oauth_token=CANARYACCESSTOKEN-0123456789qrst&oauth_token_secret=CANARYACCESSSECRET-0123456789uvwx',
+    {
+      status: 200,
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    },
+  );
+const identityOk = jsonResponse(200, { id: 1, username: 'fake-owner' });
+
+/**
+ * The global fetch answers from this queue only, and throws once it is
+ * empty, so no live Discogs request can ever happen (CLAUDE.md).
+ */
+function stubDiscogs(...responders: Respond[]): void {
+  const queue = [...responders];
+  vi.stubGlobal('fetch', async () => {
+    const next = queue.shift();
+    if (!next) throw new Error('no stubbed response');
+    return next();
+  });
+}
+
+type SearchHistoryRow = SearchRow & { kind: string };
+
+/** The spine's auto and again searches, oldest first. */
+function searchesOf(spineId: string): SearchHistoryRow[] {
+  return getDb()
+    .$client.prepare(
+      `SELECT id, kind, status, job_id, input_hash FROM discogs_searches
+       WHERE kind IN ('auto', 'again') AND spine_id = @spineId
+       ORDER BY created_at, id`,
+    )
+    .all({ spineId }) as SearchHistoryRow[];
+}
 
 /**
  * Runs one search's own job through the real handler. Only that job is
@@ -298,5 +359,94 @@ describe('re-activated spines (CR-01)', () => {
     expect(discogs?.state).toBe('no_match');
     expect(discogs).toMatchObject({ state: 'no_match', fieldsChanged: false });
     expect(matchesAction({ discogs })).toBeNull();
+  });
+});
+
+describe('a rejected Retry over a covering baseline, then reconnect (CR-01 auth_failed)', () => {
+  useTempDataDir();
+  useTempSecrets();
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * Auto search A ends failed (422), the owner's Retry B gets a 401 and ends
+   * auth_failed with A's inputs: A is a baseline covering the current
+   * inputs, B is the latest search.
+   */
+  async function rejectedRetry() {
+    const sc = await orphanScenario();
+    connect();
+    const db = getDb().$client;
+    const s0 = sc.spineIds[0];
+
+    expect(enqueueAutoSearch(db, s0)).toBe(true);
+    const [a] = autoSearches(s0);
+    await runSearchJob(a.id, rejected);
+    expect(searchById(a.id).status).toBe('failed');
+    expect(matchesAction({ discogs: cardOf(s0) ?? null })).toBe('retry');
+
+    const retry = enqueueExplicitSearch(db, { spineId: s0, kind: 'again' });
+    if (retry.status !== 'ok') throw new Error(`retry was ${retry.status}`);
+    const bId = retry.searchId;
+    await runSearchJob(bId, unauthorized);
+    const b = searchById(bId);
+    expect(b.status).toBe('auth_failed');
+    expect(isAuthInvalid()).toBe(true);
+    const hash = inputHash(loadSpineInputs(db, s0));
+    expect(b.input_hash).toBe(searchById(a.id).input_hash);
+    expect(b.input_hash).toBe(hash);
+    expect(cardOf(s0)?.failure?.kind).toBe('auth');
+
+    runMaintenance();
+    expect(searchesOf(s0).map((r) => r.id)).toEqual([a.id, bId]);
+    return { sc, s0, a: searchById(a.id), b, hash };
+  }
+
+  it('CR-01 auth_failed: finishing a connect looks up again a spine whose rejected Retry repeated a covering baseline', async () => {
+    const { s0, a, b, hash } = await rejectedRetry();
+    resetDiscogsGateForTests(fakeClock());
+    stubDiscogs(accessOk, identityOk);
+    await completeConnect({
+      oauthToken: 'rt-0123456789',
+      verifier: 'CANARYCODE-0123456789yz',
+      pending: {
+        secret: 'CANARYREQUESTSECRET-0123456789mnop',
+        callback: 'http://127.0.0.1:3001/api/discogs/callback',
+        expiresAt: Date.now() + PENDING_CONNECT_TTL_MS,
+      },
+      via: 'callback',
+    });
+    expect(isAuthInvalid()).toBe(false);
+    expect(cardOf(s0)?.state).toBe('queued');
+
+    const rows = searchesOf(s0);
+    expect(rows.map((r) => [r.id, r.kind, r.status])).toEqual([
+      [a.id, 'auto', 'failed'],
+      [b.id, 'again', 'auth_failed'],
+      [rows[2]?.id, 'auto', 'queued'],
+    ]);
+    const c = rows[2];
+    expect(c.input_hash).toBe(hash);
+    const cKey = dedupeKeyOf(c.job_id ?? '');
+    expect(cKey).toBe(`search:auto:${s0}:${hash}:${b.id}`);
+    expect(cKey).not.toBe(dedupeKeyOf(a.job_id ?? ''));
+    const queued = cardOf(s0) ?? null;
+    expect(queued).toMatchObject({
+      state: 'queued',
+      failure: null,
+      fieldsChanged: false,
+    });
+    expect(matchesAction({ discogs: queued })).toBeNull();
+
+    await runSearchJob(c.id, hit);
+    const card = cardOf(s0);
+    expect(card?.state).toBe('done');
+    expect(card?.candidateCount).toBeGreaterThanOrEqual(1);
+    expect(card?.failure).toBeNull();
+
+    runMaintenance();
+    enqueueMissingSearches({ includeAuthFailed: true });
+    expect(searchesOf(s0)).toHaveLength(3);
   });
 });
