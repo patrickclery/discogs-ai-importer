@@ -258,6 +258,13 @@ export function releaseDedupeKey(id: string): void {
 }
 
 /**
+ * Cancels a job that no worker has claimed yet (D-02, Change match).
+ */
+export function cancelQueuedJob(_id: string, _now = Date.now()): boolean {
+  return false;
+}
+
+/**
  * Boot recovery (D-14), run only by the process that holds the worker lease.
  * Interrupted jobs go back to queued; a job interrupted on its final attempt
  * fails instead, so a crash loop never exceeds max_attempts runs.

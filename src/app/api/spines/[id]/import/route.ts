@@ -95,3 +95,11 @@ export async function POST(
     }
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  _ctx: { params: Promise<{ id: string }> },
+) {
+  await connection();
+  return fail(501, 'not_implemented', 'Not implemented.');
+}

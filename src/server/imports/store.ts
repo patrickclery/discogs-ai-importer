@@ -219,3 +219,16 @@ export function enqueueImport(
   });
   return tx.immediate();
 }
+
+export type CancelImportResult =
+  | { status: 'ok' }
+  | { status: 'not_found' }
+  | { status: 'started' };
+
+/** Change match (D-02). */
+export function cancelImport(
+  _db: Database.Database,
+  _spineId: string,
+): CancelImportResult {
+  return { status: 'not_found' };
+}
