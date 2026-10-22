@@ -13,6 +13,7 @@ import { getCollectionFolderId } from '../discogs/folders';
 import { discogsForSpines } from '../discogs/queries';
 import { newId } from '../ids';
 import { cancelQueuedJob, enqueue, releaseDedupeKey } from '../jobs/queue';
+import { fileUrl } from '../scan/queries';
 
 // Imports (D-01, D-02, D-03, D-07, D-08, D-13). createImport is the only
 // path that creates an import; enqueueImport, reached from createImport and
@@ -32,7 +33,8 @@ export type CreateImportResult =
   | { status: 'not_on_discogs' }
   | { status: 'already_confirmed' }
   | { status: 'retry_first' }
-  | { status: 'no_candidate' };
+  | { status: 'no_candidate' }
+  | ({ status: 'duplicate' } & DuplicateOf);
 
 /** The other spine already holding the release (D-04), as the dialog shows it. */
 export type DuplicateOf = {
@@ -132,10 +134,59 @@ export function getImport(
 }
 
 /**
+ * The local duplicate check (D-04, IMP-03), with no Discogs request: the
+ * oldest import of the same release held by another listed spine (active or
+ * orphaned) that is pending, importing, imported or already_in_collection.
+ * Overlapping photos of one shelf are caught the same way as two copies on
+ * one photo.
+ */
+function duplicateOf(
+  db: Database.Database,
+  spineId: string,
+  releaseId: number,
+): DuplicateOf | null {
+  const row = db
+    .prepare(
+      `SELECT i.status, p.original_name AS photo, d.idx, d.crop_path
+       FROM imports i
+       JOIN spines s ON s.id = i.spine_id
+       JOIN photos p ON p.id = s.photo_id
+       LEFT JOIN spine_detections d ON d.id = s.current_detection_id
+       WHERE i.release_id = @releaseId
+         AND i.spine_id <> @spineId
+         AND s.state IN ('active', 'orphaned')
+         AND i.status IN ('pending', 'importing', 'imported',
+           'already_in_collection')
+       ORDER BY i.created_at, i.id
+       LIMIT 1`,
+    )
+    .get({ releaseId, spineId }) as
+    | {
+        status: string;
+        photo: string;
+        idx: number | null;
+        crop_path: string | null;
+      }
+    | undefined;
+  if (!row) return null;
+  return {
+    photo: row.photo,
+    spineNumber: (row.idx ?? 0) + 1,
+    cropUrl: fileUrl(row.crop_path),
+    done: row.status === 'imported',
+  };
+}
+
+/**
  * Confirms one candidate of one spine (D-01): checks, in order, that the
  * spine exists, is active or orphaned, is not marked not on Discogs, has no
- * non-failed import, and lists that candidate; then writes the pending
- * import and its add_to_collection job. One IMMEDIATE transaction, so two
+ * non-failed import, and lists that candidate; unless allowDuplicate, that
+ * no other listed spine holds the same release (duplicateOf, D-04); then
+ * writes the pending import and its add_to_collection job. allowDuplicate
+ * is the owner's local "Add another copy" and does not set
+ * imports.allow_duplicate: that flag stays the answer to a remote hold
+ * (A-04-17), and the other spine's copy is recorded, so the handler does
+ * not hold this one. One IMMEDIATE transaction, so two
  * confirms sent at once cannot both pass; the partial unique index
  * imports_spine_open_idx is the race-proof backstop (D-08, Pitfall 8).
  */
@@ -191,6 +242,10 @@ export function createImport(
       | CandidateRow
       | undefined;
     if (!candidate) return { status: 'no_candidate' };
+    if (!input.allowDuplicate) {
+      const other = duplicateOf(db, input.spineId, candidate.release_id);
+      if (other) return { status: 'duplicate', ...other };
+    }
 
     const now = Date.now();
     const importId = newId();

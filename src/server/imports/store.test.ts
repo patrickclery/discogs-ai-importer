@@ -502,12 +502,18 @@ describe('createImport local duplicate (D-04, IMP-03)', () => {
       const { spineIds } = await orphanScenario();
       const other = confirm(spineIds[1]);
       setImport(other.importId, { status });
+      db()
+        .prepare(
+          `UPDATE spine_detections SET crop_path = 'crops/other.jpg'
+           WHERE id = (SELECT current_detection_id FROM spines WHERE id = ?)`,
+        )
+        .run(spineIds[1]);
       const candidateId = seedCandidate(spineIds[0]);
       const before = snapshot();
       const res = createImport(db(), { spineId: spineIds[0], candidateId });
       const shown = shownAs(spineIds[1]);
       expect(shown.photo).toBe('shelf.jpg');
-      expect(shown.cropUrl).toMatch(/^\/api\/files\//);
+      expect(shown.cropUrl).toBe('/api/files/crops/other.jpg');
       expect(res).toEqual({ status: 'duplicate', ...shown, done });
       expect(snapshot()).toBe(before);
     },
@@ -527,7 +533,12 @@ describe('createImport local duplicate (D-04, IMP-03)', () => {
     const { spineIds } = await orphanScenario();
     const first = confirm(spineIds[2]);
     setImport(first.importId, { created_at: 1_000 });
-    const second = confirm(spineIds[1]);
+    const second = createImport(db(), {
+      spineId: spineIds[1],
+      candidateId: seedCandidate(spineIds[1]),
+      allowDuplicate: true,
+    });
+    if (second.status !== 'ok') throw new Error(second.status);
     setImport(second.importId, { created_at: 2_000 });
     const res = createImport(db(), {
       spineId: spineIds[0],

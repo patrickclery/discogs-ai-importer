@@ -1,5 +1,6 @@
 import { connection } from 'next/server';
 import { z } from 'zod';
+import type { DuplicateBody } from '@/lib/import-types';
 import { getDb } from '@/server/db/client';
 import { getDiscogsAuth } from '@/server/discogs/auth';
 import { discogsReady } from '@/server/discogs/enqueue';
@@ -16,6 +17,8 @@ import { cancelImport, createImport } from '@/server/imports/store';
 
 const Body = z.strictObject({
   candidateId: z.string().min(1).max(40),
+  // D-04: the owner's "Add another copy" in the local duplicate dialog.
+  allowDuplicate: z.boolean().optional(),
 });
 
 function fail(status: number, error: string, message: string): Response {
@@ -82,6 +85,7 @@ export async function POST(
   const result = createImport(getDb().$client, {
     spineId: id,
     candidateId: parsed.data.candidateId,
+    allowDuplicate: parsed.data.allowDuplicate,
   });
   switch (result.status) {
     case 'not_found':
@@ -116,6 +120,20 @@ export async function POST(
         'already_confirmed',
         'This spine already has a match being added. It will show here in a moment.',
       );
+    case 'duplicate': {
+      // D-04: nothing was written; Plan 04-13's dialog shows both spines and
+      // resends with allowDuplicate on "Add another copy".
+      const body: DuplicateBody = {
+        error: 'duplicate',
+        message:
+          'This release is already going into your collection from another spine.',
+        photo: result.photo,
+        spineNumber: result.spineNumber,
+        cropUrl: result.cropUrl,
+        done: result.done,
+      };
+      return Response.json(body, { status: 409 });
+    }
     default: {
       const body: { importId: string } = { importId: result.importId };
       return Response.json(body, { status: 201 });

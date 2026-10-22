@@ -22,6 +22,12 @@
 // again. (f) a release that already has a copy no import records is held
 // already_in_collection with no add POST (D-05), its job ends succeeded with
 // its dedupe key freed, and /api/spines reads Already in your collection.
+// Plan 04-04 (IMP-03, IMP-04, D-04): (g) a second, re-encoded photo of the
+// same shelf is scanned; its first TR-200 spine's 1001 import lands; a
+// confirm of 1001 on its second TR-200 spine answers 409 duplicate naming
+// the first (done, #1) and writes nothing; resent with allowDuplicate it
+// is added as a second copy with its own instance id, never held as already
+// in the collection (the first spine's copy is the app's own).
 // Later plans add their own named steps; step letters are stable.
 // Run: node scripts/verify-discogs-import.ts   (VERIFY_SKIP_BUILD=1 reuses
 // the build). It builds and starts from NEXT_DIST_DIR, default .next/verify,
@@ -29,12 +35,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { SpinesResponse } from '../src/lib/scan-types.ts';
+import {
+  LAYOUTS,
+  makeSyntheticShelf,
+} from '../test/fixtures/vision/synthetic-shelf.mjs';
 import { type FakeLogEntry, PROJECT_USER_AGENT } from './lib/discogs.ts';
 import {
   type ConfirmAnswer,
   candidatesOf,
   confirm,
   connectAndScan,
+  discogsIdle,
   FAKE_USERNAME,
   type FakePostMode,
   fakeLog,
@@ -50,7 +61,7 @@ import {
   withWritableDb,
 } from './lib/import-flow.ts';
 import { assert, check, step } from './lib/jobs.ts';
-import { withDb } from './lib/scan.ts';
+import { upload, waitPhotoDone, withDb } from './lib/scan.ts';
 import { runMain, waitFor } from './lib/server.ts';
 
 // ---------------------------------------------------------------------------
@@ -630,6 +641,185 @@ async function stepAlreadyInCollection(ctx: ImportCtx): Promise<void> {
   );
 }
 
+/**
+ * Uploads another tracer-layout photo (re-encoded, so its bytes and hash
+ * differ: an overlapping photo of the same shelf), waits for the scan and
+ * for the Discogs lane to drain; the photo id. A local copy of
+ * verify-discogs-search's scanAnotherShelf.
+ */
+async function scanAnotherShelf(
+  ctx: ImportCtx,
+  quality: number,
+  filename: string,
+): Promise<string> {
+  const jpeg = new Uint8Array(
+    (await makeSyntheticShelf(LAYOUTS.tracerShelf, { quality })).jpeg,
+  );
+  const up = await upload(ctx, jpeg, { filename });
+  assert(up.status === 201, `upload returned ${up.status}`);
+  const photoId = String(up.body.photoId);
+  const photo = await waitPhotoDone(ctx, photoId);
+  assert(
+    photo.spineCount === LAYOUTS.tracerShelf.spines.length,
+    `spineCount ${photo.spineCount}, expected ${LAYOUTS.tracerShelf.spines.length}`,
+  );
+  await waitFor(
+    'the Discogs lane to drain',
+    async () => (discogsIdle(ctx) ? true : undefined),
+    { timeoutMs: 60_000, intervalMs: 250 },
+  );
+  return photoId;
+}
+
+/** The photo's active spines with that field value, in spine order. */
+function spinesOnPhoto(
+  ctx: ImportCtx,
+  photoId: string,
+  field: 'catalog_number' | 'artist',
+  value: string,
+): string[] {
+  return withDb(ctx, (db) =>
+    (
+      db
+        .prepare(
+          `SELECT s.id FROM spines s
+           JOIN spine_fields f ON f.spine_id = s.id AND f.field = @field
+           JOIN spine_detections d ON d.id = s.current_detection_id
+           WHERE s.photo_id = @photoId AND s.state = 'active'
+             AND f.value = @value
+           ORDER BY d.idx`,
+        )
+        .all({ photoId, field, value }) as { id: string }[]
+    ).map((r) => r.id),
+  );
+}
+
+/** Waits for the import to finish, noting every status it passed through. */
+async function waitImportSeen(
+  ctx: ImportCtx,
+  spineId: string,
+  statuses: string[],
+): Promise<{ row: ImportDbRow; seen: Set<string> }> {
+  const seen = new Set<string>();
+  const row = await waitFor(
+    `the import of spine ${spineId} to reach ${statuses.join(' or ')}`,
+    async () => {
+      const r = importRow(ctx, spineId);
+      if (r) seen.add(r.status);
+      return r && statuses.includes(r.status) ? r : undefined;
+    },
+    { timeoutMs: 30_000, intervalMs: 50 },
+  );
+  return { row, seen };
+}
+
+// (g) D-04, IMP-03, IMP-04 adjacency: an overlapping photo of the same
+// shelf. A second copy of a CD already imported from another spine is
+// refused with that spine's details and goes in only on the owner's word.
+async function stepLocalDuplicate(ctx: ImportCtx): Promise<string> {
+  step('(g) a confirm of a release another spine imported answers duplicate');
+  const photoId = await scanAnotherShelf(ctx, 85, 'shelf-2.jpg');
+  const tr200 = spinesOnPhoto(ctx, photoId, 'catalog_number', 'TR-200');
+  assert(
+    tr200.length === 2,
+    `${tr200.length} TR-200 spines on the second shelf`,
+  );
+  const [first, second] = tr200;
+  await confirmRelease(ctx, first, 1001);
+  const firstRow = await waitImport(ctx, first, ['imported', 'failed']);
+  assert(
+    firstRow.status === 'imported',
+    `the first 1001 import ended ${firstRow.status}: ${firstRow.error_kind} ${firstRow.error}`,
+  );
+
+  const candidate = candidatesOf(ctx, second).find(
+    (c) => c.release_id === 1001,
+  );
+  assert(candidate, 'the second TR-200 spine has no 1001 candidate');
+  const countRows = () =>
+    withDb(ctx, (db) =>
+      db
+        .prepare(
+          `SELECT
+             (SELECT COUNT(*) FROM imports WHERE spine_id = @second) AS imports,
+             (SELECT COUNT(*) FROM jobs WHERE type = 'add_to_collection') AS jobs`,
+        )
+        .get({ second }),
+    ) as { imports: number; jobs: number };
+  const before = countRows();
+  const dup = await confirm(ctx, second, { candidateId: candidate.id });
+  assert(
+    dup.status === 409 && dup.body.error === 'duplicate',
+    `the second 1001 confirm answered ${dup.status} ${JSON.stringify(dup.body)}`,
+  );
+  assert(
+    dup.body.done === true &&
+      dup.body.spineNumber === 1 &&
+      dup.body.photo === 'shelf-2.jpg' &&
+      typeof dup.body.cropUrl === 'string' &&
+      dup.body.cropUrl.startsWith('/api/files/') &&
+      dup.body.message ===
+        'This release is already going into your collection from another spine.',
+    `the duplicate body is ${JSON.stringify(dup.body)}`,
+  );
+  const crop = await fetch(`${ctx.baseUrl}${dup.body.cropUrl}`, {
+    cache: 'no-store',
+  });
+  assert(crop.status === 200, `the duplicate crop URL answered ${crop.status}`);
+  const after = countRows();
+  assert(
+    after.imports === before.imports && after.jobs === before.jobs,
+    `the refused confirm wrote ${after.imports - before.imports} imports and ${after.jobs - before.jobs} jobs`,
+  );
+
+  const again = await confirm(ctx, second, {
+    candidateId: candidate.id,
+    allowDuplicate: true,
+  });
+  assert(
+    again.status === 201 && typeof again.body.importId === 'string',
+    `the allowDuplicate confirm answered ${again.status} ${JSON.stringify(again.body)}`,
+  );
+  const { row, seen } = await waitImportSeen(ctx, second, [
+    'imported',
+    'already_in_collection',
+    'failed',
+  ]);
+  assert(
+    row.status === 'imported',
+    `the second 1001 import ended ${row.status}: ${row.error_kind} ${row.error}`,
+  );
+  assert(
+    !seen.has('already_in_collection') && row.existing_json === null,
+    `the second import was held: seen ${[...seen].join(', ')}, existing_json ${row.existing_json}`,
+  );
+  assert(
+    row.adopted === 0 && row.post_count === 1 && row.allow_duplicate === 0,
+    `the second import adopted ${row.adopted}, post_count ${row.post_count}, allow_duplicate ${row.allow_duplicate}`,
+  );
+  const state = await fakeState(ctx);
+  const copies = state.collection['1001'] ?? [];
+  const ids = new Set(copies.map((c) => c.instance_id));
+  assert(
+    copies.length === 2 && ids.size === 2,
+    `the fake holds ${JSON.stringify(copies)} for 1001`,
+  );
+  assert(
+    firstRow.instance_id !== null &&
+      row.instance_id !== null &&
+      firstRow.instance_id !== row.instance_id &&
+      ids.has(firstRow.instance_id) &&
+      ids.has(row.instance_id),
+    `instance ids ${firstRow.instance_id} and ${row.instance_id}, the fake holds ${[...ids].join(', ')}`,
+  );
+  const posted = state.postsByRelease['1001'] ?? 0;
+  assert(posted === 2, `${posted} add POSTs of 1001, expected 2`);
+  check(
+    `409 duplicate (shelf-2.jpg, #1, done, crop served) wrote nothing; allowDuplicate added a second copy: instances ${firstRow.instance_id} and ${row.instance_id}, adopted 0, post_count 1, never held`,
+  );
+  return photoId;
+}
+
 runMain('verify-discogs-import', async (onCleanup) => {
   const ctx = await startImportStack('verify-discogs-import', onCleanup);
   stepSchema(ctx);
@@ -640,6 +830,7 @@ runMain('verify-discogs-import', async (onCleanup) => {
   await stepKillMidPost(ctx);
   await stepBadGatewayAfterCommit(ctx);
   await stepAlreadyInCollection(ctx);
+  await stepLocalDuplicate(ctx);
   // Later plans insert their steps here.
 
   step('stop');
