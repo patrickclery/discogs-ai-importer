@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-10-22T10:41:26.898Z"
+stopped_at: Completed 04-13-PLAN.md
+last_updated: "2026-10-22T10:50:56.572Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: 7007c9fdb25e87081442632175547f512260f4e6
+state_head: 51345551b48ab39cd75a6ae5e2807ba53169327f
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 45
+  completed_plans: 46
   percent: 75
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 4 (Import & Review Queue) — EXECUTING
-Plan: 11 of 14
+Plan: 12 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 — Phase 4 execution started
 
@@ -103,6 +103,7 @@ Progress: [████████░░] 75%
 | Phase 04 P07 | 5 min | 2 tasks | 8 files |
 | Phase 04 P11 | 3 min | 2 tasks | 2 files |
 | Phase 04 P04 | 12 min | 2 tasks | 10 files |
+| Phase 04 P13 | 6min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -227,6 +228,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-11: write gate and read-model rules pinned by tests only; no production change needed (mutation-checked instead of RED)
 - [Phase 04]: Phase 4 P04: a local duplicate (another listed spine holds the release pending/importing/imported/already_in_collection) answers 409 duplicate with the oldest holder's photo, #n, crop and done; allowDuplicate skips it and leaves imports.allow_duplicate 0
 - [Phase 04]: Phase 4 P04: Add another copy called again while its job is still queued returns the same job; once running it answers not_held. Link existing copy needs no Discogs sign-in; Add another copy does
+- [Phase 04]: 04-13: the Add button owns the duplicate request; DuplicateImportDialog is presentational (pending, error props) and Cancel returns focus to Add
+- [Phase 04]: 04-13: Discogs dates show the calendar date Discogs wrote (en-GB, UTC); a non-date drops the added part
+- [Phase 04]: 04-13: crop URLs render only from /api/files/ (T-04-33)
 
 ### Pending Todos
 
@@ -246,6 +250,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T10:41:26.642Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-10-22T10:50:56.330Z
+Stopped at: Completed 04-13-PLAN.md
 Resume file: None
