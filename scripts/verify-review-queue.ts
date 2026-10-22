@@ -11,16 +11,24 @@
 // /spines page under ?status=imported renders the status filter. (d) marking
 // Owen Ashby not on Discogs moves it from not_found to not_on_discogs;
 // statusById still names it while ?status=not_found lists none.
+// Plan 04-09: (e) after a Discogs outage (the first TR-200 spine's newest
+// search failed, Juniper Vale's import failed before any POST) failed reads
+// 2; one POST /api/spines/retry-failed {} answers { retried: 2, skipped: 0 },
+// and once the lane drains failed is 0, the TR-200 spine is pending again
+// and Juniper Vale is imported with exactly one 1031 copy in the fake.
 // Later plans add their own named steps; step letters are stable.
 // Run: node scripts/verify-review-queue.ts   (VERIFY_SKIP_BUILD=1 reuses the
 // build). It builds and starts from NEXT_DIST_DIR, default .next/verify, so
 // a long-running `next start` on the default .next keeps working.
+import { randomUUID } from 'node:crypto';
 import { REVIEW_STATUSES, type ReviewStatus } from '../src/lib/import-types.ts';
 import type { SpinesResponse } from '../src/lib/scan-types.ts';
 import {
   candidatesOf,
   confirm,
   connectAndScan,
+  discogsIdle,
+  fakeState,
   type ImportCtx,
   spineByArtist,
   spineByCatno,
@@ -30,7 +38,7 @@ import {
   withWritableDb,
 } from './lib/import-flow.ts';
 import { assert, check, step } from './lib/jobs.ts';
-import { runMain } from './lib/server.ts';
+import { runMain, waitFor } from './lib/server.ts';
 
 async function getSpinesApi(
   ctx: ImportCtx,
@@ -262,12 +270,91 @@ async function stepMarkedMoves(ctx: ImportCtx): Promise<void> {
   );
 }
 
+// (e) Retry all failed puts a failed search and a failed import back in line.
+async function stepRetryAllFailed(ctx: ImportCtx): Promise<void> {
+  step('(e) Retry all failed retries a failed search and a failed import');
+  const tr200 = spineByCatno(ctx, 'TR-200');
+  const juniper = spineByArtist(ctx, 'Juniper Vale');
+  const top = candidatesOf(ctx, juniper)[0];
+  assert(top?.release_id === 1031, `Juniper Vale's top is ${top?.release_id}`);
+  withWritableDb(ctx, (db) => {
+    const now = Date.now();
+    db.prepare(
+      `INSERT INTO discogs_searches (id, spine_id, kind, input_hash,
+         inputs_json, status, error_kind, error, created_at, finished_at)
+       VALUES (@id, @spineId, 'again', NULL, '{}', 'failed', 'unavailable',
+         'Discogs answered 502', @now, @now)`,
+    ).run({ id: randomUUID(), spineId: tr200, now });
+    db.prepare(
+      `INSERT INTO imports (id, spine_id, candidate_id, release_id, folder_id,
+         status, error_kind, error, intent_at, created_at, updated_at)
+       VALUES (@id, @spineId, @candidateId, 1031, 1, 'failed', 'unavailable',
+         'Discogs answered 502', NULL, @now, @now)`,
+    ).run({ id: randomUUID(), spineId: juniper, candidateId: top.id, now });
+  });
+  const before = await getSpinesApi(ctx);
+  assert(
+    before.counts.byStatus.failed === 2,
+    `failed is ${before.counts.byStatus.failed} before the retry (${describeCounts(before.counts.byStatus)})`,
+  );
+  assert(
+    before.statusById[tr200] === 'failed' &&
+      before.statusById[juniper] === 'failed',
+    `TR-200 reads ${before.statusById[tr200]}, Juniper Vale ${before.statusById[juniper]}`,
+  );
+
+  const res = await fetch(`${ctx.baseUrl}/api/spines/retry-failed`, {
+    method: 'POST',
+    headers: { origin: ctx.origin, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  const body = (await res.json()) as Record<string, unknown>;
+  assert(
+    res.status === 200 && body.retried === 2 && body.skipped === 0,
+    `retry-failed answered ${res.status} ${JSON.stringify(body)}`,
+  );
+  await waitImport(ctx, juniper, ['imported']);
+  await waitFor(
+    'the Discogs lane to drain',
+    async () => (discogsIdle(ctx) ? true : undefined),
+    { timeoutMs: 60_000, intervalMs: 250 },
+  );
+
+  const after = await getSpinesApi(ctx);
+  assert(
+    after.counts.byStatus.failed === 0,
+    `failed is ${after.counts.byStatus.failed} after the retry (${describeCounts(after.counts.byStatus)})`,
+  );
+  assert(
+    after.statusById[tr200] === 'pending',
+    `TR-200 reads ${after.statusById[tr200]} after the retry`,
+  );
+  assert(
+    after.statusById[juniper] === 'imported',
+    `Juniper Vale reads ${after.statusById[juniper]} after the retry`,
+  );
+  const imports = withWritableDb(
+    ctx,
+    (db) =>
+      db
+        .prepare('SELECT COUNT(*) AS n FROM imports WHERE spine_id = @id')
+        .get({ id: juniper }) as { n: number },
+  );
+  assert(imports.n === 1, `Juniper Vale has ${imports.n} imports rows`);
+  const copies = (await fakeState(ctx)).collection['1031'] ?? [];
+  assert(copies.length === 1, `the fake holds ${copies.length} 1031 copies`);
+  check(
+    `retry-failed answered { retried: 2, skipped: 0 }; failed 2 -> 0; TR-200 pending again; Juniper Vale imported on its one row with exactly one 1031 copy (${describeCounts(after.counts.byStatus)})`,
+  );
+}
+
 runMain('verify-review-queue', async (onCleanup) => {
   const ctx = await startImportStack('verify-review-queue', onCleanup);
   const photoId = await stepInitialCounts(ctx);
   await stepImportedFilter(ctx, photoId);
   await stepPage(ctx);
   await stepMarkedMoves(ctx);
+  await stepRetryAllFailed(ctx);
   // Later plans insert their steps here.
 
   step('stop');

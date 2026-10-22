@@ -1,6 +1,7 @@
 'use client';
 
 import { useQueryState } from 'nuqs';
+import { RetryAllFailedButton } from '@/components/retry-all-failed-button';
 import { Count, ReviewStatusFilter } from '@/components/review-status-filter';
 import {
   Select,
@@ -34,8 +35,9 @@ export function usePhotoFilter() {
 /**
  * The /spines filter bar (D-07, D-11, UI-SPEC /spines filter bar), two rows.
  * Row 1: the status filter with a count per status. Row 2: the standalone
- * Needs review toggle (ANDs with the status) and the photo Select. All three
- * live in the URL through nuqs, so a reload keeps them. Not sticky.
+ * Needs review toggle (ANDs with the status), the photo Select and, while
+ * any spine in view failed, Retry all failed pushed right (D-13). The three
+ * filters live in the URL through nuqs, so a reload keeps them. Not sticky.
  */
 export function SpinesFilterBar({
   counts,
@@ -77,6 +79,9 @@ export function SpinesFilterBar({
             ))}
           </SelectContent>
         </Select>
+        {counts.byStatus.failed > 0 ? (
+          <RetryAllFailedButton photoId={photo} />
+        ) : null}
       </div>
     </div>
   );
