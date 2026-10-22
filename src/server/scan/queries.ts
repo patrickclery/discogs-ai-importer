@@ -20,10 +20,15 @@ import {
 } from '@/lib/vision-contract';
 import { getDb } from '../db/client';
 import {
+  collectionFolderName,
+  getCollectionFolderId,
+} from '../discogs/folders';
+import {
   anyDiscogsActive,
   discogsConnection,
   discogsForSpines,
 } from '../discogs/queries';
+import { importsForSpines } from '../imports/queries';
 import {
   getConfidenceThreshold,
   getDensityThresholds,
@@ -147,6 +152,7 @@ type SpineListRow = {
   crop_h: number | null;
   media_kind: string | null;
   orphaned_run_no: number | null;
+  not_on_discogs: number;
 };
 
 type SpineFieldListRow = {
@@ -185,7 +191,7 @@ export function loadSpineDtos(
   const db = getDb().$client;
   const rows = db
     .prepare(
-      `SELECT s.id, s.photo_id, s.state, s.created_run_id,
+      `SELECT s.id, s.photo_id, s.state, s.created_run_id, s.not_on_discogs,
          d.idx, d.legibility, d.crop_path, d.crop_w, d.crop_h, d.media_kind,
          CASE WHEN s.state = 'orphaned' THEN (
            SELECT MIN(o.run_no) FROM vision_runs o
@@ -255,6 +261,8 @@ export function loadSpineDtos(
       mediaKind: toMediaKind(r.media_kind),
       // Filled in by getSpines (the /spines read model) only.
       discogs: null,
+      import: null,
+      notOnDiscogs: r.not_on_discogs === 1,
     };
   });
 }
@@ -308,9 +316,15 @@ export function getSpines(
     scoped.length === 0 ? [] : listSpines({ photoId: opts.photoId });
   // Search summaries cover every listed spine, so polling continues while a
   // spine the review filter hides is still being looked up.
-  const summaries = discogsForSpines(getDb().$client, listed);
-  for (const s of listed) s.discogs = summaries.get(s.id) ?? null;
+  const db = getDb().$client;
+  const summaries = discogsForSpines(db, listed);
+  const imports = importsForSpines(db, listed);
+  for (const s of listed) {
+    s.discogs = summaries.get(s.id) ?? null;
+    s.import = imports.get(s.id) ?? null;
+  }
   const confidenceThreshold = getConfidenceThreshold();
+  const folderId = getCollectionFolderId();
   const flagged = listed.filter((s) => needsReview(s, confidenceThreshold));
   const spines = opts.review ? flagged : listed;
   const withSpines = new Set(spines.map((s) => s.photoId));
@@ -325,6 +339,9 @@ export function getSpines(
     confidenceThreshold,
     densityMaxSpines: getDensityThresholds().maxSpines,
     discogsActive: anyDiscogsActive(summaries.values()),
-    discogs: discogsConnection(),
+    discogs: {
+      ...discogsConnection(),
+      folder: { id: folderId, name: collectionFolderName(folderId) },
+    },
   };
 }

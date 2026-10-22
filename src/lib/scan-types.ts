@@ -1,6 +1,7 @@
 // Scan DTOs and constants shared by routes and client components.
 // Client-safe: no server-only import here.
 import type { SpineDiscogsDto } from './discogs-types';
+import type { ImportDto } from './import-types';
 import type { Legibility, MediaKind, SpineField } from './vision-contract';
 
 /** Status of a photo = status of its latest vision run. */
@@ -99,6 +100,10 @@ export type SpineDto = {
   mediaKind: MediaKind | null;
   /** The Discogs search summary; null outside the /spines read model. */
   discogs: SpineDiscogsDto | null;
+  /** The latest import (IMP-01, IMP-04); null without one or outside /spines. */
+  import: ImportDto | null;
+  /** The owner marked the spine not on Discogs (REV-05). */
+  notOnDiscogs: boolean;
 };
 
 export type PhotosResponse = { photos: PhotoDto[] };
@@ -126,6 +131,8 @@ export type SpinesResponse = {
     connected: boolean;
     needsReconnect: boolean;
     pausedUntil: number | null;
+    /** The folder new imports go to (D-03): the Add label names it. */
+    folder: { id: number; name: string };
   };
 };
 
