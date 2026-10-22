@@ -48,4 +48,4 @@
 | inventory_export_upload | OPT-OUT | explicitly out of scope: marketplace inventory is excluded |
 | user_lists | OPT-OUT | not needed for an importer |
 
-Plans: collection_folders_list (04-01 path builder and fake, 04-06 Settings select), collection_items_by_release (04-01 handler pre-check and reconcile, 04-02 hardening), collection_add_release (04-01 write gate and handler, 04-02 exactly-once).
+Plans: collection_folders_list (04-01 path builder and fake, 04-06 Settings select), collection_items_by_release (04-01 handler pre-check and reconcile, 04-02 hardening), collection_add_release (04-01 write gate and handler, 04-10 write-gate tests, 04-02 exactly-once).
