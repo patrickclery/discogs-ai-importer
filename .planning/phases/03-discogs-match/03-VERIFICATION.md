@@ -1,36 +1,43 @@
 ---
 phase: 03-discogs-match
-verified: 2026-10-21T18:40:00Z
+verified: 2026-10-22T00:35:00Z
 status: gaps_found
 score: 4/5 must-haves verified
-covered_files: [".planning/phases/03-discogs-match/03-01-PLAN.md", ".planning/phases/03-discogs-match/03-01-SUMMARY.md", ".planning/phases/03-discogs-match/03-02-PLAN.md", ".planning/phases/03-discogs-match/03-02-SUMMARY.md", ".planning/phases/03-discogs-match/03-03-PLAN.md", ".planning/phases/03-discogs-match/03-03-SUMMARY.md", ".planning/phases/03-discogs-match/03-04-PLAN.md", ".planning/phases/03-discogs-match/03-04-SUMMARY.md", ".planning/phases/03-discogs-match/03-05-PLAN.md", ".planning/phases/03-discogs-match/03-05-SUMMARY.md", ".planning/phases/03-discogs-match/03-06-PLAN.md", ".planning/phases/03-discogs-match/03-06-SUMMARY.md", ".planning/phases/03-discogs-match/03-07-PLAN.md", ".planning/phases/03-discogs-match/03-07-SUMMARY.md", ".planning/phases/03-discogs-match/03-08-PLAN.md", ".planning/phases/03-discogs-match/03-08-SUMMARY.md", ".planning/phases/03-discogs-match/03-09-PLAN.md", ".planning/phases/03-discogs-match/03-09-SUMMARY.md", ".planning/phases/03-discogs-match/03-10-PLAN.md", ".planning/phases/03-discogs-match/03-10-SUMMARY.md", ".planning/phases/03-discogs-match/03-11-PLAN.md", ".planning/phases/03-discogs-match/03-11-SUMMARY.md", ".planning/phases/03-discogs-match/03-12-PLAN.md", ".planning/phases/03-discogs-match/03-12-SUMMARY.md", ".planning/phases/03-discogs-match/03-13-PLAN.md", ".planning/phases/03-discogs-match/03-13-SUMMARY.md", "src/app/api/discogs/callback/route.ts", "src/app/api/discogs/connect/route.ts", "src/app/api/discogs/test/route.ts", "src/app/api/spines/[id]/candidates/route.ts", "src/app/api/spines/[id]/search/route.ts", "src/components/candidate-row.tsx", "src/components/discogs-card.tsx", "src/components/discogs-matches.tsx", "src/components/discogs-search-dialog.tsx", "src/lib/candidate-format.ts", "src/lib/discogs-ref.ts", "src/server/discogs/auth.ts", "src/server/discogs/client.ts", "src/server/discogs/connect.ts", "src/server/discogs/enqueue.ts", "src/server/discogs/gate.ts", "src/server/discogs/oauth.ts", "src/server/discogs/queries.ts", "src/server/discogs/search.ts", "src/server/discogs/store.ts", "src/server/discogs/thumbs.ts", "src/server/jobs/handlers/fetch-release.ts", "src/server/jobs/handlers/index.ts", "src/server/jobs/handlers/search-spine.ts", "src/server/jobs/worker.ts", "src/server/scan/orphans.ts", "src/server/scan/store.ts"]
-covered_digest: "v3:sha256:42018877278e5d37e14e2424731739da1804d37b63bcab8f690e5b7b6c1dba40"
+covered_files: [".planning/phases/03-discogs-match/03-01-PLAN.md", ".planning/phases/03-discogs-match/03-01-SUMMARY.md", ".planning/phases/03-discogs-match/03-02-PLAN.md", ".planning/phases/03-discogs-match/03-02-SUMMARY.md", ".planning/phases/03-discogs-match/03-03-PLAN.md", ".planning/phases/03-discogs-match/03-03-SUMMARY.md", ".planning/phases/03-discogs-match/03-04-PLAN.md", ".planning/phases/03-discogs-match/03-04-SUMMARY.md", ".planning/phases/03-discogs-match/03-05-PLAN.md", ".planning/phases/03-discogs-match/03-05-SUMMARY.md", ".planning/phases/03-discogs-match/03-06-PLAN.md", ".planning/phases/03-discogs-match/03-06-SUMMARY.md", ".planning/phases/03-discogs-match/03-07-PLAN.md", ".planning/phases/03-discogs-match/03-07-SUMMARY.md", ".planning/phases/03-discogs-match/03-08-PLAN.md", ".planning/phases/03-discogs-match/03-08-SUMMARY.md", ".planning/phases/03-discogs-match/03-09-PLAN.md", ".planning/phases/03-discogs-match/03-09-SUMMARY.md", ".planning/phases/03-discogs-match/03-10-PLAN.md", ".planning/phases/03-discogs-match/03-10-SUMMARY.md", ".planning/phases/03-discogs-match/03-11-PLAN.md", ".planning/phases/03-discogs-match/03-11-SUMMARY.md", ".planning/phases/03-discogs-match/03-12-PLAN.md", ".planning/phases/03-discogs-match/03-12-SUMMARY.md", ".planning/phases/03-discogs-match/03-13-PLAN.md", ".planning/phases/03-discogs-match/03-13-SUMMARY.md", ".planning/phases/03-discogs-match/03-14-PLAN.md", ".planning/phases/03-discogs-match/03-14-SUMMARY.md", "src/app/api/discogs/callback/route.ts", "src/app/api/discogs/connect/route.ts", "src/app/api/discogs/test/route.ts", "src/app/api/spines/[id]/candidates/route.ts", "src/app/api/spines/[id]/search/route.ts", "src/components/candidate-row.tsx", "src/components/discogs-card.tsx", "src/components/discogs-matches.test.ts", "src/components/discogs-matches.tsx", "src/components/discogs-not-connected-alert.tsx", "src/components/discogs-search-dialog.tsx", "src/lib/candidate-format.ts", "src/lib/discogs-ref.ts", "src/server/discogs/auth.ts", "src/server/discogs/client.ts", "src/server/discogs/connect.ts", "src/server/discogs/enqueue.ts", "src/server/discogs/gate.ts", "src/server/discogs/oauth.ts", "src/server/discogs/queries.ts", "src/server/discogs/reactivated-spine.test.ts", "src/server/discogs/search.ts", "src/server/discogs/store.ts", "src/server/discogs/thumbs.ts", "src/server/jobs/handlers/fetch-release.ts", "src/server/jobs/handlers/index.ts", "src/server/jobs/handlers/search-spine.ts", "src/server/jobs/worker.ts", "src/server/scan/orphans.ts", "src/server/scan/store.ts"]
+covered_digest: "v3:sha256:65655fca44d54ad21044023c050e66f1cb1e78dec8858a6f7389a01a2ae4941d"
 behavior_unverified: 0
 overrides_applied: 0
+re_verification:
+  previous_status: gaps_found
+  previous_score: 4/5
+  gaps_closed:
+    - "Re-activated spine whose auto search ended skipped while orphaned (old CR-01): re-attach then maintenance hook queues a new auto search; re-scan merge queues one in the same transaction; a covered baseline shows its real outcome instead of 'waiting its turn'"
+  gaps_remaining:
+    - "Once a photo's spines are extracted, each music spine gets candidate releases automatically (ROADMAP SC2 / DISC-03), now via the auth_failed reconnect path (new CR-01)"
+  regressions: []
 gaps:
-  - truth: "Once a photo's spines are extracted, each music spine gets candidate releases automatically (ROADMAP SC2 / DISC-03)"
+  - truth: "Once a photo's spines are extracted, each music spine gets candidate releases automatically (ROADMAP SC2 / DISC-03); finishing a connect backfills every active CD spine whose latest search ended auth_failed (03-07 must-have)"
     status: partial
-    reason: "CR-01 (open, critical) confirmed in code. An auto search that ran while its spine was orphaned finishes `skipped` without releasing its dedupe key. When the spine becomes active again (Re-attach, or a later re-scan merge), nothing ever searches it automatically again: baselineHash() counts the skipped row as the baseline, the search:auto:{spine}:{hash} key is still held, and enqueueMissingSearches() only picks spines with no search or a not_connected/auth_failed latest search. The card shows 'Not looked up yet. It's waiting its turn…', which is false, and offers neither Search again nor Retry (matchesAction returns null for state not_searched with fieldsChanged false). Only the manual Search Discogs… dialog reaches it."
+    reason: "New CR-01 from 03-REVIEW.md is confirmed in code and by a probe run. If a spine's baseline search already covers its current inputs (typically: the auto search ended failed and the owner pressed Retry while the token was revoked, so the Retry ended auth_failed), then reconnecting does not re-search it. The connect backfill selects the spine, but the `due` precheck and enqueueAutoSearch drop it because baselineSearch() skips the auth_failed row and finds the covering baseline. effectiveSearch only falls back for UNSEARCHED_STATUSES, so the card keeps saying 'Search failed: Discogs rejected the connection. Reconnect Discogs in Settings.' while the app is connected. That breaks the 03-07 truth and the alert's promise ('Reconnect … and the CDs here are looked up again'), and the card state is not truthful (D-11). The Retry search button is still offered and works, so the spine can be recovered by hand."
     artifacts:
-      - path: "src/server/jobs/handlers/search-spine.ts"
-        issue: "Lines 132-139: finish('skipped') without releaseDedupeKey(ctx.job.id)"
       - path: "src/server/discogs/enqueue.ts"
-        issue: "baselineHash (line 43) does not exclude 'skipped'; enqueueMissingSearches (lines 136-137) does not select a 'skipped' latest search"
-      - path: "src/components/discogs-matches.tsx"
-        issue: "Renders NOT_SEARCHED_LINE ('waiting its turn') for a skipped search that will never be queued"
+        issue: "Lines 157-161 (`due` precheck) and line 70 (enqueueAutoSearch) short-circuit when the baseline hash equals the current inputs, even when the latest search is auth_failed and includeAuthFailed is set"
+      - path: "src/server/discogs/queries.ts"
+        issue: "effectiveSearch (lines ~163-183) falls back to the baseline only for UNSEARCHED_STATUSES, so a connected spine with a latest auth_failed search reads failed/auth"
+      - path: "src/server/discogs/store.ts"
+        issue: "Lines 53-56 doc comment says auth_failed 'is only re-picked by a connect', which the code does not do in this case"
     missing:
-      - "Release the dedupe key when an auto search finishes skipped"
-      - "Exclude 'skipped' from baselineHash and include it in the enqueueMissingSearches selector, so the connect backfill and the lease-tick safety net pick the spine up"
-      - "A regression test: auto search queued, spine orphaned, job runs (skipped), spine re-attached, then the maintenance hook enqueues a new auto search"
-      - "Recommended in the same change (same root cause, WR-01): one shared 'baseline search' rule for baselineHash, fieldsChangedSince and the backfill selector"
+      - "Pick one rule. Either (a) when includeAuthFailed is set and the latest search is auth_failed, bypass the baseline-hash short-circuit and use a dedupe key that differs from the baseline's (e.g. include the auth_failed search id), or (b) once connected, let effectiveSearch show the baseline's outcome over an auth_failed latest search. Then fix the store.ts comment to match."
+      - "A regression test: failed (h1), then a Retry that ends auth_failed (h1), then a reconnect (completeConnect backfill, and the Test connection path from WR-04). The test must show the card no longer says Reconnect and that a search is queued (rule a) or the baseline's state is shown (rule b)"
+      - "Recommended in the same change: WR-01. A not_searched card should not offer 'Fields changed' / 'Search again' together with 'waiting its turn'"
 ---
 
 # Phase 3: Discogs Match Verification Report
 
 **Phase Goal:** User connects their Discogs account and, for each music spine, sees candidate releases they can recognize. Manual search and paste-ID cover the cases auto-search misses, and every request respects the rate limit.
-**Verified:** 2026-10-21T18:40:00Z
+**Verified:** 2026-10-22T00:35:00Z
 **Status:** gaps_found
-**Re-verification:** No, initial verification
+**Re-verification:** Yes, after gap-closure plan 03-14
 
 ## Goal Achievement
 
@@ -38,102 +45,103 @@ gaps:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | User completes the Discogs OAuth 1.0a flow from the app and sees the connected username | VERIFIED | `connect.ts` request token → authorize → `POST /oauth/access_token` → `GET /oauth/identity` → `saveDiscogsAuth`. Callback, finish (pasted code) and connect routes exist. `discogs-card.tsx` renders "Connected as {username}" from `getDiscogsConnection()` in `settings/page.tsx`. `connect.test.ts` passes. Live: `report-discogs-live.ts` recorded `discogs_connect_via: callback` and `exchange_form: standard` for patrickclery. |
-| 2 | Each music spine gets candidates automatically (catno → artist+title+format → free text); each candidate shows cover, year, country, label, catno, format | FAILED (partial) | Main path works. `scan/store.ts:218` enqueues inside `persistRunResult`. `connect.ts:126` and the maintenance hook backfill. The cascade in `search.ts` is tested ("stops at catno…", "falls through to text…"). `candidate-row.tsx` + `detailsLine()` render the cover and all five details. Live run: 237/237 searched, 200 with candidates. **But CR-01:** a spine whose auto search ended `skipped` while orphaned is never auto-searched again once it is active, and its card falsely says it is waiting its turn. See Gaps. |
-| 3 | Large batches never lose work to rate limiting; requests are paced, and a 429 backs off and resumes on its own | VERIFIED | Every Discogs API call goes through `discogsFetch` → `gate.acquire()` (grep: 6 call sites, no other api.discogs.com fetch). A 429 pauses the gate and the handler throws `JobDeferredError`. The worker's `deferJob` restores attempts. `laneGates.discogs` blocks claims while paused. Tests pass: worker.test "JobDeferredError … attempts unchanged", search-spine.test "a 429 throws JobDeferredError…", and client.test 429 pauses (60 s default, Retry-After). Live: about 50/min, 0 failures, no 429 (A3 not observed live). WR-02 noted below. |
-| 4 | After editing a spine's fields, user can re-run its search and see updated candidates | VERIFIED | `fieldsChangedSince` → `matchesAction` 'again' → `POST /api/spines/{id}/search {mode:'again'}` → `enqueueExplicitSearch` (job key `search:{searchId}`) → `replaceAutoCandidates`. The search route tests pass (415/400/404/409 and the busy guard). Edge disagreement in WR-01 noted below. |
-| 5 | For any spine, user can run a manual Discogs search or paste a release URL/ID and get that release as a candidate | VERIFIED | `discogs-search-dialog.tsx` is mounted from `discogs-matches.tsx:285`. Text goes to the `search_spine` manual branch (25 per page) and a ref goes to `fetch_release`. `parseDiscogsRef` refuses masters on the client and the server (400). `POST /api/spines/{id}/candidates` copies only from stored results. The discogs-ref, fetch-release and candidates route tests pass. |
+| 1 | User completes the Discogs OAuth 1.0a flow from the app and sees the connected username | VERIFIED (regression check) | connect/callback/finish/test routes are present. `connect.ts:120-126` saves the auth and then backfills. No changes since the last pass. |
+| 2 | Each music spine gets candidates automatically (catno → artist+title+format → free text) and each candidate shows cover, year, country, label, catno, format | FAILED (partial) | The old CR-01 is **closed**. `search-spine.ts:136-141` releases the key on an orphan skip. The baseline excludes skipped, the selector uses `UNSEARCHED_STATUSES_SQL`, and `effectiveSearch` covers the baseline case. `reactivated-spine.test.ts` drives the real handler, Re-attach, re-scan and the `maintenance` array, and passes. **New CR-01 is confirmed:** a probe run (below) shows an auth_failed Retry over a covering baseline is not re-searched after reconnect. The card stays `failed/auth` ("Reconnect Discogs in Settings") while connected. See Gaps. |
+| 3 | Large batches never lose work to rate limiting; requests are paced and a 429 backs off and resumes on its own | VERIFIED (regression check) | The only `api.discogs.com` base is in `config.ts`. Every `discogsFetch` goes through `gate.acquire` (`client.ts:206`). The callers are search-spine, fetch-release, connect and the test route. Tests pass. |
+| 4 | After editing a spine's fields, user can re-run its search and see updated candidates | VERIFIED (regression check) | `matchesAction` → 'again' → `/api/spines/{id}/search` → `enqueueExplicitSearch`. Tests pass. WR-01 (below) is a copy and race wart, not a break. |
+| 5 | For any spine, user can run a manual Discogs search or paste a release URL/ID and get that release as a candidate | VERIFIED (regression check) | `DiscogsSearchDialog` is mounted at `discogs-matches.tsx:307`, and the candidates/search routes are present. Tests pass. |
 
 **Score:** 4/5 truths verified (0 present, behavior-unverified)
 
-Plan-level truths (about 120 across 13 plans) were spot-checked against the files above. No other contradictions were found beyond the review findings listed here.
+### 03-14 Plan Must-Haves
+
+| Truth | Status | Evidence |
+|-------|--------|----------|
+| Re-attach path: skipped, key released, maintenance queues exactly one search that runs to candidates | VERIFIED | `reactivated-spine.test.ts` "CR-01: queued auto search, orphaned, skipped, re-attached…" passes |
+| Re-scan path in the same `persistRunResult` transaction | VERIFIED | Test "an orphan found again by a later re-scan…" passes |
+| Skipped/not_connected latest over a covering baseline shows the baseline's outcome, and the hook queues nothing | VERIFIED | `effectiveSearch` plus the test "a re-activated spine whose baseline already searched…" |
+| "Waiting its turn" iff the hook queues (active connected CD) | VERIFIED | Invariant table in `discogs-matches.test.ts`. IN-02: its waiting half is tautological for non-CD/orphaned rows, but `notSearchedLine` handles those by construction |
+| One shared status rule in `store.ts`; no literal unsearched lists in enqueue/queries | VERIFIED | `UNSEARCHED_STATUSES` / `NON_BASELINE_STATUSES` / `statusListSql`. The remaining `'auth_failed'` literals are single statuses, not the shared list. **But** the rule's doc claim about auth_failed is false (new CR-01) |
+| Same-ms ULID ordering; whitespace-only counts as covered; empty → not searched; Re-attach before run → done | VERIFIED | Covered by the passing tests |
+| Backstop: re-attach on the Spines page shows Queued → Searching → result | insufficient_spec | Human item 8 |
 
 ### Prohibitions
 
 | Prohibition | Tier | Disposition |
 |-------------|------|-------------|
-| 03-01: MUST NOT write to the owner's Discogs account (GET only, plus the access-token POST) | test | VERIFIED. `isAllowed()` in `client.ts` is enforced before fetch, and the client.test "read-only allowlist" block passes. Owner's live collection-count check is still open (see Human Verification). |
-| 03-11: MUST NOT add a pasted release without showing it and getting the owner's pick | test | VERIFIED. `fetch_release` writes only `results_json`. The candidates POST requires a finished search of the same spine plus a releaseId found in its stored results, and route tests cover 404/409/400. |
-| 03-04: No "token / OAuth / verifier / queue / job / lane / 429 / rate limit" in on-screen copy | judgment | Non-authoritative pass: a grep of the Discogs components and copy libs found no hits. **unverified-prohibition, human review recommended.** One concern: failed-search reasons can echo text like "Discogs GET /database/search answered 422". |
-| 03-08: MUST NOT preselect or auto-confirm a candidate | judgment | Non-authoritative pass: `CandidateRow` has no select or confirm control, and the dialog rows start unselected. **unverified-prohibition, human review recommended.** |
+| 03-01: no writes to the owner's Discogs account | test | VERIFIED (`isAllowed()` allowlist test). The owner's live collection check is still open |
+| 03-11: no pasted release added without being shown and picked | test | VERIFIED (candidates POST requires stored results) |
+| 03-04: no technical words in on-screen copy | judgment | Non-authoritative pass. **unverified-prohibition, human review recommended** |
+| 03-08: no preselect/auto-confirm | judgment | Non-authoritative pass. **unverified-prohibition, human review recommended** |
+| 03-14: no "waiting its turn" on a spine never looked up automatically | judgment | Non-authoritative pass. In the WR-01 case the hook does queue the spine. **unverified-prohibition, human review recommended** |
+| 03-14: maintenance hook never re-queues failed/auth_failed or covered spines | judgment | Non-authoritative pass. The selector passes `includeAuthFailed: false` (`handlers/index.ts:39`) and the precheck skips covered spines |
+| 03-14: no auto search for non-active spines | judgment | Non-authoritative pass. The selector requires `s.state = 'active'` |
 
 ### Required Artifacts
 
 | Artifact | Status | Details |
 |----------|--------|---------|
-| `src/server/discogs/{client,gate,oauth,connect,auth}.ts` | VERIFIED | Substantive and wired to the routes and handlers |
-| `src/server/discogs/{enqueue,search,store,queries}.ts` | VERIFIED (with CR-01 defect) | Wired from scan/store, connect and maintenance |
-| `src/server/jobs/handlers/{search-spine,fetch-release}.ts` | VERIFIED | Registered in `handlers/index.ts` |
-| `src/server/discogs/thumbs.ts` + `/api/discogs/thumb/[id]` | VERIFIED | i.discogs.com allowlist, no redirects, 4 concurrent downloads. 22 covers cached in `data/discogs-thumbs` |
-| `src/components/{discogs-card,discogs-matches,candidate-row,discogs-search-dialog}.tsx` | VERIFIED | Mounted in `settings/page.tsx` and `photo-section.tsx` |
+| `src/server/discogs/reactivated-spine.test.ts` | VERIFIED | 4 end-to-end tests that use the real `maintenance` array |
+| `src/server/discogs/{store,queries,enqueue}.ts` | VERIFIED (new CR-01 defect) | Shared rule wired. The auth_failed path is wrong |
+| `src/components/discogs-matches.tsx` (`notSearchedLine`) | VERIFIED | Used by the Body not_searched branch |
+| Earlier-phase artifacts (client, gate, oauth, connect, handlers, thumbs, components) | VERIFIED (regression) | Present and wired |
 
 ### Key Link Verification
 
 | From | To | Status |
 |------|----|--------|
-| `persistRunResult` | `enqueueAutoSearchesForPhoto` | WIRED (`scan/store.ts:218`) |
-| `completeConnect` | `enqueueMissingSearches({includeAuthFailed:true})` | WIRED (`connect.ts:126`) |
-| lease tick | `enqueueMissingSearches({includeAuthFailed:false})` | WIRED (`handlers/index.ts:39`) |
-| Re-attach (`orphans.ts`) | auto search | NOT WIRED for a `skipped` latest search (CR-01) |
-| `/spines` DTO | `discogsForSpines` + `discogsConnection` | WIRED (`scan/queries.ts:311,328`) |
-| Search dialog | `/api/spines/{id}/search`, `/api/discogs/searches/{id}`, `/api/spines/{id}/candidates` | WIRED |
-
-### Data-Flow Trace (Level 4)
-
-| Artifact | Data | Source | Status |
-|----------|------|--------|--------|
-| Spine card matches | candidates | `discogs_candidates`, written by `replaceAutoCandidates` from real `/database/search` | FLOWING (live: 1355 candidates) |
-| Settings "Connected as" | username | `secrets.json`, written from `/oauth/identity` | FLOWING |
-| Header Discogs backlog | backlog/pausedUntil | `discogsStatus()` jobs query + gate | FLOWING |
+| Re-attach (`orphans.ts`) → maintenance → auto search | WIRED (old CR-01 closed) |
+| `completeConnect` / Test connection → `enqueueMissingSearches({includeAuthFailed:true})` → auth_failed spine with a covering baseline | NOT WIRED (new CR-01) |
+| `persistRunResult` → `enqueueAutoSearchesForPhoto` | WIRED (`scan/store.ts:218`) |
+| Card → `DiscogsSearchDialog` | WIRED (`discogs-matches.tsx:307`) |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Gate, client, enqueue, handlers, ref parser, connect, format, worker, search and candidates routes | `npx vitest run` on 11 named files | 11 files, 214 tests passed | PASS |
-| Debt markers in 110 phase-touched files | grep TBD/FIXME/XXX | none | PASS |
+| Full suite (run once) | `npx vitest run` | 64 files, 956/956 passed | PASS |
+| New CR-01 reproduction | scratch probe `/tmp/claude-1000/-home-patrick-github-com-patrickclery-discogs-ai-importer/edb6cd98-3b01-47d2-b234-1ee9db554b7b/scratchpad/probe/probe.test.ts` (auto search → no_match h1; `again` → 401 → auth_failed; clearAuthInvalid + saveDiscogsAuth + `enqueueMissingSearches({includeAuthFailed:true})`; then maintenance) | backfill created 4 jobs for other spines, **none for s0**; card `{"state":"failed","failure":{"kind":"auth"},"action":"retry"}` before and after maintenance | FAIL (gap confirmed) |
+| Debt markers in the 6 files touched by 03-14 | grep TBD/FIXME/XXX/TODO/HACK | none | PASS |
 
 ### Requirements Coverage
 
 | Req | Plans | Status | Evidence |
 |-----|-------|--------|----------|
 | DISC-01 | 03-01, 02, 04, 13 | SATISFIED | SC1 |
-| DISC-02 | 03-01, 03, 05, 06, 13 | SATISFIED | SC3 (WR-02 warning) |
-| DISC-03 | 03-03, 07, 08, 09, 13 | PARTIAL | SC2. CR-01 leaves some spines never auto-searched. REQUIREMENTS.md already marks this Complete, which is premature. |
-| DISC-04 | 03-06, 08, 09, 13 | SATISFIED | Candidate details plus cover cache. On-screen covers not yet confirmed by the owner. |
+| DISC-02 | 03-01, 03, 05, 06, 13 | SATISFIED | SC3 |
+| DISC-03 | 03-03, 07, 08, 09, 13, 14 | PARTIAL | SC2. The old gap is closed and the new CR-01 is open. REQUIREMENTS.md marks DISC-03 `[x] Complete`, which is premature |
+| DISC-04 | 03-06, 08, 09, 13 | SATISFIED | Owner has not yet confirmed covers on screen (human item 1) |
 | DISC-05 | 03-10 | SATISFIED | SC4 |
 | DISC-06 | 03-11, 12 | SATISFIED | SC5 |
 
-No orphaned requirements: all six IDs mapped to Phase 3 are claimed by at least one plan.
+No orphaned requirements.
 
 ### Anti-Patterns / Review Findings
 
 | Finding | Severity | Impact on goal |
 |---------|----------|----------------|
-| CR-01 skipped spine never re-searched, UI says "waiting its turn" | BLOCKER | Breaks "each music spine" in SC2 for spines orphaned during a backlog and then re-activated |
-| WR-01 three baseline rules + permanent auto dedupe key | Warning | Same root cause. Rare stuck spine, a write lock on every lease tick, stale candidates with no "Fields changed" hint |
-| WR-02 pause can time out a running search (Retry-After > ~85 s from a route-originated 429) | Warning | Spends one attempt. The lane gate then holds the retry until the pause ends, so a search failing outright needs three such hits. SC3 holds |
-| WR-03 new consumer key keeps the old token | Warning | Leads to a 401 and Reconnect needed. Recoverable |
-| WR-04 a passing Test connection leaves auth_failed spines failed | Warning | Owner must press Retry on each card |
-| WR-05 /spines shows "connected" while Reconnect is needed | Warning | Confusing 409 copy. Recoverable |
+| CR-01 (new) auth_failed over a covering baseline is never re-picked on reconnect, and the card says "Reconnect Discogs" while connected | BLOCKER | Breaks the 03-07 connect-backfill truth and truthful state. Narrower than the old CR-01: the Retry button is shown and works |
+| WR-01 a not_searched card can show "Fields changed", "Search again" and "waiting its turn" at once; clicking after the hook tick gives a "busy" error | Warning | Confusing copy and a race. The spine is still auto-searched within about 5 s |
+| IN-01 to IN-04 (dead `latestAutoSearch`, tautological test half, hand-copied status lists, duplicated helpers) | Info | None |
 
-### Human Verification Required
+## Human Verification Required
 
-Still needed after the gap is fixed. The app runs at http://127.0.0.1:3001.
+These are still needed after the gap is fixed. The app runs at http://127.0.0.1:3001.
 
-1. **Covers show on the match cards.** Open the Spines page and scroll through a few photos. Each match should show a small cover picture, and a match with no cover should show a grey disc icon, never a broken image.
-2. **Nothing was added to your Discogs collection.** On discogs.com, check that your collection count is the same as before you connected the app.
-3. **Show all.** On a spine with more than 3 matches, click "Show all". The extra matches should appear, and "Show fewer" should fold them back.
-4. **Live updates and the slowdown countdown.** Start Search again on a spine. The badge should change from Queued to Searching to a result without a page reload, and the top bar should count Discogs lookups down. If Discogs ever asks the app to slow down, a seconds countdown should appear and then disappear.
-5. **Search Discogs… dialog.** On any spine, open "Search Discogs…", type an artist and title, and press Search. Results should appear with covers, and the list should scroll while the search box and buttons stay visible. Pick one, click "Add to candidates", and it should appear first on the card marked "Added manually". Then paste a Discogs release link and check that the release is shown before you can add it. Paste a master link and check that you get a message telling you to pick a specific version.
-6. **Narrow window.** Make the browser window as narrow as it goes. The settings Discogs card, the match rows and the card buttons should stay inside their boxes with nothing cut off.
-7. **Plain wording.** While doing the above, note any on-screen text that uses technical words (token, OAuth, queue, job, 429, rate limit).
+1. **Covers show on the match cards.** Each match should show a small cover picture, and a match with no cover should show a grey disc icon, never a broken image.
+2. **Nothing was added to your Discogs collection.** Your collection count on discogs.com should be the same as before you connected.
+3. **Show all.** On a spine with more than 3 matches, click "Show all" and then "Show fewer".
+4. **Live updates and the slowdown countdown.** Press Search again. The badge should go from Queued to Searching to a result with no page reload, and the top bar should count down.
+5. **Search Discogs… dialog.** Type a search, pick a result and add it. Paste a release link, which should show the release first. Paste a master link, which should ask you to pick a version.
+6. **Narrow window.** In the narrowest window, nothing should be cut off.
+7. **Plain wording.** Note any technical words on screen.
+8. **Re-attach a "No longer detected" spine.** Reload after about 10 seconds. It should show Queued, then Searching, then matches or "Discogs found nothing", and never stay on "waiting its turn".
 
-### Gaps Summary
+## Gaps Summary
 
-The phase delivers connect, a paced and rate-limit-safe search lane, automatic candidates with full details, re-search after edits, and manual search plus paste-ID. The live run of 237 spines had zero failures. One defect breaks the "each music spine" promise. A spine whose queued auto search ran while the spine was orphaned ends `skipped`, and once re-activated it is never looked up again, while its card says it is waiting its turn. The fix is small (release the key, treat `skipped` like `not_connected` in the baseline and the backfill, add a regression test), and WR-01 should be fixed in the same change because it shares the root cause. WR-02 to WR-05 are recoverable robustness warnings and do not block the goal.
+Plan 03-14 did what it set out to do. Re-activated spines are now searched again or show their real last result, the shared status rule exists, and all 956 tests pass. The phase still misses "each music spine" by one reachable path in the same family. Take a spine whose last real search already covered its inputs (usually a failed search), where the owner presses Retry while the Discogs token is revoked. After a successful reconnect, nothing re-searches it. The card keeps telling the owner to reconnect, which contradicts the 03-07 connect-backfill truth and the app's own "reconnect and the CDs here are looked up again" message. The Retry button still recovers the spine by hand. The fix is to choose one rule (bypass the baseline short-circuit for an auth_failed latest search during a connect, or show the baseline over auth_failed once connected) and add a regression test. Fix WR-01 alongside it.
 
 ---
 
-_Verified: 2026-10-21T18:40:00Z_
+_Verified: 2026-10-22T00:35:00Z_
 _Verifier: Claude (gsd-verifier)_
