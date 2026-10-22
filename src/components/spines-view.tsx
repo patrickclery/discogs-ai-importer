@@ -5,6 +5,10 @@ import { CircleCheck, CircleX, ImageOff, Rows3 } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useMemo } from 'react';
 import { DiscogsNotConnectedAlert } from '@/components/discogs-not-connected-alert';
+import {
+  ImportUiProvider,
+  type ImportUiValue,
+} from '@/components/import-ui-context';
 import { PhotoSection } from '@/components/photo-section';
 import {
   SpinesFilterBar,
@@ -163,6 +167,14 @@ export function SpinesView({
   });
   const data = query.data;
   const byPhoto = useMemo(() => groupByPhoto(data?.spines ?? []), [data]);
+  // Cards read the Add label's folder and the connection state from here.
+  const folderName = data?.discogs.folder.name ?? 'Uncategorized';
+  const connected = data?.discogs.connected ?? false;
+  const needsReconnect = data?.discogs.needsReconnect ?? false;
+  const importUi = useMemo<ImportUiValue>(
+    () => ({ folderName, connected, needsReconnect }),
+    [folderName, connected, needsReconnect],
+  );
 
   // A failed poll keeps the last data under the Alert; polling continues and
   // the Alert clears on the next success. With no data, it replaces the list.
@@ -193,17 +205,19 @@ export function SpinesView({
         {!data.discogs.connected && data.spines.length > 0 ? (
           <DiscogsNotConnectedAlert reconnect={data.discogs.needsReconnect} />
         ) : null}
-        {data.photos.map((p) => (
-          <PhotoSection
-            key={p.id}
-            photo={p}
-            spines={byPhoto.get(p.id) ?? []}
-            threshold={data.confidenceThreshold}
-            connected={data.discogs.connected}
-            needsReconnect={data.discogs.needsReconnect}
-            pausedUntil={data.discogs.pausedUntil}
-          />
-        ))}
+        <ImportUiProvider value={importUi}>
+          {data.photos.map((p) => (
+            <PhotoSection
+              key={p.id}
+              photo={p}
+              spines={byPhoto.get(p.id) ?? []}
+              threshold={data.confidenceThreshold}
+              connected={data.discogs.connected}
+              needsReconnect={data.discogs.needsReconnect}
+              pausedUntil={data.discogs.pausedUntil}
+            />
+          ))}
+        </ImportUiProvider>
       </div>
     );
   }
