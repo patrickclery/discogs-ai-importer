@@ -84,31 +84,103 @@ export function importStateLine(
   }
 }
 
-// --- Task 2 stubs (RED): replaced by the implementation in the GREEN commit.
+export const BEING_ADDED_TOOLTIP =
+  "It's being added now. Wait for it to finish.";
+export const RETRY_FIRST_TOOLTIP =
+  'Retry first. Discogs may already have added it.';
+/** The 409 started answer to Change match (same copy as the route). */
+export const CHANGE_STARTED_ERROR =
+  "It's already being added to Discogs, so the match can't be changed now.";
 
-export const BEING_ADDED_TOOLTIP = '';
-export const RETRY_FIRST_TOOLTIP = '';
-export const CHANGE_STARTED_ERROR = '';
+const RETRY_CHECKS_FIRST =
+  'Retry checks your collection first, so it never adds a second copy.';
 
 export type ImportFailureLine = {
   text: string;
+  /** Auth only: the accent "Open Settings" link and the words after it. */
   settingsLink: { label: string; href: string; after: string } | null;
 };
 
+/** The short reason for the "other" line, without a final period. */
+function otherReason(failure: ImportFailure | null): string {
+  if (failure?.kind === 'removed') {
+    return 'the spine was removed before the import ran';
+  }
+  return (
+    failure?.reason?.trim().replace(/[.\s]+$/u, '') || 'something went wrong'
+  );
+}
+
+/**
+ * The confirmed-match panel's failure line (UI-SPEC import failure lines,
+ * D-09). Each line names its next step: Open Settings, Change the match, or
+ * Retry. A removed spine and an unknown failure use the other line.
+ */
 export function importFailureLine(
-  _failure: ImportFailure | null,
+  failure: ImportFailure | null,
 ): ImportFailureLine {
-  return { text: '', settingsLink: null };
+  switch (failure?.kind) {
+    case 'auth':
+      return {
+        text: 'Import failed: Discogs rejected the connection.',
+        settingsLink: {
+          label: 'Open Settings',
+          href: '/settings',
+          after: ' to reconnect, then retry.',
+        },
+      };
+    case 'not_found':
+      return {
+        text: 'Import failed: Release not found on Discogs. Change the match.',
+        settingsLink: null,
+      };
+    case 'rejected':
+      return {
+        text: "Import failed: Discogs wouldn't add this release. Change the match, or retry later.",
+        settingsLink: null,
+      };
+    case 'unavailable':
+      return {
+        text: `Import failed: Discogs didn't respond. ${RETRY_CHECKS_FIRST}`,
+        settingsLink: null,
+      };
+    case 'interrupted':
+      return {
+        text: `The import was interrupted when the app stopped. ${RETRY_CHECKS_FIRST}`,
+        settingsLink: null,
+      };
+    default:
+      return {
+        text: `Import failed: ${otherReason(failure)}. Retry the import.`,
+        settingsLink: null,
+      };
+  }
 }
 
 export type ChangeMatchState = {
+  /** Every state except imported offers Change match (D-02). */
   show: boolean;
   enabled: boolean;
+  /** Why it is disabled, shown in a tooltip; null when enabled. */
   tooltip: string | null;
 };
 
+/**
+ * Change match follows the API's canChangeMatch (the same rule the DELETE
+ * route applies, so the card never offers a change after something may
+ * have reached Discogs). A failed import that may have been added says to
+ * retry first (D-07 reconcile path); anything else is being added now.
+ */
 export function changeMatchState(
-  _dto: Pick<ImportDto, 'phase' | 'canChangeMatch'>,
+  dto: Pick<ImportDto, 'phase' | 'canChangeMatch'>,
 ): ChangeMatchState {
-  return { show: false, enabled: false, tooltip: null };
+  if (dto.phase === 'imported') {
+    return { show: false, enabled: false, tooltip: null };
+  }
+  if (dto.canChangeMatch) return { show: true, enabled: true, tooltip: null };
+  return {
+    show: true,
+    enabled: false,
+    tooltip: dto.phase === 'failed' ? RETRY_FIRST_TOOLTIP : BEING_ADDED_TOOLTIP,
+  };
 }
