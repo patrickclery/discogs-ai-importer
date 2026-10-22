@@ -47,6 +47,13 @@ function db() {
 
 /** One stored candidate of the spine for releaseId; returns its id. */
 function seedCandidate(spineId: string, releaseId = 1031): string {
+  const existing = db()
+    .prepare(
+      `SELECT id FROM discogs_candidates
+       WHERE spine_id = ? AND source = 'manual' AND release_id = ?`,
+    )
+    .get(spineId, releaseId) as { id: string } | undefined;
+  if (existing) return existing.id;
   const searchId = createSearch(db(), {
     spineId,
     kind: 'manual',

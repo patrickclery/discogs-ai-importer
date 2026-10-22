@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getDb } from '@/server/db/client';
 import { getDiscogsAuth } from '@/server/discogs/auth';
 import { discogsReady } from '@/server/discogs/enqueue';
-import { createImport } from '@/server/imports/store';
+import { cancelImport, createImport } from '@/server/imports/store';
 
 // Confirm one candidate of one spine (IMP-01, D-01, D-08): the only path that
 // adds anything to the owner's Discogs collection. The body names a
@@ -22,25 +22,46 @@ function fail(status: number, error: string, message: string): Response {
   return Response.json({ error, message }, { status });
 }
 
-export async function POST(
+const EmptyBody = z.strictObject({});
+
+/** JSON only (415 otherwise), parsed against a strict schema (400). */
+async function readBody<T>(
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  await connection();
+  schema: z.ZodType<T>,
+): Promise<{ ok: true; data: T } | { ok: false; response: Response }> {
   const contentType = req.headers.get('content-type') ?? '';
   if (!/^application\/json\s*(;|$)/i.test(contentType)) {
-    return fail(415, 'unsupported_type', 'Send application/json.');
+    return {
+      ok: false,
+      response: fail(415, 'unsupported_type', 'Send application/json.'),
+    };
   }
   let raw: unknown;
   try {
     raw = await req.json();
   } catch {
-    return fail(400, 'invalid_body', 'The request body is not JSON.');
+    return {
+      ok: false,
+      response: fail(400, 'invalid_body', 'The request body is not JSON.'),
+    };
   }
-  const parsed = Body.safeParse(raw);
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) {
-    return fail(400, 'invalid_body', z.prettifyError(parsed.error));
+    return {
+      ok: false,
+      response: fail(400, 'invalid_body', z.prettifyError(parsed.error)),
+    };
   }
+  return { ok: true, data: parsed.data };
+}
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  await connection();
+  const parsed = await readBody(req, Body);
+  if (!parsed.ok) return parsed.response;
   const { id } = await params;
   if (!discogsReady()) {
     // A stored sign-in that Discogs refused needs a reconnect.
@@ -96,10 +117,30 @@ export async function POST(
   }
 }
 
+/**
+ * Change match (D-02): DELETE undoes the confirmed match only while nothing
+ * can have reached Discogs (cancelImport); otherwise 409 started and nothing
+ * changes. Same JSON-only guard as POST, with an empty strict body (T-04-16).
+ */
 export async function DELETE(
-  _req: Request,
-  _ctx: { params: Promise<{ id: string }> },
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   await connection();
-  return fail(501, 'not_implemented', 'Not implemented.');
+  const parsed = await readBody(req, EmptyBody);
+  if (!parsed.ok) return parsed.response;
+  const { id } = await params;
+  const result = cancelImport(getDb().$client, id);
+  switch (result.status) {
+    case 'not_found':
+      return fail(404, 'not_found', 'This spine has no match to change.');
+    case 'started':
+      return fail(
+        409,
+        'started',
+        "It's already being added to Discogs, so the match can't be changed now.",
+      );
+    default:
+      return Response.json({ cancelled: true }, { status: 200 });
+  }
 }

@@ -258,10 +258,21 @@ export function releaseDedupeKey(id: string): void {
 }
 
 /**
- * Cancels a job that no worker has claimed yet (D-02, Change match).
+ * Cancels a job no worker has claimed yet (D-02, Change match): queued ->
+ * cancelled, finished, with its dedupe key freed so the same key can be
+ * enqueued again. A running or finished job is untouched; returns whether
+ * the job was cancelled. The status = 'queued' predicate is the fence: a job
+ * claimed in between is never cancelled.
  */
-export function cancelQueuedJob(_id: string, _now = Date.now()): boolean {
-  return false;
+export function cancelQueuedJob(id: string, now = Date.now()): boolean {
+  const info = sql()
+    .prepare(
+      `UPDATE jobs SET status = 'cancelled', finished_at = @now,
+         updated_at = @now, locked_at = NULL, dedupe_key = NULL
+       WHERE id = @id AND status = 'queued'`,
+    )
+    .run({ id, now });
+  return info.changes === 1;
 }
 
 /**

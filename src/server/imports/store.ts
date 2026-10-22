@@ -1,10 +1,16 @@
 import 'server-only';
 import type Database from 'better-sqlite3';
 import type { CandidateFormat } from '@/lib/discogs-types';
-import type { ImportCandidateSnapshot, ImportStatus } from '@/lib/import-types';
+import {
+  canChangeMatchOf,
+  type ImportCandidateSnapshot,
+  type ImportPhase,
+  type ImportStatus,
+  importPhaseOf,
+} from '@/lib/import-types';
 import { getCollectionFolderId } from '../discogs/folders';
 import { newId } from '../ids';
-import { enqueue, releaseDedupeKey } from '../jobs/queue';
+import { cancelQueuedJob, enqueue, releaseDedupeKey } from '../jobs/queue';
 
 // Imports (D-01, D-03, D-07, D-08). createImport is the only path that
 // creates an import and the only place add_to_collection is enqueued: the
@@ -225,10 +231,67 @@ export type CancelImportResult =
   | { status: 'not_found' }
   | { status: 'started' };
 
-/** Change match (D-02). */
+type LatestImport = ImportDbRow & { job_status: string | null };
+
+/** The spine's latest import with its job's status (null when none). */
+function latestImport(
+  db: Database.Database,
+  spineId: string,
+): LatestImport | undefined {
+  return db
+    .prepare(
+      `SELECT i.*, j.status AS job_status FROM imports i
+       LEFT JOIN jobs j ON j.id = i.job_id
+       WHERE i.spine_id = @spineId
+       ORDER BY i.created_at DESC, i.id DESC
+       LIMIT 1`,
+    )
+    .get({ spineId }) as LatestImport | undefined;
+}
+
+function phaseOf(row: LatestImport): ImportPhase {
+  return importPhaseOf({
+    status: row.status,
+    intentAt: row.intent_at,
+    jobStatus: row.job_status,
+  });
+}
+
+/**
+ * Change match (D-02): undoes the spine's latest import only while nothing
+ * can have reached Discogs, by the same rule the card uses
+ * (canChangeMatchOf): a waiting import with no intent whose job is still
+ * queued (the job is cancelled and its dedupe key freed), an
+ * already_in_collection hold with no intent, or a failed import with no
+ * intent or one Discogs refused (not_found, rejected). The row is deleted:
+ * nothing reached Discogs, so there is nothing to audit (A-04-10, A-04-11).
+ * Anything else answers started and changes nothing. One IMMEDIATE
+ * transaction, so a worker cannot claim the job between the check and the
+ * cancel (T-04-14); cancelQueuedJob's status = 'queued' predicate is the
+ * fence regardless.
+ */
 export function cancelImport(
-  _db: Database.Database,
-  _spineId: string,
+  db: Database.Database,
+  spineId: string,
 ): CancelImportResult {
-  return { status: 'not_found' };
+  const tx = db.transaction((): CancelImportResult => {
+    const row = latestImport(db, spineId);
+    if (!row) return { status: 'not_found' };
+    const phase = phaseOf(row);
+    const allowed = canChangeMatchOf({
+      phase,
+      intentAt: row.intent_at,
+      errorKind: row.error_kind,
+      jobStatus: row.job_status,
+    });
+    if (!allowed) return { status: 'started' };
+    if (phase === 'waiting') {
+      if (!row.job_id || !cancelQueuedJob(row.job_id)) {
+        return { status: 'started' };
+      }
+    }
+    db.prepare('DELETE FROM imports WHERE id = @id').run({ id: row.id });
+    return { status: 'ok' };
+  });
+  return tx.immediate();
 }
