@@ -2,6 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  connection: async () => {},
+}));
+
+import { POST as testConnection } from '@/app/api/discogs/test/route';
 import { matchesAction } from '@/components/discogs-matches';
 import {
   type Output,
@@ -191,6 +198,20 @@ function stubDiscogs(...responders: Respond[]): void {
     if (!next) throw new Error('no stubbed response');
     return next();
   });
+}
+
+/** A passing Test connection: one signed GET /oauth/identity. */
+async function passTestConnection(): Promise<unknown> {
+  resetDiscogsGateForTests(fakeClock());
+  stubDiscogs(identityOk);
+  const res = await testConnection(
+    new Request('http://127.0.0.1:3001/api/discogs/test', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    }),
+  );
+  return res.json();
 }
 
 type SearchHistoryRow = SearchRow & { kind: string };
@@ -448,5 +469,51 @@ describe('a rejected Retry over a covering baseline, then reconnect (CR-01 auth_
     runMaintenance();
     enqueueMissingSearches({ includeAuthFailed: true });
     expect(searchesOf(s0)).toHaveLength(3);
+  });
+  it('CR-01 auth_failed: a passing Test connection looks the spine up again (WR-04)', async () => {
+    const { s0, b, hash } = await rejectedRetry();
+    expect(isAuthInvalid()).toBe(true);
+    expect(await passTestConnection()).toEqual({
+      ok: true,
+      username: 'fake-owner',
+    });
+    expect(isAuthInvalid()).toBe(false);
+    expect(cardOf(s0)?.state).toBe('queued');
+    const rows = searchesOf(s0);
+    expect(rows).toHaveLength(3);
+    expect(rows[2]).toMatchObject({ kind: 'auto', status: 'queued' });
+    expect(dedupeKeyOf(rows[2].job_id ?? '')).toBe(
+      `search:auto:${s0}:${hash}:${b.id}`,
+    );
+    expect(cardOf(s0)).toMatchObject({ state: 'queued', failure: null });
+
+    expect(await passTestConnection()).toEqual({
+      ok: true,
+      username: 'fake-owner',
+    });
+    expect(searchesOf(s0)).toHaveLength(3);
+  });
+
+  it('CR-01 auth_failed: after a restart forgot the rejection, a passing Test connection still looks the spine up again', async () => {
+    const { s0, b, hash } = await rejectedRetry();
+    // The rejection flag lives in memory: a restart forgets it.
+    clearAuthInvalid();
+    runMaintenance();
+    expect(searchesOf(s0)).toHaveLength(2);
+    expect(cardOf(s0)?.state).toBe('failed');
+    expect(cardOf(s0)?.failure?.kind).toBe('auth');
+
+    expect(await passTestConnection()).toEqual({
+      ok: true,
+      username: 'fake-owner',
+    });
+    expect(cardOf(s0)?.state).toBe('queued');
+    const rows = searchesOf(s0);
+    expect(rows).toHaveLength(3);
+    expect(rows[2]).toMatchObject({ kind: 'auto', status: 'queued' });
+    expect(dedupeKeyOf(rows[2].job_id ?? '')).toBe(
+      `search:auto:${s0}:${hash}:${b.id}`,
+    );
+    expect(cardOf(s0)).toMatchObject({ state: 'queued', failure: null });
   });
 });
