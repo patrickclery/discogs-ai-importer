@@ -1,7 +1,7 @@
 // Copy and state rules for the card's import UI (UI-SPEC Candidate row,
 // Confirmed-match panel, Copywriting Contract). Pure and client-safe: the
 // components render what these return, and the unit tests pin the copy.
-import type { ImportDto, ImportFailure } from './import-types';
+import type { DuplicateBody, ImportDto, ImportFailure } from './import-types';
 import { formatRelativeTime } from './spine-review';
 
 /** The folder new imports go to, falling back to Uncategorized (id 1). */
@@ -183,4 +183,14 @@ export function changeMatchState(
     enabled: false,
     tooltip: dto.phase === 'failed' ? RETRY_FIRST_TOOLTIP : BEING_ADDED_TOOLTIP,
   };
+}
+
+/**
+ * The local duplicate dialog's title (UI-SPEC Duplicate dialog, D-04):
+ * the other spine's photo and number, done or still on its way.
+ */
+export function duplicateDialogTitle(
+  _body: Pick<DuplicateBody, 'photo' | 'spineNumber' | 'done'>,
+): string {
+  return '';
 }

@@ -10,6 +10,7 @@ import {
   CHANGE_STARTED_ERROR,
   CONNECT_FIRST,
   changeMatchState,
+  duplicateDialogTitle,
   importFailureLine,
   importStateLine,
   NOT_ON_DISCOGS_ERROR,
@@ -299,5 +300,27 @@ describe('changeMatchState (D-02)', () => {
     expect(CHANGE_STARTED_ERROR).toBe(
       "It's already being added to Discogs, so the match can't be changed now.",
     );
+  });
+});
+
+describe('duplicateDialogTitle (D-04, IMP-03)', () => {
+  it('names the photo and spine an import already finished from', () => {
+    expect(
+      duplicateDialogTitle({
+        photo: 'shelf-2.jpg',
+        spineNumber: 3,
+        done: true,
+      }),
+    ).toBe('Already imported from shelf-2.jpg, spine #3');
+  });
+
+  it('says being imported while that import is still on its way', () => {
+    expect(
+      duplicateDialogTitle({
+        photo: 'shelf-2.jpg',
+        spineNumber: 3,
+        done: false,
+      }),
+    ).toBe('Already being imported from shelf-2.jpg, spine #3');
   });
 });
