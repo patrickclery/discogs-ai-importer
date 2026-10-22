@@ -2,7 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import type {
@@ -25,17 +25,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
 
 // Settings "Collection folder" (D-03, IMP-02; UI-SPEC E12). The folder list
 // comes from the settings-table cache (GET /api/discogs/folders); it is read
 // again from Discogs inline (POST { refresh: true }) when there is no cache,
 // when the cache is older than an hour, or on Reload folders. Saving on
 // change goes through the saveCollectionFolder action, like ModelSelect.
+// Folder names are third-party text: rendered as React text, never re-cased
+// (T-04-23).
 
 const SELECT_ID = 'collection-folder';
 const ERROR_ID = 'collection-folder-error';
@@ -47,22 +51,45 @@ function fallbackName(id: number): string {
   return id === 1 ? 'Uncategorized' : `Folder ${id}`;
 }
 
+function clean(reason: string): string {
+  return reason.slice(0, 160).replace(/[.\s]+$/, '');
+}
+
+/** The {reason} of "Couldn't load your folders: {reason}." */
+function loadReason(r: Exclude<FoldersRefreshResult, { ok: true }>): string {
+  switch (r.kind) {
+    case 'rejected':
+      return 'Discogs refused the connection';
+    case 'unreachable':
+      return "Discogs didn't answer";
+    case 'busy':
+      return 'Discogs asked the app to wait';
+    default:
+      return clean(r.reason);
+  }
+}
+
 export function CollectionFolderField() {
   const queryClient = useQueryClient();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [current, setCurrent] = useState<number>(1);
+  // null until the first GET answers; false means no list was ever read.
+  const [hasCache, setHasCache] = useState<boolean | null>(null);
+  const [savedMissing, setSavedMissing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, startLoad] = useTransition();
   const [saving, startSave] = useTransition();
 
-  const apply = useCallback((s: FoldersGetResult | FoldersRefreshResult) => {
-    if ('folders' in s) {
-      setFolders(s.folders);
-      setCurrent(s.selectedId);
-    }
+  const apply = useCallback((s: FoldersGetResult) => {
+    setFolders(s.folders);
+    setCurrent(s.selectedId);
+    setSavedMissing(s.savedMissing);
+    setHasCache(s.fetchedAt !== null);
   }, []);
 
   const refresh = useCallback(() => {
+    setLoadError(null);
     startLoad(async () => {
       let res: Response;
       try {
@@ -72,14 +99,22 @@ export function CollectionFolderField() {
           body: JSON.stringify({ refresh: true }),
         });
       } catch {
+        setLoadError(UNREACHABLE_REASON);
         return;
       }
-      if (!res.ok) return;
-      try {
-        apply((await res.json()) as FoldersRefreshResult);
-      } catch {
-        // No usable answer: keep what is shown.
+      if (!res.ok) {
+        setLoadError(clean(await failureReason(res)));
+        return;
       }
+      let body: FoldersRefreshResult;
+      try {
+        body = (await res.json()) as FoldersRefreshResult;
+      } catch {
+        setLoadError('the app sent no result');
+        return;
+      }
+      if (body.ok) apply({ ...body, connected: true });
+      else setLoadError(loadReason(body));
     });
   }, [apply]);
 
@@ -89,9 +124,20 @@ export function CollectionFolderField() {
       let state: FoldersGetResult;
       try {
         const res = await fetch('/api/discogs/folders');
-        if (!res.ok) return;
+        if (!res.ok) {
+          const reason = clean(await failureReason(res));
+          if (!cancelled) {
+            setHasCache(false);
+            setLoadError(reason);
+          }
+          return;
+        }
         state = (await res.json()) as FoldersGetResult;
       } catch {
+        if (!cancelled) {
+          setHasCache(false);
+          setLoadError(UNREACHABLE_REASON);
+        }
         return;
       }
       if (cancelled) return;
@@ -106,7 +152,8 @@ export function CollectionFolderField() {
     };
   }, [apply, refresh]);
 
-  // The saved folder stays visible even before a list has been read.
+  // The saved folder (or Uncategorized) stays visible even without a list,
+  // for example while it loads or after a load failure.
   const options: (Folder | { id: number; name: string; count: null })[] =
     folders.some((f) => f.id === current)
       ? folders
@@ -119,19 +166,29 @@ export function CollectionFolderField() {
     setCurrent(id);
     setSaveError(null);
     startSave(async () => {
-      const res = await saveCollectionFolder(id);
+      let res: Awaited<ReturnType<typeof saveCollectionFolder>>;
+      try {
+        res = await saveCollectionFolder(id);
+      } catch {
+        res = { ok: false, formError: UNREACHABLE_REASON };
+      }
       if (res.ok) {
+        setSavedMissing(false);
         toast.success(`Imports now go to ${res.name}`);
         void queryClient.invalidateQueries({ queryKey: ['spines'] });
         window.dispatchEvent(new Event(STATUS_REFRESH_EVENT));
       } else {
         setCurrent(previous);
-        setSaveError(res.formError);
+        setSaveError(
+          `Not saved: ${clean(res.formError)}. Pick the folder again to retry.`,
+        );
       }
     });
   }
 
   const pending = loading || saving;
+  // First open with no cached list: nothing to pick until the read answers.
+  const firstLoad = hasCache !== true && loading;
 
   return (
     <Field data-disabled={pending ? true : undefined}>
@@ -148,7 +205,14 @@ export function CollectionFolderField() {
             aria-invalid={saveError ? true : undefined}
             aria-describedby={saveError ? ERROR_ID : undefined}
           >
-            <SelectValue />
+            {firstLoad ? (
+              <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                <Spinner aria-hidden="true" />
+                Loading folders…
+              </span>
+            ) : (
+              <SelectValue />
+            )}
           </SelectTrigger>
           <SelectContent>
             {options.map((f) => (
@@ -176,7 +240,7 @@ export function CollectionFolderField() {
             >
               <RefreshCw
                 aria-hidden="true"
-                className={cn(loading && 'animate-spin')}
+                className={cn(pending && 'animate-spin')}
               />
             </Button>
           </TooltipTrigger>
@@ -188,6 +252,32 @@ export function CollectionFolderField() {
         it was added to.
       </FieldDescription>
       {saveError ? <FieldError id={ERROR_ID}>{saveError}</FieldError> : null}
+      {loadError ? (
+        <p role="alert" className="text-xs text-destructive">
+          {`Couldn't load your folders: ${loadError}. `}
+          <button
+            type="button"
+            className="underline underline-offset-4 disabled:opacity-50"
+            disabled={pending}
+            onClick={refresh}
+          >
+            Try again
+          </button>
+        </p>
+      ) : null}
+      {savedMissing ? (
+        <p className="flex items-start gap-2 text-xs text-foreground">
+          <TriangleAlert
+            aria-hidden="true"
+            className="mt-0.5 size-3.5 shrink-0 text-warning"
+          />
+          <span className="min-w-0">
+            {
+              "Your chosen folder isn't on Discogs any more. Imports go to Uncategorized until you pick another."
+            }
+          </span>
+        </p>
+      ) : null}
     </Field>
   );
 }
