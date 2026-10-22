@@ -37,6 +37,17 @@ export type SearchRowRaw = {
 const ERROR_MAX = 1000;
 
 /**
+ * CR-01, WR-01: the shared status rule. Searches with these statuses never
+ * reached Discogs and released their dedupe key: they read as not searched,
+ * the backfill picks a spine whose latest search has one, and they are never
+ * a baseline. NON_BASELINE_STATUSES extends it.
+ */
+export const UNSEARCHED_STATUSES = [
+  'not_connected',
+  'skipped',
+] as const satisfies readonly SearchStatus[];
+
+/**
  * WR-01: the one baseline rule. A spine's baseline search is its newest auto
  * or again search whose status is NOT IN this list: those never reached
  * Discogs and released their dedupe key (A-03-27, CR-01). The enqueue, the

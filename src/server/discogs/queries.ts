@@ -21,7 +21,7 @@ import {
   inputHash,
   searchInputs,
 } from './inputs';
-import { NON_BASELINE_STATUSES_SQL } from './store';
+import { NON_BASELINE_STATUSES_SQL, UNSEARCHED_STATUSES } from './store';
 
 // The Discogs half of the /spines read model (D-10, D-11, D-12, RESEARCH
 // Pattern 5). Three queries per page, whatever the spine count: the latest
@@ -46,7 +46,8 @@ const LATEST_SQL = `
       AND s.spine_id IN (SELECT value FROM json_each(@ids))
   ),
   baseline AS (
-    SELECT s.spine_id, s.input_hash,
+    SELECT s.spine_id, s.input_hash, s.status, s.error_kind, s.error,
+      s.job_id,
       ROW_NUMBER() OVER (
         PARTITION BY s.spine_id ORDER BY s.created_at DESC, s.id DESC
       ) AS rn
@@ -56,10 +57,13 @@ const LATEST_SQL = `
       AND s.spine_id IN (SELECT value FROM json_each(@ids))
   )
   SELECT l.spine_id, l.status, l.error_kind, l.error, l.input_hash,
-    b.input_hash AS baseline_hash, j.status AS job_status
+    b.input_hash AS baseline_hash, j.status AS job_status,
+    b.status AS baseline_status, b.error_kind AS baseline_error_kind,
+    b.error AS baseline_error, bj.status AS baseline_job_status
   FROM latest l
   LEFT JOIN baseline b ON b.spine_id = l.spine_id AND b.rn = 1
   LEFT JOIN jobs j ON j.id = l.job_id
+  LEFT JOIN jobs bj ON bj.id = b.job_id
   WHERE l.rn = 1`;
 
 const CANDIDATE_COLUMNS = `c.id, c.spine_id, c.source, c.release_id, c.rank,
@@ -95,6 +99,11 @@ export type LatestSearchRow = {
    * or again search not in NON_BASELINE_STATUSES_SQL), or null for none.
    */
   baseline_hash?: string | null;
+  /** The baseline search's status, error and job status (CR-01). */
+  baseline_status?: SearchStatus | null;
+  baseline_error_kind?: string | null;
+  baseline_error?: string | null;
+  baseline_job_status?: string | null;
 };
 
 type CandidateRowRaw = {
@@ -141,6 +150,36 @@ export function fieldsChangedSince(
 ): boolean {
   if (!latest?.baseline_hash) return false;
   return latest.baseline_hash !== inputHash(searchInputs(fields));
+}
+
+/**
+ * CR-01, D-11: the search the card state comes from. When the latest search
+ * never reached Discogs (UNSEARCHED_STATUSES) but the baseline already
+ * searched exactly the current inputs, no automatic search will ever be
+ * queued again, so the card shows the baseline's real outcome instead of
+ * not searched. The hash goes through the enqueue's normalization, so a
+ * whitespace-only difference counts as covered. Otherwise the latest.
+ */
+export function effectiveSearch(
+  latest: LatestSearchRow | null,
+  fields: FieldValues,
+): LatestSearchRow | null {
+  if (
+    !latest ||
+    !(UNSEARCHED_STATUSES as readonly SearchStatus[]).includes(latest.status)
+  ) {
+    return latest;
+  }
+  if (!latest.baseline_status || !latest.baseline_hash) return latest;
+  if (latest.baseline_hash !== inputHash(searchInputs(fields))) return latest;
+  return {
+    status: latest.baseline_status,
+    error_kind: latest.baseline_error_kind ?? null,
+    error: latest.baseline_error ?? null,
+    job_status: latest.baseline_job_status ?? null,
+    input_hash: latest.baseline_hash,
+    baseline_hash: latest.baseline_hash,
+  };
 }
 
 /**
@@ -326,13 +365,17 @@ export function discogsForSpines(
   for (const { id } of spines) {
     const candidates = orderCandidates(bySpine.get(id) ?? []);
     const last = latest.get(id) ?? null;
-    const { state, failure } = searchStateOf(last, candidates.length);
+    const spineFields = fields.get(id) ?? {};
+    const { state, failure } = searchStateOf(
+      effectiveSearch(last, spineFields),
+      candidates.length,
+    );
     out.set(id, {
       state,
       candidateCount: candidates.length,
       topCandidates: candidates.slice(0, INLINE_CANDIDATES),
       failure,
-      fieldsChanged: fieldsChangedSince(last, fields.get(id) ?? {}),
+      fieldsChanged: fieldsChangedSince(last, spineFields),
     });
   }
   return out;
