@@ -1,7 +1,7 @@
 // Copy and state rules for the card's import UI (UI-SPEC Candidate row,
 // Confirmed-match panel, Copywriting Contract). Pure and client-safe: the
 // components render what these return, and the unit tests pin the copy.
-import type { ImportDto } from './import-types';
+import type { ImportDto, ImportFailure } from './import-types';
 import { formatRelativeTime } from './spine-review';
 
 /** The folder new imports go to, falling back to Uncategorized (id 1). */
@@ -82,4 +82,33 @@ export function importStateLine(
     default:
       return null;
   }
+}
+
+// --- Task 2 stubs (RED): replaced by the implementation in the GREEN commit.
+
+export const BEING_ADDED_TOOLTIP = '';
+export const RETRY_FIRST_TOOLTIP = '';
+export const CHANGE_STARTED_ERROR = '';
+
+export type ImportFailureLine = {
+  text: string;
+  settingsLink: { label: string; href: string; after: string } | null;
+};
+
+export function importFailureLine(
+  _failure: ImportFailure | null,
+): ImportFailureLine {
+  return { text: '', settingsLink: null };
+}
+
+export type ChangeMatchState = {
+  show: boolean;
+  enabled: boolean;
+  tooltip: string | null;
+};
+
+export function changeMatchState(
+  _dto: Pick<ImportDto, 'phase' | 'canChangeMatch'>,
+): ChangeMatchState {
+  return { show: false, enabled: false, tooltip: null };
 }

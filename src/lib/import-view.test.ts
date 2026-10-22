@@ -6,10 +6,15 @@ import {
   addDisabledReason,
   addErrorText,
   addFolderName,
+  BEING_ADDED_TOOLTIP,
+  CHANGE_STARTED_ERROR,
   CONNECT_FIRST,
+  changeMatchState,
+  importFailureLine,
   importStateLine,
   NOT_ON_DISCOGS_ERROR,
   RECONNECT_FIRST,
+  RETRY_FIRST_TOOLTIP,
 } from './import-view';
 
 const NOW = Date.UTC(2026, 9, 22, 12, 0, 0);
@@ -164,6 +169,135 @@ describe('importStateLine', () => {
     expect(importStateLine(dto({ phase: 'failed' }), NOW)).toBe(null);
     expect(importStateLine(dto({ phase: 'already_in_collection' }), NOW)).toBe(
       null,
+    );
+  });
+});
+
+describe('importFailureLine (D-09)', () => {
+  it('auth gives the reconnect line', () => {
+    expect(importFailureLine({ kind: 'auth', reason: null }).text).toBe(
+      'Import failed: Discogs rejected the connection.',
+    );
+  });
+
+  it('auth carries the accent Open Settings link and its tail', () => {
+    expect(
+      importFailureLine({ kind: 'auth', reason: null }).settingsLink,
+    ).toEqual({
+      label: 'Open Settings',
+      href: '/settings',
+      after: ' to reconnect, then retry.',
+    });
+  });
+
+  it('not_found asks to change the match', () => {
+    expect(importFailureLine({ kind: 'not_found', reason: null })).toEqual({
+      text: 'Import failed: Release not found on Discogs. Change the match.',
+      settingsLink: null,
+    });
+  });
+
+  it('rejected says Discogs would not add it', () => {
+    expect(importFailureLine({ kind: 'rejected', reason: null }).text).toBe(
+      "Import failed: Discogs wouldn't add this release. Change the match, or retry later.",
+    );
+  });
+
+  it('unavailable promises Retry checks the collection first', () => {
+    expect(importFailureLine({ kind: 'unavailable', reason: null }).text).toBe(
+      "Import failed: Discogs didn't respond. Retry checks your collection first, so it never adds a second copy.",
+    );
+  });
+
+  it('interrupted explains the app stopped', () => {
+    expect(importFailureLine({ kind: 'interrupted', reason: null }).text).toBe(
+      'The import was interrupted when the app stopped. Retry checks your collection first, so it never adds a second copy.',
+    );
+  });
+
+  it('other shows the short reason without a doubled period', () => {
+    expect(
+      importFailureLine({ kind: 'other', reason: 'Discogs said no.' }).text,
+    ).toBe('Import failed: Discogs said no. Retry the import.');
+  });
+
+  it('other without a reason still reads as a sentence', () => {
+    expect(importFailureLine({ kind: 'other', reason: null }).text).toBe(
+      'Import failed: something went wrong. Retry the import.',
+    );
+  });
+
+  it('removed uses the other line', () => {
+    expect(importFailureLine({ kind: 'removed', reason: null }).text).toBe(
+      'Import failed: the spine was removed before the import ran. Retry the import.',
+    );
+  });
+
+  it('a missing failure falls back to the other line', () => {
+    expect(importFailureLine(null).text).toBe(
+      'Import failed: something went wrong. Retry the import.',
+    );
+  });
+});
+
+describe('changeMatchState (D-02)', () => {
+  it('a waiting import that can change is enabled', () => {
+    expect(
+      changeMatchState(dto({ phase: 'waiting', canChangeMatch: true })),
+    ).toEqual({
+      show: true,
+      enabled: true,
+      tooltip: null,
+    });
+  });
+
+  it('importing is disabled with the being-added tooltip', () => {
+    expect(
+      changeMatchState(dto({ phase: 'importing', canChangeMatch: false })),
+    ).toEqual({ show: true, enabled: false, tooltip: BEING_ADDED_TOOLTIP });
+    expect(BEING_ADDED_TOOLTIP).toBe(
+      "It's being added now. Wait for it to finish.",
+    );
+  });
+
+  it('a failed import without canChangeMatch says retry first', () => {
+    expect(
+      changeMatchState(dto({ phase: 'failed', canChangeMatch: false })),
+    ).toEqual({ show: true, enabled: false, tooltip: RETRY_FIRST_TOOLTIP });
+    expect(RETRY_FIRST_TOOLTIP).toBe(
+      'Retry first. Discogs may already have added it.',
+    );
+  });
+
+  it('a failed import Discogs refused can change', () => {
+    expect(
+      changeMatchState(dto({ phase: 'failed', canChangeMatch: true })).enabled,
+    ).toBe(true);
+  });
+
+  it('already in collection follows canChangeMatch', () => {
+    expect(
+      changeMatchState(
+        dto({ phase: 'already_in_collection', canChangeMatch: true }),
+      ),
+    ).toEqual({ show: true, enabled: true, tooltip: null });
+  });
+
+  it('a waiting import the server no longer lets change is disabled', () => {
+    expect(
+      changeMatchState(dto({ phase: 'waiting', canChangeMatch: false })),
+    ).toEqual({ show: true, enabled: false, tooltip: BEING_ADDED_TOOLTIP });
+  });
+
+  it('an imported spine offers no Change match', () => {
+    expect(
+      changeMatchState(dto({ phase: 'imported', canChangeMatch: false })),
+    ).toEqual({ show: false, enabled: false, tooltip: null });
+  });
+
+  it('the started refusal copy matches the route', () => {
+    expect(CHANGE_STARTED_ERROR).toBe(
+      "It's already being added to Discogs, so the match can't be changed now.",
     );
   });
 });
