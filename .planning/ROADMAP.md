@@ -115,7 +115,7 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans:** 14/14 plans executed (1 gap closure)
+**Plans:** 14/15 plans executed (2 gap closure)
 
 Plans:
 **Wave 1**
@@ -151,6 +151,7 @@ Plans:
 
 **Gap closure (verification)** *(wave 1)*
 - [x] 03-14-PLAN.md — CR-01/WR-01: re-activated spines are looked up again via the maintenance hook or show their real last result; one shared status rule; "waiting its turn" only when the spine will be queued
+- [ ] 03-15-PLAN.md — CR-01 auth_failed/WR-01: a reconnect or passing Test connection looks rejected spines up again even over a covering baseline; a "waiting its turn" card offers no Fields changed or Search again
 
 **UI hint**: yes
 
