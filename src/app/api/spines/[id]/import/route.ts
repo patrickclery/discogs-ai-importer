@@ -104,6 +104,12 @@ export async function POST(
         'not_on_discogs',
         'This spine is marked not on Discogs. Unmark it first.',
       );
+    case 'retry_first':
+      return fail(
+        409,
+        'retry_first',
+        'Retry the import first. Discogs may already have added it.',
+      );
     case 'already_confirmed':
       return fail(
         409,

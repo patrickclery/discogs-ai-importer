@@ -8,13 +8,17 @@ import {
   type ImportStatus,
   importPhaseOf,
 } from '@/lib/import-types';
+import { enqueueExplicitSearch } from '../discogs/enqueue';
 import { getCollectionFolderId } from '../discogs/folders';
+import { discogsForSpines } from '../discogs/queries';
 import { newId } from '../ids';
 import { cancelQueuedJob, enqueue, releaseDedupeKey } from '../jobs/queue';
 
-// Imports (D-01, D-03, D-07, D-08). createImport is the only path that
-// creates an import and the only place add_to_collection is enqueued: the
-// confirm route (POST /api/spines/{id}/import) is its only caller (IMP-01).
+// Imports (D-01, D-02, D-03, D-07, D-08, D-13). createImport is the only
+// path that creates an import; enqueueImport, reached from createImport and
+// retryImport, is the only place add_to_collection is enqueued (IMP-01,
+// guarded by the enqueue-site scan in store.test.ts). cancelImport (Change
+// match) and retrySpine (Retry) are the owner's other import actions.
 // The release id always comes from the spine's own candidate row, never from
 // the request (T-04-02). Raw SQL with @named parameters; better-sqlite3 is
 // built with DQS=0, so string literals are single-quoted.
@@ -27,6 +31,7 @@ export type CreateImportResult =
   | { status: 'not_importable' }
   | { status: 'not_on_discogs' }
   | { status: 'already_confirmed' }
+  | { status: 'retry_first' }
   | { status: 'no_candidate' };
 
 export type ImportDbRow = {
@@ -144,6 +149,28 @@ export function createImport(
       )
       .get({ spineId: input.spineId });
     if (open) return { status: 'already_confirmed' };
+    // D-07: a failed add whose intent was written may have reached Discogs
+    // (no answer, a crash, a timeout). Only Retry reconciles it, so a new
+    // confirm is refused until then; a refused add (not_found, rejected)
+    // or one that never wrote an intent is safe to replace.
+    const latest = db
+      .prepare(
+        `SELECT status, intent_at, error_kind FROM imports
+         WHERE spine_id = @spineId
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`,
+      )
+      .get({ spineId: input.spineId }) as
+      | { status: string; intent_at: number | null; error_kind: string | null }
+      | undefined;
+    if (
+      latest?.status === 'failed' &&
+      latest.intent_at !== null &&
+      latest.error_kind !== 'not_found' &&
+      latest.error_kind !== 'rejected'
+    ) {
+      return { status: 'retry_first' };
+    }
     const candidate = db
       .prepare(
         `SELECT release_id, title, year, country, labels_json, catno, formats_json
@@ -303,18 +330,99 @@ export type RetrySpineResult =
   | { status: 'busy' }
   | { status: 'not_found' };
 
-/** Retry import (D-13). */
+/**
+ * Retry import (D-13, REV-04, T-04-15): the same row goes back to pending
+ * with its error cleared, keeping intent_at, snapshot_json, allow_duplicate
+ * and existing_json, so the handler reconciles before any POST and adopts a
+ * copy that already landed (D-07). enqueueImport reuses an in-flight job or
+ * frees a finished one's dedupe key first, so there is never a second job.
+ * Call inside an IMMEDIATE transaction; on its own it opens one.
+ */
 export function retryImport(
-  _db: Database.Database,
-  _importRow: ImportDbRow,
+  db: Database.Database,
+  importRow: Pick<ImportDbRow, 'id'>,
 ): { id: string; created: boolean } {
-  throw new Error('retryImport: not implemented');
+  const tx = db.transaction(() => {
+    db.prepare(
+      `UPDATE imports SET status = 'pending', error = NULL, error_kind = NULL,
+         updated_at = @now
+       WHERE id = @id`,
+    ).run({ id: importRow.id, now: Date.now() });
+    return enqueueImport(db, importRow.id);
+  });
+  return tx.immediate();
 }
 
-/** Per-spine Retry (REV-04, D-13). */
+/**
+ * Per-spine Retry (REV-04, D-13), never re-uploading or re-scanning the
+ * photo. The latest import wins (adjacency: import first):
+ * - failed (importPhaseOf, so a pending or importing row whose job failed,
+ *   was cancelled or is missing counts) -> retryImport;
+ * - waiting (its job still queued) -> the same job again, so a second
+ *   click never makes a second job;
+ * - importing -> busy;
+ * - imported or already_in_collection -> nothing_to_retry.
+ * With no import, a failed search (the card's own state, discogsForSpines)
+ * is re-run with the current fields (enqueueExplicitSearch kind again).
+ * A superseded or dismissed spine, or one marked not on Discogs, has
+ * nothing to retry. One IMMEDIATE transaction, so two clicks serialize.
+ */
 export function retrySpine(
-  _db: Database.Database,
-  _spineId: string,
+  db: Database.Database,
+  spineId: string,
 ): RetrySpineResult {
-  return { status: 'nothing_to_retry' };
+  const tx = db.transaction((): RetrySpineResult => {
+    const spine = db
+      .prepare('SELECT state, not_on_discogs FROM spines WHERE id = @spineId')
+      .get({ spineId }) as
+      | { state: string; not_on_discogs: number }
+      | undefined;
+    if (!spine) return { status: 'not_found' };
+    if (spine.state !== 'active' && spine.state !== 'orphaned') {
+      return { status: 'nothing_to_retry' };
+    }
+    const row = latestImport(db, spineId);
+    if (row) {
+      switch (phaseOf(row)) {
+        case 'failed': {
+          const job = retryImport(db, row);
+          return {
+            status: 'ok',
+            kind: 'import',
+            importId: row.id,
+            jobId: job.id,
+          };
+        }
+        case 'waiting':
+          if (row.job_id) {
+            return {
+              status: 'ok',
+              kind: 'import',
+              importId: row.id,
+              jobId: row.job_id,
+            };
+          }
+          return { status: 'busy' };
+        case 'importing':
+          return { status: 'busy' };
+        default:
+          return { status: 'nothing_to_retry' };
+      }
+    }
+    if (spine.not_on_discogs === 1) return { status: 'nothing_to_retry' };
+    const search = discogsForSpines(db, [{ id: spineId }]).get(spineId);
+    if (search?.state !== 'failed') return { status: 'nothing_to_retry' };
+    const res = enqueueExplicitSearch(db, { spineId, kind: 'again' });
+    switch (res.status) {
+      case 'ok':
+        return { status: 'ok', kind: 'search', searchId: res.searchId };
+      case 'busy':
+        return { status: 'busy' };
+      case 'not_found':
+        return { status: 'not_found' };
+      default:
+        return { status: 'nothing_to_retry' };
+    }
+  });
+  return tx.immediate();
 }
