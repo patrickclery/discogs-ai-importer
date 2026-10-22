@@ -37,7 +37,8 @@ const FAILED_SPINES_SQL = `
 // waiting or running.
 const IMPORTS_LEFT_SQL = `
   SELECT COUNT(*) AS n FROM jobs
-  WHERE lane = @lane AND type = @type AND status IN ('queued', 'running')`;
+  WHERE lane = @lane AND type = 'add_to_collection'
+    AND status IN ('queued', 'running')`;
 
 // The latest import per active or orphaned spine not marked not on Discogs
 // (the marked line wins on the card); it counts as failed when it ended
@@ -82,9 +83,7 @@ export function discogsStatus(
     db.prepare(FAILED_SPINES_SQL).get({ failedJob: 'failed' }) as { n: number }
   ).n;
   const importsLeft = (
-    db
-      .prepare(IMPORTS_LEFT_SQL)
-      .get({ lane: 'discogs', type: 'add_to_collection' }) as { n: number }
+    db.prepare(IMPORTS_LEFT_SQL).get({ lane: 'discogs' }) as { n: number }
   ).n;
   const importsFailed = (db.prepare(IMPORTS_FAILED_SQL).get() as { n: number })
     .n;
