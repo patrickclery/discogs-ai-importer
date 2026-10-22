@@ -55,8 +55,21 @@
 //   POST /users/{u}/collection/folders/{f}/releases/{id}  folder 0 answers
 //        422, ids above 899999999 answer 404; otherwise it records a new
 //        copy (date_added at second resolution with a -07:00 offset) and
-//        answers 201 { instance_id, resource_url }. Every add POST counts
-//        in the state's posts.
+//        answers 201 { instance_id, resource_url }. Every add POST that
+//        records a copy counts in the state's posts and, per release id, in
+//        postsByRelease, whatever postMode then does with the answer.
+//        postMode (set through /__control, Plan 04-02) decides the answer
+//        after the copy is recorded, so a test can lose the answer of a POST
+//        that Discogs did carry out:
+//          ok (default)        201 as above;
+//          hang-after-commit   never answers; the request stays open (it
+//                              counts in postsHeld) until the client goes
+//                              away, e.g. the app is killed, and is then
+//                              dropped without crashing the fake;
+//          502-after-commit    answers 502 with an empty body, once, then
+//                              postMode returns to ok;
+//          no-instance-201     answers 201 with {} (no instance_id), once,
+//                              then postMode returns to ok.
 // Every API answer except an injected 429 carries X-Discogs-Ratelimit
 // (FAKE_DISCOGS_LIMIT, default 600 so tests run fast), -Remaining and -Used
 // over a moving 60 s window.
@@ -69,13 +82,16 @@
 //        (1 = the next; /img and /__control never count) with 429, an
 //        empty body and no rate-limit headers, carrying Retry-After when
 //        retryAfter (seconds) is a number; at5xx: N does the same with
-//        a 502. limit changes X-Discogs-Ratelimit. collection: { [releaseId]:
+//        a 502. limit changes X-Discogs-Ratelimit. postMode: one of the
+//        add POST modes above. collection: { [releaseId]:
 //        instances[] } seeds (or, with [], resets) those releases' copies;
 //        a seeded copy without instance_id gets the next one, folder_id
 //        defaults to 1 and date_added to now. folders: [{ id, name }] sets
 //        the extra folders listed after 0 and 1. Answers the current state,
-//        which also carries collection ({ [releaseId]: instances[] }) and
-//        posts (the number of add POSTs answered 201).
+//        which also carries collection ({ [releaseId]: instances[] }),
+//        posts (add POSTs that recorded a copy), postsByRelease
+//        ({ [releaseId]: that count }), postMode and postsHeld (add POSTs
+//        held open right now).
 // Log lines keep the request path, username included: the fake may see it;
 // the app's own error text may not.
 //   GET  /__control  the current state, including the last oauth_callback
@@ -114,7 +130,16 @@ const initialModes = () => ({
   /** API requests left before a 502, or null. */
   at5xx: null,
   limit: DEFAULT_LIMIT,
+  /** What the add POST answers after recording the copy. */
+  postMode: 'ok',
 });
+
+const POST_MODES = new Set([
+  'ok',
+  'hang-after-commit',
+  '502-after-commit',
+  'no-instance-201',
+]);
 
 /** The thumbnail every /img/*.jpeg answers with. */
 const THUMB = await sharp({
@@ -134,8 +159,11 @@ let hits = [];
 /** releaseId -> [{ instance_id, folder_id, date_added }] */
 const collection = new Map();
 let nextInstance = 5001;
-/** Add POSTs answered 201. */
+/** Add POSTs that recorded a copy, in total and per release id. */
 let posts = 0;
+const postsByRelease = new Map();
+/** Add POSTs held open by hang-after-commit right now. */
+const heldPosts = new Set();
 /** Folders listed after 0 and 1: [{ id, name }]. */
 let extraFolders = [];
 
@@ -262,6 +290,10 @@ function controlState() {
       [...collection].map(([id, list]) => [String(id), list]),
     ),
     posts,
+    postsByRelease: Object.fromEntries(
+      [...postsByRelease].map(([id, n]) => [String(id), n]),
+    ),
+    postsHeld: heldPosts.size,
   };
 }
 
@@ -315,6 +347,9 @@ async function handleControl(req, res) {
     }
     if (Number.isInteger(patch.limit) && patch.limit > 0) {
       modes.limit = patch.limit;
+    }
+    if (typeof patch.postMode === 'string' && POST_MODES.has(patch.postMode)) {
+      modes.postMode = patch.postMode;
     }
     if (patch.collection && typeof patch.collection === 'object') {
       seedCollection(patch.collection);
@@ -652,6 +687,27 @@ async function handleAdd(req, res, user, folderText, idText, rate) {
   };
   collection.set(id, [...(collection.get(id) ?? []), instance]);
   posts += 1;
+  postsByRelease.set(id, (postsByRelease.get(id) ?? 0) + 1);
+  // The copy exists now; postMode decides whether the client hears so.
+  const mode = modes.postMode;
+  if (mode === 'hang-after-commit') {
+    heldPosts.add(res);
+    const drop = () => heldPosts.delete(res);
+    res.on('close', drop);
+    req.on('close', drop);
+    res.on('error', drop);
+    return 0;
+  }
+  if (mode === '502-after-commit') {
+    modes.postMode = 'ok';
+    send(res, 502, { ...rate, 'content-type': 'application/json' }, '');
+    return 502;
+  }
+  if (mode === 'no-instance-201') {
+    modes.postMode = 'ok';
+    sendJson(res, 201, rate, {});
+    return 201;
+  }
   sendJson(res, 201, rate, {
     instance_id: instance.instance_id,
     resource_url: `https://api.discogs.com/users/${user}/collection/folders/${folderId}/release/${id}/instance/${instance.instance_id}`,

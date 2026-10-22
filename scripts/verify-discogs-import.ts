@@ -14,6 +14,12 @@
 // (phase imported, copy number, folder) and the folder label, every other
 // spine no import, and /spines renders the Imported badge. The setup
 // helpers live in scripts/lib/import-flow.ts.
+// Plan 04-02 (IMP-04, D-07): (d) the app is SIGKILLed while the fake holds
+// an add POST it already carried out (postMode hang-after-commit); after a
+// restart on the same data the import adopts that copy, so the collection
+// has exactly one. (e) the fake answers 502 after carrying out the add
+// (502-after-commit); the worker's retry adopts the copy instead of posting
+// again.
 // Later plans add their own named steps; step letters are stable.
 // Run: node scripts/verify-discogs-import.ts   (VERIFY_SKIP_BUILD=1 reuses
 // the build). It builds and starts from NEXT_DIST_DIR, default .next/verify,
@@ -28,9 +34,11 @@ import {
   confirm,
   connectAndScan,
   FAKE_USERNAME,
+  type FakePostMode,
   fakeLog,
   fakeState,
   type ImportCtx,
+  type ImportDbRow,
   importRow,
   spineByArtist,
   spineByCatno,
@@ -40,7 +48,7 @@ import {
 } from './lib/import-flow.ts';
 import { assert, check, step } from './lib/jobs.ts';
 import { withDb } from './lib/scan.ts';
-import { runMain } from './lib/server.ts';
+import { runMain, waitFor } from './lib/server.ts';
 
 // ---------------------------------------------------------------------------
 // Steps.
@@ -410,6 +418,147 @@ async function stepReadModel(
   );
 }
 
+async function setPostMode(ctx: ImportCtx, postMode: FakePostMode) {
+  const state = (await ctx.fake.control({ postMode })) as { postMode?: string };
+  assert(
+    state.postMode === postMode,
+    `the fake's postMode is ${state.postMode}`,
+  );
+}
+
+type JobDbRow = {
+  status: string;
+  attempts: number;
+  last_error: string | null;
+  dedupe_key: string | null;
+};
+
+function jobOf(ctx: ImportCtx, jobId: string | null): JobDbRow | undefined {
+  return withDb(ctx, (db) =>
+    db
+      .prepare(
+        'SELECT status, attempts, last_error, dedupe_key FROM jobs WHERE id = @id',
+      )
+      .get({ id: jobId }),
+  ) as JobDbRow | undefined;
+}
+
+/** Confirms the spine's candidate for releaseId; the import id. */
+async function confirmRelease(
+  ctx: ImportCtx,
+  spineId: string,
+  releaseId: number,
+): Promise<string> {
+  const candidate = candidatesOf(ctx, spineId).find(
+    (c) => c.release_id === releaseId,
+  );
+  assert(candidate, `spine has no candidate for release ${releaseId}`);
+  const answer = await confirm(ctx, spineId, { candidateId: candidate.id });
+  assert(
+    answer.status === 201 && typeof answer.body.importId === 'string',
+    `confirm of ${releaseId} answered ${answer.status} ${JSON.stringify(answer.body)}`,
+  );
+  return answer.body.importId as string;
+}
+
+/** One copy of the release, posted once, recorded and marked adopted. */
+async function assertAdoptedOnce(
+  ctx: ImportCtx,
+  spineId: string,
+  releaseId: number,
+): Promise<{ row: ImportDbRow; job: JobDbRow }> {
+  const row = importRow(ctx, spineId);
+  assert(row?.status === 'imported', `import is ${row?.status}`);
+  const state = await fakeState(ctx);
+  const copies = state.collection[String(releaseId)] ?? [];
+  assert(
+    copies.length === 1,
+    `${copies.length} copies of ${releaseId} in the fake, expected 1`,
+  );
+  const posted = state.postsByRelease[String(releaseId)] ?? 0;
+  assert(posted === 1, `${posted} add POSTs of ${releaseId}, expected 1`);
+  assert(row.adopted === 1, `adopted ${row.adopted}, expected 1`);
+  assert(row.post_count === 1, `post_count ${row.post_count}, expected 1`);
+  assert(
+    row.instance_id === copies[0].instance_id,
+    `instance_id ${row.instance_id}, the fake's copy is ${copies[0].instance_id}`,
+  );
+  assert(state.postsHeld === 0, `${state.postsHeld} add POSTs still held`);
+  const job = jobOf(ctx, row.job_id);
+  assert(job?.status === 'succeeded', `the job is ${JSON.stringify(job)}`);
+  return { row, job };
+}
+
+// (d) IMP-04, D-07, Pitfalls 1 and 7: the app dies while Discogs holds an
+// add it already carried out; the restarted app adopts that copy.
+async function stepKillMidPost(ctx: ImportCtx): Promise<void> {
+  step('(d) SIGKILL while the add POST is held; the restart adopts the copy');
+  const spineId = spineByArtist(ctx, 'Juniper Vale');
+  await setPostMode(ctx, 'hang-after-commit');
+  await confirmRelease(ctx, spineId, 1031);
+  await waitFor(
+    'the fake to hold the 1031 add and the import to be importing',
+    async () => {
+      const state = await fakeState(ctx);
+      const row = importRow(ctx, spineId);
+      return state.postsHeld === 1 &&
+        row?.status === 'importing' &&
+        row.intent_at !== null
+        ? true
+        : undefined;
+    },
+    { timeoutMs: 30_000, intervalMs: 200 },
+  );
+  const killed = await ctx.server.stop('SIGKILL');
+  assert(
+    killed.signal === 'SIGKILL',
+    `server exited ${JSON.stringify(killed)}`,
+  );
+  await setPostMode(ctx, 'ok');
+  await waitFor(
+    'the fake to drop the held add',
+    async () => ((await fakeState(ctx)).postsHeld === 0 ? true : undefined),
+    { timeoutMs: 10_000, intervalMs: 100 },
+  );
+  await ctx.restart('SIGKILL');
+  const row = await waitImport(ctx, spineId, ['imported', 'failed'], 60_000);
+  assert(
+    row.status === 'imported',
+    `import ended ${row.status}: ${row.error_kind} ${row.error}`,
+  );
+  const { row: done } = await assertAdoptedOnce(ctx, spineId, 1031);
+  check(
+    `killed mid-POST, restarted: one 1031 copy, one add POST, instance ${done.instance_id} adopted with post_count 1, job succeeded`,
+  );
+}
+
+// (e) D-07, D-09: Discogs answers 502 after it created the copy; the
+// worker's retry adopts it instead of posting again.
+async function stepBadGatewayAfterCommit(ctx: ImportCtx): Promise<void> {
+  step('(e) a 502 after the add is retried and the retry adopts the copy');
+  const spineId = spineByArtist(ctx, 'Static Bloom');
+  await setPostMode(ctx, '502-after-commit');
+  await confirmRelease(ctx, spineId, 1041);
+  const row = await waitImport(ctx, spineId, ['imported', 'failed'], 60_000);
+  assert(
+    row.status === 'imported',
+    `import ended ${row.status}: ${row.error_kind} ${row.error}`,
+  );
+  const { row: done, job } = await assertAdoptedOnce(ctx, spineId, 1041);
+  assert(job.attempts === 2, `the job ran ${job.attempts} times, expected 2`);
+  assert(
+    !(job.last_error ?? '').includes(FAKE_USERNAME),
+    'the job error names the username',
+  );
+  assert(
+    (await fakeState(ctx)).postMode === 'ok',
+    'postMode did not return to ok',
+  );
+  check(
+    `502 after commit: retried once, one 1041 copy, one add POST, instance ${done.instance_id} adopted with post_count 1; last_error ${JSON.stringify(job.last_error)}`,
+  );
+}
+
 runMain('verify-discogs-import', async (onCleanup) => {
   const ctx = await startImportStack('verify-discogs-import', onCleanup);
   stepSchema(ctx);
@@ -417,6 +566,8 @@ runMain('verify-discogs-import', async (onCleanup) => {
   const importedSpineId = await stepConfirmImports(ctx);
   await stepConfirmRefusals(ctx, importedSpineId);
   await stepReadModel(ctx, importedSpineId);
+  await stepKillMidPost(ctx);
+  await stepBadGatewayAfterCommit(ctx);
   // Later plans insert their steps here.
 
   step('stop');

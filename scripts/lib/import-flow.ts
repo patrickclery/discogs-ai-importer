@@ -49,15 +49,26 @@ export type ImportInstance = {
   date_added: string;
 };
 
+/** What the fake's add POST answers after recording the copy (Plan 04-02). */
+export type FakePostMode =
+  | 'ok'
+  | 'hang-after-commit'
+  | '502-after-commit'
+  | 'no-instance-201';
+
 /**
  * The fake's state for Phase 4: Phase 3's FakeState plus the collection
  * fields Plan 04-01 added (release id to its copies, and the number of add
- * POSTs). Phase 4 plans add their fake-state fields here, never to
- * scripts/lib/discogs.ts.
+ * POSTs that recorded a copy) and Plan 04-02's postMode, postsHeld (add
+ * POSTs held open now) and postsByRelease. Phase 4 plans add their
+ * fake-state fields here, never to scripts/lib/discogs.ts.
  */
 export type ImportFakeState = FakeState & {
   collection: Record<string, ImportInstance[]>;
   posts: number;
+  postsByRelease: Record<string, number>;
+  postsHeld: number;
+  postMode: FakePostMode;
 };
 
 export type ImportCtx = ScanCtx & {
