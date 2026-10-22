@@ -168,7 +168,24 @@ Plans:
   4. User can filter the spine list by pending, matched, imported, not found, not on Discogs and failed, with a count for each status
   5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs"
 
-**Plans**: TBD
+**Plans:** 9 plans
+
+Plans:
+**Wave 1**
+- [ ] 04-01-PLAN.md — Import tracer [schema apply]: imports table, write gate widened by the one add POST, confirm route, add_to_collection job (read, adopt or hold, intent, POST, record), import read model and badge, fake collection, verify-discogs-import (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-02-PLAN.md — Exactly-once: a kill mid-POST and a 502 after commit adopt the copy, already-in-collection hold, D-09 failure classes, interrupted-import hook (wave 2)
+- [ ] 04-03-PLAN.md — "Add to {folder}" on the card, confirmed-match panel, Change match before start, Retry import or search (wave 2)
+- [ ] 04-05-PLAN.md — Status filter: D-10 review status, counts per status, ?status=, per-status empty states, imported and left progress, moved-out toast (wave 2)
+- [ ] 04-06-PLAN.md — Collection folder select on Settings: cached folder list, inline refresh, fallback to Uncategorized (wave 2)
+- [ ] 04-07-PLAN.md — Matched and imported spines survive re-scans: merge, re-attach and dismiss guards; no auto search for done or marked spines (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-04-PLAN.md — Duplicate warnings: local duplicate dialog with both crops, Link existing copy and Add another copy (wave 3)
+- [ ] 04-08-PLAN.md — Not on Discogs: card action menu, marked line, mark and unmark route (wave 3)
+- [ ] 04-09-PLAN.md — Retry all failed, header import wording, read-only import report and the owner's real-account check (wave 3)
+
 **UI hint**: yes
 
 ## Progress
@@ -181,7 +198,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
 | 3. Discogs Match | 15/15 | Complete    | 2026-10-22 |
-| 4. Import & Review Queue | 0/TBD | Not started | - |
+| 4. Import & Review Queue | 0/9 | Not started | - |
 
 ## Backlog
 
