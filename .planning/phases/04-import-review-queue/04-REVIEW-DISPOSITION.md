@@ -17,7 +17,7 @@ findings:
     title: "retrySpine retries an import on a spine the owner marked \"not on Discogs\""
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Marking \"not on Discogs\" is allowed while a failed import may already be on Discogs"
   - id: WR-04
     severity: warning
@@ -51,9 +51,9 @@ findings:
     severity: info
     disposition: open
     title: "Silent fallbacks in the folder list and Retry all failed"
-open: 12
+open: 11
 total: 12
-recorded: 2026-10-22T11:43:52.457Z
+recorded: 2026-10-22T20:51:55.928Z
 ---
 
 # Phase 04: Code Review Disposition
@@ -63,7 +63,7 @@ recorded: 2026-10-22T11:43:52.457Z
 | CR-01 | critical | open | - |
 | WR-01 | warning | open | - |
 | WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
+| WR-03 | warning | fixed | 04-REVIEW-FIX.md |
 | WR-04 | warning | open | - |
 | WR-05 | warning | open | - |
 | WR-06 | warning | open | - |
