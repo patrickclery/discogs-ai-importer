@@ -77,9 +77,37 @@ export function emptyByStatus(): Record<ReviewStatus, number> {
   >;
 }
 
+/**
+ * The status a spine moved to when it left the active status filter (UI-SPEC
+ * Leaving the current filter), or null: under All nothing leaves, and a
+ * spine whose status is unchanged or unknown did not move.
+ */
 export function movedOutOf(
-  _activeStatus: ReviewStatus | null,
-  _newStatus: ReviewStatus | null | undefined,
+  activeStatus: ReviewStatus | null,
+  newStatus: ReviewStatus | null | undefined,
 ): ReviewStatus | null {
+  if (activeStatus === null || !newStatus) return null;
+  return newStatus === activeStatus ? null : newStatus;
+}
+
+/**
+ * The card focus moves to once `spineId` left the list: the first card after
+ * it in the order it was shown in that is still shown, else the nearest one
+ * before it, else null (no card left). An id missing from `order` gives the
+ * first shown card.
+ */
+export function nextShownId(
+  order: readonly string[],
+  spineId: string,
+  shown: ReadonlySet<string>,
+): string | null {
+  const i = order.indexOf(spineId);
+  if (i === -1) return order.find((id) => shown.has(id)) ?? null;
+  for (let j = i + 1; j < order.length; j++) {
+    if (shown.has(order[j])) return order[j];
+  }
+  for (let j = i - 1; j >= 0; j--) {
+    if (shown.has(order[j])) return order[j];
+  }
   return null;
 }

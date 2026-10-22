@@ -3,6 +3,7 @@ import { REVIEW_STATUSES, type ReviewStatus } from './import-types';
 import {
   leftCount,
   movedOutOf,
+  nextShownId,
   parseStatusParam,
   type ReviewStatusInput,
   reviewStatusOf,
@@ -168,5 +169,29 @@ describe('movedOutOf', () => {
 
   it('is null when the new status is unknown', () => {
     expect(movedOutOf('pending', undefined)).toBeNull();
+  });
+});
+
+describe('nextShownId', () => {
+  const order = ['a', 'b', 'c', 'd'];
+
+  it('is the next card still shown', () => {
+    expect(nextShownId(order, 'b', new Set(['a', 'c', 'd']))).toBe('c');
+  });
+
+  it('skips cards that also left', () => {
+    expect(nextShownId(order, 'b', new Set(['a', 'd']))).toBe('d');
+  });
+
+  it('falls back to the nearest card before the last one', () => {
+    expect(nextShownId(order, 'd', new Set(['a', 'b']))).toBe('b');
+  });
+
+  it('is null when no card is left', () => {
+    expect(nextShownId(order, 'b', new Set())).toBeNull();
+  });
+
+  it('an unknown spine gives the first shown card', () => {
+    expect(nextShownId(order, 'z', new Set(['c', 'd']))).toBe('c');
   });
 });

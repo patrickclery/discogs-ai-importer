@@ -322,7 +322,7 @@ export function DiscogsMatches({
   const action = confirmed ? null : matchesAction(spine);
   const again = useSearchAgain(spine.id);
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" data-discogs-section="">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-xs font-medium text-muted-foreground">

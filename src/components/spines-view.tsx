@@ -1,13 +1,20 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { CircleCheck, CircleX, ImageOff, Rows3 } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
 import { DiscogsNotConnectedAlert } from '@/components/discogs-not-connected-alert';
 import {
   ImportUiProvider,
   type ImportUiValue,
+  SPINE_ACTION_EVENT,
+  type SpineActionDetail,
 } from '@/components/import-ui-context';
 import { PhotoSection } from '@/components/photo-section';
 import { useStatusFilter } from '@/components/review-status-filter';
@@ -27,8 +34,9 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { ReviewStatus } from '@/lib/import-types';
+import { REVIEW_STATUS_LABELS, type ReviewStatus } from '@/lib/import-types';
 import { pluralize, spinesRefetchInterval } from '@/lib/photo-status';
+import { movedOutOf, nextShownId } from '@/lib/review-status';
 import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
 async function fetchSpines(
@@ -45,6 +53,48 @@ async function fetchSpines(
   if (!res.ok) throw new Error(`GET /api/spines returned ${res.status}`);
   return (await res.json()) as SpinesResponse;
 }
+
+/** Focusable controls, for moving focus into a card's Discogs section. */
+const FOCUSABLE =
+  ':is(button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]))';
+
+/**
+ * After a spine left the list: focus the first control in the Discogs
+ * section of card `nextId` (UI-SPEC Focus and keyboard), else the pressed
+ * status filter item when no card is left. Runs after the next paint, once
+ * the refetched list has rendered.
+ */
+function focusAfterMove(nextId: string | null): void {
+  const run = () => {
+    if (nextId) {
+      const card = document.querySelector<HTMLElement>(
+        `[data-spine-card="${CSS.escape(nextId)}"]`,
+      );
+      const target =
+        card?.querySelector<HTMLElement>(
+          `[data-discogs-section] ${FOCUSABLE}`,
+        ) ?? card?.querySelector<HTMLElement>(FOCUSABLE);
+      if (target) {
+        target.focus();
+        return;
+      }
+    }
+    document
+      .querySelector<HTMLElement>('[data-status-filter-item][data-state="on"]')
+      ?.focus();
+  };
+  window.requestAnimationFrame(() => window.requestAnimationFrame(run));
+}
+
+/** An owner action waiting for the data that shows its result. */
+type Announced = SpineActionDetail & {
+  /** Spine ids in the order shown when the action was announced. */
+  order: string[];
+  /** The query key it applies to; a filter change drops it. */
+  key: string;
+  /** Only data fetched after this time can explain it. */
+  after: number;
+};
 
 /** Spines grouped by photo id, keeping the server's detection order. */
 export function groupByPhoto(spines: readonly SpineDto[]) {
@@ -156,9 +206,14 @@ export function SpinesView({
 }) {
   const [photo, setPhoto] = usePhotoFilter();
   const [review, setReview] = useReviewFilter();
-  const [status] = useStatusFilter();
+  const [status, setStatus] = useStatusFilter();
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(
+    () => ['spines', { photo, review, status }] as const,
+    [photo, review, status],
+  );
   const query = useQuery({
-    queryKey: ['spines', { photo, review, status }],
+    queryKey,
     queryFn: () => fetchSpines(photo, review, status),
     initialData:
       photo === initialPhoto &&
@@ -177,6 +232,74 @@ export function SpinesView({
   });
   const data = query.data;
   const byPhoto = useMemo(() => groupByPhoto(data?.spines ?? []), [data]);
+
+  // Leaving the current filter (UI-SPEC, D-11): an owner action announced
+  // through SPINE_ACTION_EVENT that moves a spine out of the active status
+  // filter gets a toast naming where it went, with Show, and focus moves on
+  // to the next card. Only announced spines are considered, so background
+  // transitions (an import finishing, a search completing) leave silently.
+  const orderRef = useRef<{ prev: string[]; curr: string[] }>({
+    prev: [],
+    curr: [],
+  });
+  useEffect(() => {
+    const ids = data?.spines.map((s) => s.id) ?? [];
+    orderRef.current = { prev: orderRef.current.curr, curr: ids };
+  }, [data]);
+  const announcedRef = useRef<Announced | null>(null);
+  const keyString = JSON.stringify(queryKey);
+
+  /** Toast and move focus when `a`'s spine left the list; true when it did. */
+  const explainMove = useCallback(
+    (a: Announced, d: SpinesResponse, active: ReviewStatus | null) => {
+      const moved = movedOutOf(active, d.statusById[a.spineId]);
+      if (moved === null || d.spines.some((s) => s.id === a.spineId)) {
+        return false;
+      }
+      toast(`Spine #${a.number} moved to ${REVIEW_STATUS_LABELS[moved]}`, {
+        action: { label: 'Show', onClick: () => void setStatus(moved) },
+      });
+      const shown = new Set(d.spines.map((s) => s.id));
+      focusAfterMove(nextShownId(a.order, a.spineId, shown));
+      return true;
+    },
+    [setStatus],
+  );
+
+  useEffect(() => {
+    if (status === null) {
+      announcedRef.current = null;
+      return;
+    }
+    const onAction = (e: Event) => {
+      const detail = (e as CustomEvent<SpineActionDetail>).detail;
+      if (!detail?.spineId) return;
+      const { prev, curr } = orderRef.current;
+      const a: Announced = {
+        spineId: detail.spineId,
+        number: detail.number,
+        order: curr.includes(detail.spineId) ? curr : prev,
+        key: keyString,
+        after: queryClient.getQueryState(queryKey)?.dataUpdatedAt ?? 0,
+      };
+      // The actions refetch before they announce, so the cached data
+      // usually shows the result already; otherwise the next update does.
+      const cached = queryClient.getQueryData<SpinesResponse>(queryKey);
+      announcedRef.current =
+        cached && explainMove(a, cached, status) ? null : a;
+    };
+    window.addEventListener(SPINE_ACTION_EVENT, onAction);
+    return () => window.removeEventListener(SPINE_ACTION_EVENT, onAction);
+  }, [status, keyString, queryKey, queryClient, explainMove]);
+
+  const dataUpdatedAt = query.dataUpdatedAt;
+  useEffect(() => {
+    const a = announcedRef.current;
+    if (!a || !data || dataUpdatedAt <= a.after) return;
+    // One data update per announcement: it explains the move or is dropped.
+    announcedRef.current = null;
+    if (a.key === keyString) explainMove(a, data, status);
+  }, [data, dataUpdatedAt, keyString, status, explainMove]);
   // Cards read the Add label's folder and the connection state from here.
   const folderName = data?.discogs.folder.name ?? 'Uncategorized';
   const connected = data?.discogs.connected ?? false;

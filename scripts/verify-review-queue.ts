@@ -27,6 +27,7 @@ import {
   startImportStack,
   TRACER,
   waitImport,
+  withWritableDb,
 } from './lib/import-flow.ts';
 import { assert, check, step } from './lib/jobs.ts';
 import { runMain } from './lib/server.ts';
@@ -211,11 +212,62 @@ async function stepPage(ctx: ImportCtx): Promise<void> {
   );
 }
 
+// (d) marking a spine moves it between statuses; statusById still names it
+// while the old status filter no longer lists it (the moved-out toast's data).
+async function stepMarkedMoves(ctx: ImportCtx): Promise<void> {
+  step('(d) marking Owen Ashby moves it from not found to not on Discogs');
+  const owen = spineByArtist(ctx, 'Owen Ashby');
+  const before = await getSpinesApi(ctx, '?status=not_found');
+  assert(
+    before.spines.length === 1 && before.spines[0].id === owen,
+    `?status=not_found lists ${JSON.stringify(before.spines.map((s) => s.id))} before the mark`,
+  );
+  const changed = withWritableDb(
+    ctx,
+    (db) =>
+      db
+        .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = @id')
+        .run({ id: owen }).changes,
+  );
+  assert(changed === 1, `the mark changed ${changed} rows`);
+
+  const all = await getSpinesApi(ctx);
+  assertCounts(all, { imported: 1, pending: 4, not_on_discogs: 1 }, '(d) All');
+  const owenSpine = all.spines.find((s) => s.id === owen);
+  assert(
+    owenSpine?.reviewStatus === 'not_on_discogs',
+    `Owen Ashby reads ${owenSpine?.reviewStatus}`,
+  );
+
+  const notFound = await getSpinesApi(ctx, '?status=not_found');
+  assert(
+    notFound.spines.length === 0,
+    `?status=not_found still lists ${notFound.spines.length} spines`,
+  );
+  assert(
+    notFound.photos.length === 0,
+    `?status=not_found still shows ${notFound.photos.length} photos`,
+  );
+  assert(
+    notFound.statusById[owen] === 'not_on_discogs',
+    `?status=not_found statusById names Owen Ashby ${notFound.statusById[owen]}`,
+  );
+  assertCounts(
+    notFound,
+    { imported: 1, pending: 4, not_on_discogs: 1 },
+    '(d) ?status=not_found',
+  );
+  check(
+    `Owen Ashby marked: byStatus ${describeCounts(all.counts.byStatus)}; ?status=not_found lists none and statusById names it not_on_discogs`,
+  );
+}
+
 runMain('verify-review-queue', async (onCleanup) => {
   const ctx = await startImportStack('verify-review-queue', onCleanup);
   const photoId = await stepInitialCounts(ctx);
   await stepImportedFilter(ctx, photoId);
   await stepPage(ctx);
+  await stepMarkedMoves(ctx);
   // Later plans insert their steps here.
 
   step('stop');
