@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Discogs Match
-status: executing
-stopped_at: Completed 03-14-PLAN.md
-last_updated: "2026-10-22T00:58:52.015Z"
+status: verifying
+stopped_at: Completed 03-15-PLAN.md
+last_updated: "2026-10-22T01:05:22.280Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 03 execution started
-state_head: 08e8c5e2d20481010f343c4336dd248ba1d1a2eb
+state_head: 43a4333e56f4b4e9cd50e9719b1000e0b3b1f710
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 35
-  completed_plans: 34
+  completed_plans: 35
   percent: 50
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 ## Current Position
 
-Phase: 03 (Discogs Match) — READY TO EXECUTE
-Plan: 14 of 14
-Status: Ready to execute
+Phase: 03 (Discogs Match) — EXECUTING
+Plan: 15 of 15
+Status: Phase complete — ready for verification
 Last activity: 2026-10-21 — Phase 03 execution started
 
 Progress: [█████░░░░░] 50%
@@ -91,6 +91,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P12 | 8min | 2 tasks | 14 files |
 | Phase 03 P13 | 12h37m | 3 tasks | 1 files |
 | Phase 03 P14 | 4min | 2 tasks | 6 files |
+| Phase 03 P15 | 4min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Live run: Discogs honours the per-request callback (A1) and the standard exchange signature (A2); 97% of real candidates carry covers (A5); A3 not exercised (no 429)
 - [Phase 03]: 03-14: an UNSEARCHED latest search over a baseline covering current inputs shows the baseline outcome (effectiveSearch)
 - [Phase 03]: 03-14: UNSEARCHED_STATUSES/NON_BASELINE_STATUSES in store.ts are the one shared status rule; SQL lists built from typed constants
+- [Phase 03]: 03-15: CR-01 rule (a): a connect or passing Test connection replays an auth_failed latest search even over a covering baseline; dedupe key carries the rejected search id; maintenance hook never does (T-03-17)
+- [Phase 03]: 03-15: A passing Test connection always runs the includeAuthFailed backfill (the rejection flag is in-memory and lost on restart)
+- [Phase 03]: 03-15: A not_searched card shows neither Fields changed nor Search again (showsFieldsChanged, WR-01)
 
 ### Pending Todos
 
@@ -206,6 +210,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T00:22:06.154Z
-Stopped at: Completed 03-14-PLAN.md
+Last session: 2026-10-22T01:05:22.124Z
+Stopped at: Completed 03-15-PLAN.md
 Resume file: None
