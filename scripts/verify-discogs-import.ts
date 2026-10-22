@@ -5,7 +5,11 @@
 // owner's tracer-shelf scan finishes and its searches drain; (c) confirming
 // one candidate adds exactly one copy of that release to the fake
 // collection's folder 1, after one read of the owner's copies, and the
-// imports row records the copy number; no stored error names the username.
+// imports row records the copy number; no stored error names the username;
+// two confirms sent at once make one import. (c1) every other confirm (wrong
+// content type, a body that is not exactly { candidateId }, a candidate not
+// listed for that spine, a spine already confirmed or marked not on
+// Discogs) is refused and writes no row, no job and no add.
 // Later plans add their own named steps; step letters are stable.
 // Run: node scripts/verify-discogs-import.ts   (VERIFY_SKIP_BUILD=1 reuses
 // the build). It builds and starts from NEXT_DIST_DIR, default .next/verify,
@@ -412,10 +416,37 @@ async function stepConfirmImports(ctx: ImportCtx): Promise<string> {
     (c) => c.release_id === 1011,
   );
   assert(candidate, 'TR-201 has no candidate for release 1011');
-  const answer = await confirm(ctx, spineId, { candidateId: candidate.id });
+  // D-08, Pitfall 8: a double click or two tabs send the confirm twice at
+  // once; the IMMEDIATE transaction lets exactly one through.
+  const answers = await Promise.all([
+    confirm(ctx, spineId, { candidateId: candidate.id }),
+    confirm(ctx, spineId, { candidateId: candidate.id }),
+  ]);
+  const won = answers.filter((a) => a.status === 201);
+  const lost = answers.filter(
+    (a) => a.status === 409 && a.body.error === 'already_confirmed',
+  );
   assert(
-    answer.status === 201 && typeof answer.body.importId === 'string',
-    `confirm answered ${answer.status} ${JSON.stringify(answer.body)}`,
+    won.length === 1 && lost.length === 1,
+    `two confirms at once answered ${JSON.stringify(answers)}`,
+  );
+  const answer = won[0];
+  assert(
+    typeof answer.body.importId === 'string',
+    `confirm answered ${JSON.stringify(answer.body)}`,
+  );
+  const made = withDb(ctx, (db) =>
+    db
+      .prepare(
+        `SELECT
+           (SELECT COUNT(*) FROM imports WHERE spine_id = @spineId) AS imports,
+           (SELECT COUNT(*) FROM jobs WHERE type = 'add_to_collection') AS jobs`,
+      )
+      .get({ spineId }),
+  ) as { imports: number; jobs: number };
+  assert(
+    made.imports === 1 && made.jobs === 1,
+    `two confirms at once made ${made.imports} imports and ${made.jobs} jobs`,
   );
 
   const row = await waitImport(ctx, spineId, ['imported', 'failed']);
@@ -483,16 +514,138 @@ async function stepConfirmImports(ctx: ImportCtx): Promise<string> {
     `stored errors name the username: ${leaks.length}`,
   );
   check(
-    `one read then one signed add POST to folder 1; imports row imported with instance ${row.instance_id}, post_count 1`,
+    `two confirms at once made one import (201 and 409 already_confirmed); one read then one signed add POST to folder 1; imports row imported with instance ${row.instance_id}, post_count 1`,
   );
   return spineId;
+}
+
+async function expectRefused(
+  answer: Promise<ConfirmAnswer>,
+  status: number,
+  error: string,
+  what: string,
+): Promise<void> {
+  const a = await answer;
+  assert(
+    a.status === status && a.body.error === error,
+    `${what}: answered ${a.status} ${JSON.stringify(a.body)}, expected ${status} ${error}`,
+  );
+}
+
+// (c1) a confirm that names anything but one listed candidate of an
+// importable spine with no open import is refused and writes nothing
+// (IMP-01, D-01, D-08).
+async function stepConfirmRefusals(
+  ctx: ImportCtx,
+  importedSpineId: string,
+): Promise<void> {
+  step('(c1) every other confirm is refused and writes nothing');
+  const bloom = spineByArtist(ctx, 'Static Bloom');
+  const owen = spineByArtist(ctx, 'Owen Ashby');
+  const bloomCandidate = candidatesOf(ctx, bloom)[0];
+  assert(bloomCandidate, 'Static Bloom has no candidate');
+  const imported = candidatesOf(ctx, importedSpineId);
+  assert(imported.length > 0, 'TR-201 has no candidate');
+  // TR-201 lists one release in the fake, so its "second candidate" is
+  // another spine's listed candidate; already_confirmed is checked first.
+  const second = imported[1] ?? bloomCandidate;
+
+  await expectRefused(
+    confirm(
+      ctx,
+      bloom,
+      {},
+      {
+        contentType: 'text/plain',
+        rawBody: JSON.stringify({ candidateId: bloomCandidate.id }),
+      },
+    ),
+    415,
+    'unsupported_type',
+    'a text/plain confirm',
+  );
+  for (const [what, body] of [
+    ['an empty body', {}],
+    ['an empty candidateId', { candidateId: '' }],
+    [
+      'a body naming a release',
+      { candidateId: bloomCandidate.id, releaseId: 1041 },
+    ],
+  ] as const) {
+    await expectRefused(confirm(ctx, bloom, body), 400, 'invalid_body', what);
+  }
+  await expectRefused(
+    confirm(ctx, bloom, { candidateId: '01UNKNOWNCANDIDATE0000000' }),
+    404,
+    'no_candidate',
+    'an unknown candidate',
+  );
+  await expectRefused(
+    confirm(ctx, bloom, { candidateId: imported[0].id }),
+    404,
+    'no_candidate',
+    "another spine's candidate",
+  );
+  await expectRefused(
+    confirm(ctx, importedSpineId, { candidateId: second.id }),
+    409,
+    'already_confirmed',
+    'a second candidate on an imported spine',
+  );
+  await expectRefused(
+    confirm(ctx, importedSpineId, { candidateId: imported[0].id }),
+    409,
+    'already_confirmed',
+    'the same candidate again',
+  );
+  withWritableDb(ctx, (db) =>
+    db
+      .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = @id')
+      .run({ id: owen }),
+  );
+  try {
+    await expectRefused(
+      confirm(ctx, owen, { candidateId: bloomCandidate.id }),
+      409,
+      'not_on_discogs',
+      'a spine marked not on Discogs',
+    );
+  } finally {
+    withWritableDb(ctx, (db) =>
+      db
+        .prepare('UPDATE spines SET not_on_discogs = 0 WHERE id = @id')
+        .run({ id: owen }),
+    );
+  }
+
+  const after = withDb(ctx, (db) =>
+    db
+      .prepare(
+        `SELECT
+           (SELECT COUNT(*) FROM imports) AS imports,
+           (SELECT COUNT(*) FROM jobs WHERE type = 'add_to_collection') AS jobs,
+           (SELECT COUNT(*) FROM imports WHERE spine_id = @bloom) AS bloom`,
+      )
+      .get({ bloom }),
+  ) as { imports: number; jobs: number; bloom: number };
+  assert(
+    after.imports === 1 && after.jobs === 1,
+    `after the refusals: ${after.imports} imports, ${after.jobs} jobs`,
+  );
+  assert(after.bloom === 0, 'Static Bloom has an imports row');
+  const posts = (await fakeState(ctx)).posts;
+  assert(posts === 1, `${posts} add POSTs after the refusals, expected 1`);
+  check(
+    '415 text/plain; 400 empty, blank and release-naming bodies; 404 no_candidate for unknown and foreign candidates; 409 already_confirmed twice; 409 not_on_discogs; still one import, one job, one add',
+  );
 }
 
 runMain('verify-discogs-import', async (onCleanup) => {
   const ctx = await startImportStack('verify-discogs-import', onCleanup);
   stepSchema(ctx);
   await stepConnectAndScan(ctx);
-  await stepConfirmImports(ctx);
+  const importedSpineId = await stepConfirmImports(ctx);
+  await stepConfirmRefusals(ctx, importedSpineId);
   // Later plans insert their steps here.
 
   step('stop');
