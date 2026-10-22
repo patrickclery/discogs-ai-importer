@@ -719,6 +719,23 @@ describe('retrySpine (REV-04, D-13)', () => {
     expect(count('imports')).toBe(1);
   });
 
+  it('a spine marked not on Discogs with a failed import has nothing to retry and enqueues nothing (WR-02)', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId } = failedImport(spineIds[0], {
+      intentAt: null,
+      kind: 'unavailable',
+    });
+    db()
+      .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+      .run(spineIds[0]);
+    const before = snapshot();
+    expect(retrySpine(db(), spineIds[0])).toEqual({
+      status: 'nothing_to_retry',
+    });
+    expect(snapshot()).toBe(before);
+    expect(importRow(importId)?.status).toBe('failed');
+  });
+
   it('a pending import whose job failed reads failed and is retried', async () => {
     const { spineIds } = await orphanScenario();
     const { importId, jobId } = confirm(spineIds[0]);

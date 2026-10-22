@@ -503,6 +503,9 @@ export function retrySpine(
     if (spine.state !== 'active' && spine.state !== 'orphaned') {
       return { status: 'nothing_to_retry' };
     }
+    // A marked spine is never imported (WR-02), so its failed import is
+    // not retried either: the owner unmarks it first.
+    if (spine.not_on_discogs === 1) return { status: 'nothing_to_retry' };
     const row = latestImport(db, spineId);
     if (row) {
       switch (phaseOf(row)) {
@@ -531,7 +534,6 @@ export function retrySpine(
           return { status: 'nothing_to_retry' };
       }
     }
-    if (spine.not_on_discogs === 1) return { status: 'nothing_to_retry' };
     const search = discogsForSpines(db, [{ id: spineId }]).get(spineId);
     if (search?.state !== 'failed') return { status: 'nothing_to_retry' };
     const res = enqueueExplicitSearch(db, { spineId, kind: 'again' });
