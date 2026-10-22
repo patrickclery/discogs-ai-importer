@@ -1,12 +1,26 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { CircleX, Clock, PencilLine, RotateCw, Unplug } from 'lucide-react';
+import {
+  CircleSlash,
+  CircleX,
+  Clock,
+  PencilLine,
+  RotateCw,
+  Unplug,
+} from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 import { CandidateList } from '@/components/candidate-list';
 import { ConfirmedMatch } from '@/components/confirmed-match';
 import { DiscogsSearchDialog } from '@/components/discogs-search-dialog';
+import { NotOnDiscogsLine } from '@/components/not-on-discogs-line';
+import {
+  canMarkNotOnDiscogs,
+  type NotOnDiscogsControl,
+  SpineActionMenu,
+  useNotOnDiscogs,
+} from '@/components/spine-action-menu';
 import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -180,11 +194,16 @@ function Body({
   spine,
   connected,
   pausedUntil,
+  control,
 }: {
   spine: SpineDto;
   connected: boolean;
   pausedUntil: number | null;
+  control: NotOnDiscogsControl;
 }) {
+  // D-14: the mark wins over an earlier failed import (the marked line, not
+  // the failed panel); candidates stay stored and return on Unmark.
+  if (spine.notOnDiscogs) return <NotOnDiscogsLine control={control} />;
   if (spine.import) {
     return <ConfirmedMatch spine={spine} pausedUntil={pausedUntil} />;
   }
@@ -228,7 +247,22 @@ function Body({
     case 'no_match':
       return (
         <>
-          <Line>{NO_MATCHES_LINE}</Line>
+          <div className="flex flex-col">
+            <Line>{NO_MATCHES_LINE}</Line>
+            {canMarkNotOnDiscogs(spine) ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void control.run(true)}
+                >
+                  <CircleSlash aria-hidden="true" />
+                  Mark not on Discogs
+                </Button>
+              </div>
+            ) : null}
+          </div>
           {list}
         </>
       );
@@ -318,10 +352,14 @@ export function DiscogsMatches({
   /** SpinesResponse.discogs.pausedUntil: the paused line while queued (D-06). */
   pausedUntil: number | null;
 }) {
-  // A confirmed match hides the search actions until Change match (D-01).
-  const confirmed = spine.import !== null && spine.import !== undefined;
-  const action = confirmed ? null : matchesAction(spine);
+  // A confirmed match hides the search actions until Change match (D-01);
+  // so does the not-on-Discogs mark until Unmark (D-14).
+  const marked = spine.notOnDiscogs;
+  const confirmed =
+    !marked && spine.import !== null && spine.import !== undefined;
+  const action = confirmed || marked ? null : matchesAction(spine);
   const again = useSearchAgain(spine.id);
+  const notOnDiscogs = useNotOnDiscogs(spine);
   return (
     <div className="flex flex-col gap-4" data-discogs-section="">
       <div className="flex flex-col gap-2">
@@ -351,9 +389,10 @@ export function DiscogsMatches({
                 )}
               </Button>
             ) : null}
-            {confirmed ? null : (
+            {confirmed || marked ? null : (
               <DiscogsSearchDialog spine={spine} connected={connected} />
             )}
+            <SpineActionMenu spine={spine} control={notOnDiscogs} />
           </div>
         </div>
         {again.error ? (
@@ -361,14 +400,21 @@ export function DiscogsMatches({
             Couldn't start the search: {again.error}.
           </p>
         ) : null}
-        <NoticeLine
-          spine={spine}
-          connected={connected}
-          needsReconnect={needsReconnect}
-          pausedUntil={pausedUntil}
-        />
+        {marked ? null : (
+          <NoticeLine
+            spine={spine}
+            connected={connected}
+            needsReconnect={needsReconnect}
+            pausedUntil={pausedUntil}
+          />
+        )}
       </div>
-      <Body spine={spine} connected={connected} pausedUntil={pausedUntil} />
+      <Body
+        spine={spine}
+        connected={connected}
+        pausedUntil={pausedUntil}
+        control={notOnDiscogs}
+      />
     </div>
   );
 }
