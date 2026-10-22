@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 04-import-review-queue
 source: [04-VERIFICATION.md]
 started: 2026-10-22T11:51:59Z
-updated: 2026-10-22T23:54:30.823Z
+updated: 2026-10-22T23:58:10Z
 ---
 
 ## Current Test
@@ -22,9 +22,8 @@ result: pass
 
 ### 3. Decide on code-review finding CR-01. Picture this: you click Add on the wrong match, and Discogs times out or errors. The card then shows Import failed. Change match is greyed out with 'Retry first. Discogs may already have added it.' Retry is the only button.
 expected: You decide one of two things. (a) Fix it now: add a 'check only' way out that looks in your collection and frees the card when nothing was added. (b) Accept it for now, since it needs a wrong click plus a Discogs error, and the wrong CD can be removed by hand on discogs.com.
-result: issue
-reported: "I clicked the wrong match, but it added it. I don't know what you were expecting." (Clicked Add on Markatta - Markattasånger for the Maria Dunn - From Where I Stand spine; it imported, and the Imported card offers no way to undo or change the match.)
-severity: major
+result: skipped
+reason: "Deferred follow-up: owner chose to keep Undo import deferred (D-02 / DATA-01). Wrong-match imports have no in-app recovery; remove by hand on discogs.com. Diagnosis: .planning/debug/wrong-match-import-recovery.md. CR-01 failed-state lockout already fixed in 7c6fa53; test wording predates it."
 
 ### 4. Long folder name on the Add button. In Discogs, make a collection folder with a very long name (about 60 letters) and pick it in Settings > Collection folder. Open the spines page in a normal window, then shrink the window to phone width.
 expected: The Add button shows the start of the folder name and then cuts off neatly. Hovering shows the full name. Nothing spills out of the card at either width.
@@ -57,21 +56,12 @@ result: pass
 
 total: 9
 passed: 6
-issues: 2
+issues: 1
 pending: 0
-skipped: 1
+skipped: 2
 blocked: 0
 
 ## Gaps
-
-- gap_id: G-04-3
-  truth: "After clicking Add on the wrong match, the owner can recover: undo the import (remove the copy from Discogs) or change the match to the right release, whether the add succeeded or failed (CR-01)"
-  status: failed
-  reason: "User reported: I clicked the wrong match, but it added it. I don't know what you were expecting."
-  severity: major
-  test: 3
-  artifacts: []
-  missing: []
 
 - gap_id: G-04-7
   truth: "The duplicate-warning dialog stays inside its box with a very long photo file name: the title wraps (breaking inside the unspaced name), captions clamp to two lines with the full name on hover, both spine pictures fit, and Cancel/Add another copy stay visible. The photo filter dropdown truncates long names with an ellipsis and shows the full name on hover."
@@ -79,5 +69,25 @@ blocked: 0
   reason: "User reported: It showed up, but really broke the UI."
   severity: major
   test: 7
-  artifacts: []
-  missing: []
+  root_cause: "Dialog: DialogTitle carries both break-words and [overflow-wrap:anywhere]; Tailwind 4.3 emits .break-words later so overflow-wrap:break-word wins, which gives no soft-wrap opportunity for min-content sizing, so the unspaced 123-char name sets the title min-content (~1131px); AlertDialogHeader lacks min-w-0 so it propagates into AlertDialogContent's single auto grid column, pushing description, picture row and footer buttons past the 512px box. Dropdown: SelectItem's *:[span]:last:flex makes the ItemText span a flex container with min-width:auto, so the inner truncate span never shrinks (no ellipsis) and the popover clips it; no title attribute for hover."
+  artifacts:
+    - path: "src/components/duplicate-import-dialog.tsx"
+      issue: "line ~143: break-words overrides [overflow-wrap:anywhere] on the title"
+    - path: "src/components/ui/alert-dialog.tsx"
+      issue: "lines ~61,78: content grid single auto column and header grid lack min-w-0"
+    - path: "src/components/spines-filter-bar.tsx"
+      issue: "lines ~76-78: truncate span inside flex ItemText span without min-w-0; no title attribute"
+    - path: "src/components/ui/select.tsx"
+      issue: "line ~111: *:[span]:last:flex turns ItemText into a flex box with min-width:auto"
+  missing:
+    - "Drop break-words from the dialog title; keep only [overflow-wrap:anywhere] (or break-all)"
+    - "Backstop: min-w-0 on AlertDialogHeader/title or grid-cols-[minmax(0,1fr)] on the dialog content"
+    - "Photo filter SelectItem: min-w-0 on the item text span (e.g. *:[span]:last:min-w-0) and title={filename}"
+    - "Regression check with a 120+ char name at desktop and phone width"
+  debug_session: .planning/debug/long-photo-name-overflow.md
+
+## Deferred Follow-Ups
+
+- test: 3
+  idea: "Undo import / change match after a wrong-match import succeeds (remove the copy from Discogs and free the card). Kept deferred by owner (D-02, REQUIREMENTS DATA-01). Also noted: catalog-number-only matches rank above the artist+title+catno match (src/server/discogs/search.ts rankCandidates)."
+  deferred_at: 2026-10-22
