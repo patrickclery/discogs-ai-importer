@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-10-22T09:05:23.759Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-10-22T09:15:21.565Z"
 last_activity: 2026-10-22
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: f9b993965a5a283ef3469fa64b411c6e8bb0982f
+last_activity_desc: Phase 4 execution started
+state_head: dd2dfbd2357bc1620b738935ff794e9b81d519da
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 35
-  percent: 71
+  completed_plans: 36
+  percent: 73
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 
 ## Current Position
 
-Phase: 4 (Import & Review Queue) — READY TO EXECUTE
-Plan: Not started
+Phase: 4 (Import & Review Queue) — EXECUTING
+Plan: 2 of 14
 Status: Ready to execute
-Last activity: 2026-10-22 — Phase 03 complete, transitioned to Phase 4
+Last activity: 2026-10-22 — Phase 4 execution started
 
-Progress: [███████░░░] 71%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -93,6 +93,7 @@ Progress: [███████░░░] 71%
 | Phase 03 P13 | 12h37m | 3 tasks | 1 files |
 | Phase 03 P14 | 4min | 2 tasks | 6 files |
 | Phase 03 P15 | 4min | 3 tasks | 12 files |
+| Phase 04 P01 | 8min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -191,6 +192,10 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-15: CR-01 rule (a): a connect or passing Test connection replays an auth_failed latest search even over a covering baseline; dedupe key carries the rejected search id; maintenance hook never does (T-03-17)
 - [Phase 03]: 03-15: A passing Test connection always runs the includeAuthFailed backfill (the rejection flag is in-memory and lost on restart)
 - [Phase 03]: 03-15: A not_searched card shows neither Fields changed nor Search again (showsFieldsChanged, WR-01)
+- [Phase 04]: 04-01: The Discogs add POST is allowed only with auth oauth and when the path's username segment equals the encoded stored username; refused before fetch otherwise
+- [Phase 04]: 04-01: Until Plan 04-02, add_to_collection records every non-429 request error on the imports row and rethrows; terminal ends (removed, auth, already_in_collection) release the dedupe key
+- [Phase 04]: 04-01: A duplicate instance id when recording a POSTed copy fails the import instead of retrying
+- [Phase 04]: 04-01: enqueueImport opens its own IMMEDIATE transaction (a savepoint inside createImport's)
 
 ### Pending Todos
 
@@ -210,6 +215,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T07:45:31.287Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-import-review-queue/04-UI-SPEC.md
+Last session: 2026-10-22T09:15:21.342Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
