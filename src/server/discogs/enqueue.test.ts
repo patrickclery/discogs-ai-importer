@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fieldOf, orphanScenario } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
+import { newId } from '../ids';
 import { runSearchSpine } from '../jobs/handlers/search-spine';
 import { claimNext, releaseDedupeKey } from '../jobs/queue';
 import { updateSpineField } from '../scan/fields';
@@ -528,6 +529,108 @@ describe('discogs enqueue', () => {
         enqueueMissingSearches({ includeAuthFailed: false }, counted),
       ).toBe(0);
       expect(transactions).toBe(0);
+    });
+  });
+
+  // A-04-15 (T-04-29): automatic searches leave a spine with a non-failed
+  // import or the not-on-Discogs mark alone; its match is locked or decided,
+  // and its confirmed candidate row is never replaced. A failed-only import
+  // is searched as before (A-04-16); Search again is never blocked.
+  describe('imported, importing and marked spines (A-04-15)', () => {
+    function seedImport(spineId: string, status: string): void {
+      const now = Date.now();
+      getDb()
+        .$client.prepare(
+          `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
+             created_at, updated_at)
+           VALUES (@id, @spineId, 4242, 1, @status, @now, @now)`,
+        )
+        .run({ id: newId(), spineId, status, now });
+    }
+    function mark(spineId: string): void {
+      getDb()
+        .$client.prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+        .run(spineId);
+    }
+    /** cd[0] pending, cd[1] imported, cd[2] marked; V is left alone. */
+    async function lockedScan() {
+      const sc = await scanned();
+      seedImport(sc.cd[0], 'pending');
+      seedImport(sc.cd[1], 'imported');
+      mark(sc.cd[2]);
+      return sc;
+    }
+
+    it('enqueueAutoSearchesForPhoto skips them and still enqueues the others', async () => {
+      const sc = await lockedScan();
+      connect();
+      expect(enqueueAutoSearchesForPhoto(getDb().$client, sc.photoId)).toBe(1);
+      expect(autoSearches().map((r) => r.spine_id)).toEqual([sc.vId]);
+    });
+
+    it('enqueueMissingSearches skips them without includeAuthFailed', async () => {
+      const sc = await lockedScan();
+      connect();
+      expect(enqueueMissingSearches({ includeAuthFailed: false })).toBe(1);
+      expect(autoSearches().map((r) => r.spine_id)).toEqual([sc.vId]);
+    });
+
+    it('enqueueMissingSearches skips them with includeAuthFailed, even an auth_failed replay', async () => {
+      const sc = await scanned();
+      connect();
+      const db = getDb().$client;
+      expect(enqueueAutoSearch(db, sc.cd[0])).toBe(true);
+      endSearch(sc.cd[0], 'auth_failed');
+      seedImport(sc.cd[0], 'importing');
+      seedImport(sc.cd[1], 'already_in_collection');
+      mark(sc.cd[2]);
+      expect(enqueueMissingSearches({ includeAuthFailed: true })).toBe(1);
+      expect(autoSearches(sc.cd[0])).toHaveLength(1);
+      expect(autoSearches(sc.cd[1])).toHaveLength(0);
+      expect(autoSearches(sc.cd[2])).toHaveLength(0);
+      expect(autoSearches(sc.vId)).toHaveLength(1);
+    });
+
+    it.each(['pending', 'importing', 'imported', 'already_in_collection'])(
+      'enqueueAutoSearch for a spine with an import in status %s returns false and creates no row',
+      async (status) => {
+        const sc = await scanned();
+        connect();
+        seedImport(sc.cd[0], status);
+        expect(enqueueAutoSearch(getDb().$client, sc.cd[0])).toBe(false);
+        expect(autoSearches(sc.cd[0])).toHaveLength(0);
+        expect(discogsJobs()).toBe(0);
+      },
+    );
+
+    it('enqueueAutoSearch for a marked spine returns false and creates no row', async () => {
+      const sc = await scanned();
+      connect();
+      mark(sc.cd[0]);
+      expect(enqueueAutoSearch(getDb().$client, sc.cd[0])).toBe(false);
+      expect(autoSearches(sc.cd[0])).toHaveLength(0);
+      expect(discogsJobs()).toBe(0);
+    });
+
+    it('a spine whose only import failed is searched as before (A-04-16)', async () => {
+      const sc = await scanned();
+      connect();
+      seedImport(sc.cd[0], 'failed');
+      expect(enqueueAutoSearch(getDb().$client, sc.cd[0])).toBe(true);
+      expect(autoSearches(sc.cd[0])).toHaveLength(1);
+      expect(enqueueMissingSearches({ includeAuthFailed: true })).toBe(3);
+    });
+
+    it('Search again is unchanged for imported and marked spines', async () => {
+      const sc = await lockedScan();
+      connect();
+      const db = getDb().$client;
+      for (const spineId of [sc.cd[0], sc.cd[1], sc.cd[2]]) {
+        expect(enqueueExplicitSearch(db, { spineId, kind: 'again' })).toEqual({
+          status: 'ok',
+          searchId: expect.any(String),
+        });
+      }
     });
   });
 });
