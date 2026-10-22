@@ -20,6 +20,18 @@ import {
 export const SEARCH_JOB_TYPE = 'search_spine';
 
 /**
+ * A-04-15 (T-04-29): the spine `s` may be searched automatically. A spine
+ * with an import that is not failed has a locked match (D-02), and one marked
+ * not_on_discogs was decided by the owner (REV-05): no rate-limited request is
+ * spent on either, and their confirmed candidate row is never replaced by a
+ * new search's results. A failed-only import does not block (A-04-16). The
+ * owner's explicit searches (enqueueExplicitSearch) never apply it.
+ */
+export const AUTO_SEARCH_ELIGIBLE_SQL = `s.not_on_discogs = 0
+  AND NOT EXISTS (SELECT 1 FROM imports i
+    WHERE i.spine_id = s.id AND i.status <> 'failed')`;
+
+/**
  * Connected and not known to be rejected. Never throws: it runs inside
  * persistRunResult, and an unreadable secrets file must not fail a scan.
  */
@@ -72,8 +84,9 @@ function latestSearch(
 }
 
 /**
- * Creates an auto search row and its search_spine job, unless the spine's
- * baseline (its newest auto or again search outside NON_BASELINE_STATUSES)
+ * Creates an auto search row and its search_spine job, unless the spine is
+ * not eligible (AUTO_SEARCH_ELIGIBLE_SQL: a non-failed import or the mark)
+ * or the spine's baseline (its newest auto or again search outside NON_BASELINE_STATUSES)
  * already used the same inputs. Returns whether a job was created. Joins the
  * caller's transaction when there is one.
  *
@@ -90,6 +103,13 @@ export function enqueueAutoSearch(
   opts: { afterAuthFailed?: string } = {},
 ): boolean {
   const tx = db.transaction((): boolean => {
+    const eligible = db
+      .prepare(
+        `SELECT 1 FROM spines s
+         WHERE s.id = @spineId AND ${AUTO_SEARCH_ELIGIBLE_SQL}`,
+      )
+      .get({ spineId });
+    if (!eligible) return false;
     const inputs = loadSpineInputs(db, spineId);
     const hash = inputHash(inputs);
     const baseline = baselineSearch(db, spineId);
@@ -147,7 +167,7 @@ export function enqueueAutoSearchesForPhoto(
       `SELECT s.id FROM spines s
        JOIN spine_detections d ON d.id = s.current_detection_id
        WHERE s.photo_id = @photoId AND s.state = 'active'
-         AND d.media_kind = 'cd'
+         AND d.media_kind = 'cd' AND ${AUTO_SEARCH_ELIGIBLE_SQL}
        ORDER BY d.idx, d.position, s.id`,
     )
     .all({ photoId }) as { id: string }[];
@@ -189,6 +209,7 @@ export function enqueueMissingSearches(
        ORDER BY x.created_at DESC, x.id DESC
        LIMIT 1)
      WHERE s.state = 'active' AND d.media_kind = 'cd'
+       AND ${AUTO_SEARCH_ELIGIBLE_SQL}
        AND (ls.id IS NULL OR ls.status IN ${UNSEARCHED_STATUSES_SQL}
          OR (@includeAuthFailed = 1 AND ls.status = 'auth_failed'))
      ORDER BY s.photo_id, d.idx, d.position, s.id`,
