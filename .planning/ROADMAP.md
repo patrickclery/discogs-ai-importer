@@ -168,7 +168,7 @@ Plans:
   4. User can filter the spine list by pending, matched, imported, not found, not on Discogs and failed, with a count for each status
   5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs"
 
-**Plans:** 9/14 plans executed
+**Plans:** 10/14 plans executed
 
 Plans:
 **Wave 1**
@@ -187,7 +187,7 @@ Plans:
 - [x] 04-12-PLAN.md — Change match before start and Retry import or search: store functions, DELETE and retry routes, enqueue-site guard (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 04-04-PLAN.md — Duplicate rules on the server: local duplicate 409 with allowDuplicate, Link existing copy and Add another copy routes (wave 4)
+- [x] 04-04-PLAN.md — Duplicate rules on the server: local duplicate 409 with allowDuplicate, Link existing copy and Add another copy routes (wave 4)
 - [ ] 04-13-PLAN.md — Duplicate warnings on the card: dialog with both crops, Already in your collection panel (wave 4)
 - [ ] 04-14-PLAN.md — Imported and left progress on the page and photo headers, per-status empty states, status-row skeleton (wave 4)
 - [ ] 04-08-PLAN.md — Not on Discogs: card action menu, marked line, mark and unmark route (wave 4)
@@ -205,7 +205,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
 | 3. Discogs Match | 15/15 | Complete    | 2026-10-22 |
-| 4. Import & Review Queue | 9/14 | In Progress | - |
+| 4. Import & Review Queue | 10/14 | In Progress | - |
 
 ## Backlog
 

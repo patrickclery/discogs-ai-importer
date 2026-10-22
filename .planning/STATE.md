@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Completed 04-11-PLAN.md
-last_updated: "2026-10-22T10:24:13.499Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-10-22T10:41:26.898Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: fce1eed613ed73ef886c60771315be1b97fc4b7e
+state_head: 7007c9fdb25e87081442632175547f512260f4e6
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 44
+  completed_plans: 45
   percent: 75
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 4 (Import & Review Queue) — EXECUTING
-Plan: 10 of 14
+Plan: 11 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 — Phase 4 execution started
 
@@ -102,6 +102,7 @@ Progress: [████████░░] 75%
 | Phase 04 P05 | 8 min | 2 tasks | 14 files |
 | Phase 04 P07 | 5 min | 2 tasks | 8 files |
 | Phase 04 P11 | 3 min | 2 tasks | 2 files |
+| Phase 04 P04 | 12 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -224,6 +225,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-07: Automatic Discogs searches skip spines with a non-failed import or the mark via AUTO_SEARCH_ELIGIBLE_SQL; explicit searches untouched (A-04-15)
 - [Phase 04]: 04-07: Dismiss of an orphan with a non-failed import returns has_import (409); the button is disabled with the UI-SPEC tooltip
 - [Phase 04]: 04-11: write gate and read-model rules pinned by tests only; no production change needed (mutation-checked instead of RED)
+- [Phase 04]: Phase 4 P04: a local duplicate (another listed spine holds the release pending/importing/imported/already_in_collection) answers 409 duplicate with the oldest holder's photo, #n, crop and done; allowDuplicate skips it and leaves imports.allow_duplicate 0
+- [Phase 04]: Phase 4 P04: Add another copy called again while its job is still queued returns the same job; once running it answers not_held. Link existing copy needs no Discogs sign-in; Add another copy does
 
 ### Pending Todos
 
@@ -243,6 +246,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T10:24:13.252Z
-Stopped at: Completed 04-11-PLAN.md
+Last session: 2026-10-22T10:41:26.642Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
