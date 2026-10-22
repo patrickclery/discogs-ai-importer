@@ -31,7 +31,7 @@
 
 - [x] **REV-01**: User sees a list of all spines with the spine crop next to the extracted fields on every row
 - [x] **REV-02**: User can edit any extracted field; edits are stored separately from the original AI output
-- [ ] **REV-03**: User can filter the list by status: pending, matched, imported, not found, not on Discogs, failed — with counts per status
+- [x] **REV-03**: User can filter the list by status: pending, matched, imported, not found, not on Discogs, failed — with counts per status
 - [ ] **REV-04**: User can retry a failed item without re-uploading the photo
 - [x] **REV-05**: User can mark a spine "not on Discogs" (e.g. obscure or self-released CDs)
 
@@ -104,7 +104,7 @@
 | VIS-04 | Phase 2 | Complete |
 | REV-01 | Phase 2 | Complete |
 | REV-02 | Phase 2 | Complete |
-| REV-03 | Phase 4 | Pending |
+| REV-03 | Phase 4 | Complete |
 | REV-04 | Phase 4 | Pending |
 | REV-05 | Phase 4 | Complete |
 | DISC-01 | Phase 3 | Complete |
