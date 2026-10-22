@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
+import { importMayBeOnDiscogs } from '@/lib/import-types';
 import type { SpineDto } from '@/lib/scan-types';
 import { spineNumber } from '@/lib/spine-review';
 
@@ -29,8 +30,9 @@ import { spineNumber } from '@/lib/spine-review';
 // destructive action in Phase 2. The card disappears; its edits stay in the
 // database (A-21). Focus then moves to the next card's first field, or to the
 // section header's Re-scan button when no card follows. A spine with an
-// import that is not failed can't be dismissed (RESEARCH Pitfall 5, UI-SPEC
-// E14): the trigger is disabled with the reason in a tooltip.
+// import whose copy is or may be on Discogs can't be dismissed (RESEARCH
+// Pitfall 5, UI-SPEC E14, WR-01): the trigger is disabled with the reason in
+// a tooltip.
 
 /** UI-SPEC Copywriting: the disabled Dismiss spine tooltip. */
 export const DISMISS_BLOCKED_REASON =
@@ -73,7 +75,7 @@ export function DismissSpineButton({ spine }: { spine: SpineDto }) {
   const [error, setError] = useState<string | null>(null);
   const dismissed = useRef(false);
   const number = spineNumber(spine);
-  const blocked = spine.import !== null && spine.import.phase !== 'failed';
+  const blocked = spine.import !== null && importMayBeOnDiscogs(spine.import);
 
   async function confirm(e: MouseEvent<HTMLButtonElement>) {
     // Keep the dialog open until the request settles.

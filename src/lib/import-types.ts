@@ -207,6 +207,18 @@ export function canChangeMatchOf(input: {
   }
 }
 
+/**
+ * The card's side of importMayBeOnDiscogsSql (WR-01): the import holds its
+ * spine because a copy is, or may be, on Discogs. Anything not failed does;
+ * a failed import does unless Change match is open for it, which by
+ * canChangeMatchOf means nothing reached Discogs.
+ */
+export function importMayBeOnDiscogs(
+  dto: Pick<ImportDto, 'phase' | 'canChangeMatch'>,
+): boolean {
+  return dto.phase !== 'failed' || !dto.canChangeMatch;
+}
+
 /** Retry import is offered for a failed import only (REV-04). */
 export function canRetryOf(phase: ImportPhase): boolean {
   return phase === 'failed';

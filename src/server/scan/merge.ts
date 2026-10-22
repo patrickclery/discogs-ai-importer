@@ -2,6 +2,7 @@ import 'server-only';
 import type Database from 'better-sqlite3';
 import { SPINE_FIELDS, SPINE_MEDIA_KINDS } from '@/lib/vision-contract';
 import { newId } from '../ids';
+import { importMayBeOnDiscogsSql } from '../imports/sql';
 import { fieldEdited, fieldUnedited } from './field-sql';
 import { type MatchItem, matchDetections } from './match';
 import type { PreparedDetection } from './store';
@@ -157,17 +158,18 @@ export function mergeRunIntoSpines(
        updated_at = excluded.updated_at`,
   );
   // RESEARCH Pitfall 5: an unmatched spine is kept as orphaned, never
-  // superseded, when the owner edited it, when it has an import that is not
-  // failed, or when it is marked not on Discogs. Otherwise it would vanish,
-  // its replacement would look un-imported, and the same disc could be
-  // confirmed and added a second time. A failed-only import does not keep it
-  // (A-04-16).
+  // superseded, when the owner edited it, when it has an import whose copy
+  // is or may be on Discogs (importMayBeOnDiscogsSql, WR-01), or when it is
+  // marked not on Discogs. Otherwise it would vanish, its replacement would
+  // look un-imported, and the same disc could be confirmed and added a
+  // second time. A failed import that never reached Discogs does not keep
+  // it (A-04-16).
   const keepSpine = db.prepare(
     `SELECT (
        EXISTS (SELECT 1 FROM spine_fields
          WHERE spine_id = @spineId AND ${fieldEdited('value', 'ai_value')})
-       OR EXISTS (SELECT 1 FROM imports
-         WHERE spine_id = @spineId AND status <> 'failed')
+       OR EXISTS (SELECT 1 FROM imports i
+         WHERE i.spine_id = @spineId AND ${importMayBeOnDiscogsSql('i')})
        OR EXISTS (SELECT 1 FROM spines
          WHERE id = @spineId AND not_on_discogs = 1)
      ) AS keep`,

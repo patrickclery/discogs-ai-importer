@@ -23,15 +23,27 @@ import { getSpines } from './queries';
 // never lose stored edits.
 
 /** An imports row for the spine, seeded with direct SQL. */
-function seedImport(spineId: string, status: string): void {
+function seedImport(
+  spineId: string,
+  status: string,
+  failed: { intentAt?: number | null; errorKind?: string | null } = {},
+): void {
   const now = Date.now();
   getDb()
     .$client.prepare(
       `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
-         created_at, updated_at)
-       VALUES (@id, @spineId, 4242, 1, @status, @now, @now)`,
+         intent_at, error_kind, created_at, updated_at)
+       VALUES (@id, @spineId, 4242, 1, @status, @intentAt, @errorKind,
+         @now, @now)`,
     )
-    .run({ id: newId(), spineId, status, now });
+    .run({
+      id: newId(),
+      spineId,
+      status,
+      intentAt: failed.intentAt ?? null,
+      errorKind: failed.errorKind ?? null,
+      now,
+    });
 }
 
 function markNotOnDiscogs(spineId: string): void {
@@ -275,6 +287,31 @@ describe('orphaned spines', () => {
     expect(dismissSpine(orphanId)).toBe('ok');
     expect(spineRow(orphanId).state).toBe('dismissed');
   });
+
+  it.each(['unavailable', 'interrupted', 'auth', 'other', 'removed'])(
+    'a failed import with an intent and %s may be on Discogs: not a re-attach target, and dismiss is has_import (WR-01)',
+    async (errorKind) => {
+      const { orphanId, vId } = await orphanScenario();
+      seedImport(vId, 'failed', { intentAt: 1_000, errorKind });
+      expect(listReattachCandidates(orphanId)).toEqual({
+        status: 'ok',
+        value: [],
+      });
+      expect(reattachSpine(orphanId, vId)).toEqual({ status: 'conflict' });
+      seedImport(orphanId, 'failed', { intentAt: 1_000, errorKind });
+      expect(dismissSpine(orphanId)).toBe('has_import');
+      expect(spineRow(orphanId).state).toBe('orphaned');
+    },
+  );
+
+  it.each(['not_found', 'rejected'])(
+    'a failed import with an intent Discogs refused (%s) does not block dismiss (A-04-16)',
+    async (errorKind) => {
+      const { orphanId } = await orphanScenario();
+      seedImport(orphanId, 'failed', { intentAt: 1_000, errorKind });
+      expect(dismissSpine(orphanId)).toBe('ok');
+    },
+  );
 
   it('dismiss of a marked orphan without an import dismisses it', async () => {
     const { orphanId } = await orphanScenario();

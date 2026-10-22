@@ -6,6 +6,7 @@ import {
   IMPORT_STATUSES,
   type ImportPhase,
   type ImportStatus,
+  importMayBeOnDiscogs,
   importPhaseOf,
 } from '@/lib/import-types';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
@@ -231,6 +232,28 @@ describe('canRetryOf', () => {
       expect(canRetryOf(phase as ImportPhase)).toBe(expected);
     });
   }
+});
+
+describe('importMayBeOnDiscogs (WR-01)', () => {
+  it('any phase but failed holds the spine', () => {
+    for (const phase of [
+      'waiting',
+      'importing',
+      'already_in_collection',
+      'imported',
+    ] as const) {
+      expect(importMayBeOnDiscogs({ phase, canChangeMatch: true })).toBe(true);
+    }
+  });
+
+  it('a failed import holds it unless Change match is open (nothing reached Discogs)', () => {
+    expect(
+      importMayBeOnDiscogs({ phase: 'failed', canChangeMatch: false }),
+    ).toBe(true);
+    expect(
+      importMayBeOnDiscogs({ phase: 'failed', canChangeMatch: true }),
+    ).toBe(false);
+  });
 });
 
 const SNAPSHOT = {

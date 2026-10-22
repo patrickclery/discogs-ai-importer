@@ -232,15 +232,27 @@ describe('mergeRunIntoSpines via persistRunResult (run_no > 1)', () => {
   // RESEARCH Pitfall 5: a spine with a non-failed import or the not-on-Discogs
   // mark is never retired, so its replacement can never be confirmed and
   // added a second time.
-  function seedImport(spineId: string, status: string): void {
+  function seedImport(
+    spineId: string,
+    status: string,
+    failed: { intentAt?: number | null; errorKind?: string | null } = {},
+  ): void {
     const now = Date.now();
     getDb()
       .$client.prepare(
         `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
-           created_at, updated_at)
-         VALUES (@id, @spineId, 4242, 1, @status, @now, @now)`,
+           intent_at, error_kind, created_at, updated_at)
+         VALUES (@id, @spineId, 4242, 1, @status, @intentAt, @errorKind,
+           @now, @now)`,
       )
-      .run({ id: newId(), spineId, status, now });
+      .run({
+        id: newId(),
+        spineId,
+        status,
+        intentAt: failed.intentAt ?? null,
+        errorKind: failed.errorKind ?? null,
+        now,
+      });
   }
 
   it.each(['pending', 'importing', 'imported', 'already_in_collection'])(
@@ -273,6 +285,32 @@ describe('mergeRunIntoSpines via persistRunResult (run_no > 1)', () => {
   it('an unmatched old spine whose only import failed is superseded (A-04-16)', async () => {
     const { photoId, spineIds } = await firstRun();
     seedImport(spineIds[5], 'failed');
+    persist(
+      parsingRun(photoId, 2),
+      rescanOutput((s) => (s.index === 5 ? null : s)),
+    );
+    expect(spine(spineIds[5]).state).toBe('superseded');
+  });
+
+  it('an unmatched old spine whose failed import may have reached Discogs is orphaned (WR-01)', async () => {
+    const { photoId, spineIds } = await firstRun();
+    seedImport(spineIds[5], 'failed', {
+      intentAt: 1_000,
+      errorKind: 'unavailable',
+    });
+    persist(
+      parsingRun(photoId, 2),
+      rescanOutput((s) => (s.index === 5 ? null : s)),
+    );
+    expect(spine(spineIds[5]).state).toBe('orphaned');
+  });
+
+  it('an unmatched old spine whose failed import Discogs refused is superseded', async () => {
+    const { photoId, spineIds } = await firstRun();
+    seedImport(spineIds[5], 'failed', {
+      intentAt: 1_000,
+      errorKind: 'rejected',
+    });
     persist(
       parsingRun(photoId, 2),
       rescanOutput((s) => (s.index === 5 ? null : s)),

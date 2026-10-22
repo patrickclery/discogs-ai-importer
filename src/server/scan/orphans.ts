@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SpineDto } from '@/lib/scan-types';
 import { getDb } from '../db/client';
+import { importMayBeOnDiscogsSql } from '../imports/sql';
 import { fieldEdited, fieldUnedited } from './field-sql';
 import { getSpineDto, loadSpineDtos } from './queries';
 
@@ -17,7 +18,8 @@ import { getSpineDto, loadSpineDtos } from './queries';
 /**
  * A re-attach target for orphan `@orphanId`: an active spine of the same
  * photo, created by the photo's latest done run, with no edited field, no
- * import that is not failed and no not-on-Discogs mark (RESEARCH Pitfall 5:
+ * import that is or may be on Discogs (importMayBeOnDiscogsSql, WR-01) and
+ * no not-on-Discogs mark (RESEARCH Pitfall 5:
  * a re-attach supersedes its target, so such a spine is never a target). `t`
  * is the candidate spines row. The latest done run, not photos.latest_run_id
  * (WR-01): a queued, running or failed re-scan moves latest_run_id but
@@ -31,7 +33,7 @@ const CANDIDATE = `t.state = 'active'
   AND NOT EXISTS (SELECT 1 FROM spine_fields f
     WHERE f.spine_id = t.id AND ${fieldEdited('f.value', 'f.ai_value')})
   AND NOT EXISTS (SELECT 1 FROM imports i
-    WHERE i.spine_id = t.id AND i.status <> 'failed')
+    WHERE i.spine_id = t.id AND ${importMayBeOnDiscogsSql('i')})
   AND t.not_on_discogs = 0`;
 
 export type OrphanResult<T> =
@@ -134,16 +136,20 @@ export function reattachSpine(
 
 export type DismissResult = 'ok' | 'not_found' | 'conflict' | 'has_import';
 
-/** An import for the spine that is not failed (RESEARCH Pitfall 5). */
+/**
+ * An import for the spine whose copy is or may be on Discogs (RESEARCH
+ * Pitfall 5, WR-01).
+ */
 const OPEN_IMPORT = `EXISTS (SELECT 1 FROM imports i
-  WHERE i.spine_id = @id AND i.status <> 'failed')`;
+  WHERE i.spine_id = @id AND ${importMayBeOnDiscogsSql('i')})`;
 
 /**
  * Dismisses an orphaned spine (D-16, A-21): only its state changes, so its
  * spine_fields rows stay stored but it is no longer listed or counted
- * (T-02-27). A spine with an import that is not failed is refused with
- * has_import (T-04-28): its copy is, or may be, on Discogs. A failed-only
- * import does not block (A-04-16). Any other state is a conflict.
+ * (T-02-27). A spine with an import whose copy is, or may be, on Discogs
+ * is refused with has_import (T-04-28, WR-01): that includes a failed
+ * import whose intent was written. A failed import that never reached
+ * Discogs does not block (A-04-16). Any other state is a conflict.
  */
 export function dismissSpine(id: string): DismissResult {
   const db = getDb().$client;
