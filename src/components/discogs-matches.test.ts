@@ -21,6 +21,7 @@ import {
   NOT_SEARCHED_LINE,
   notSearchedLine,
   ORPHANED_LINE,
+  showsFieldsChanged,
   UNSURE_MEDIA_LINE,
 } from './discogs-matches';
 
@@ -53,7 +54,7 @@ describe('skipped search card state', () => {
     expect(matchesAction({ discogs })).toBeNull();
   });
 
-  it('matchesAction maps failed to retry and changed fields to again, except while queued or searching', () => {
+  it('matchesAction maps failed to retry and changed fields to again, except while not searched, queued or searching', () => {
     const base = {
       candidateCount: 0,
       topCandidates: [],
@@ -73,15 +74,51 @@ describe('skipped search card state', () => {
     ).toBe('again');
     expect(
       matchesAction({
-        discogs: { ...base, state: 'not_searched', fieldsChanged: true },
+        discogs: { ...base, state: 'no_match', fieldsChanged: true },
       }),
     ).toBe('again');
+    // WR-01: a not-searched card already says what happens next.
+    expect(
+      matchesAction({
+        discogs: { ...base, state: 'not_searched', fieldsChanged: true },
+      }),
+    ).toBeNull();
     for (const state of ['queued', 'searching'] as const) {
       expect(
         matchesAction({ discogs: { ...base, state, fieldsChanged: true } }),
       ).toBeNull();
     }
     expect(matchesAction({ discogs: { ...base, state: 'done' } })).toBeNull();
+  });
+
+  it('showsFieldsChanged: never on a not-searched card (WR-01)', () => {
+    const base = {
+      candidateCount: 0,
+      topCandidates: [],
+      failure: null,
+      fieldsChanged: true,
+    };
+    expect(showsFieldsChanged(null)).toBe(false);
+    expect(showsFieldsChanged(undefined)).toBe(false);
+    expect(
+      showsFieldsChanged({
+        ...base,
+        state: 'not_searched',
+        fieldsChanged: true,
+      }),
+    ).toBe(false);
+    for (const state of [
+      'done',
+      'no_match',
+      'failed',
+      'queued',
+      'searching',
+    ] as const) {
+      expect(showsFieldsChanged({ ...base, state })).toBe(true);
+      expect(showsFieldsChanged({ ...base, state, fieldsChanged: false })).toBe(
+        false,
+      );
+    }
   });
 });
 
@@ -145,6 +182,8 @@ type Row = {
   queues: boolean;
   action?: 'retry' | 'again' | null;
   padTitle?: boolean;
+  /** A connect (includeAuthFailed) replays the rejected search once. */
+  connectQueues?: boolean;
 };
 
 const ROWS: Row[] = [
@@ -188,6 +227,7 @@ const ROWS: Row[] = [
     ],
     state: 'not_searched',
     queues: true,
+    action: null,
   },
   {
     name: 'failed(current, rejected), skipped(other)',
@@ -204,6 +244,37 @@ const ROWS: Row[] = [
     steps: [{ status: 'auth_failed', hash: 'current' }],
     state: 'failed',
     queues: false,
+    connectQueues: true,
+  },
+  {
+    name: 'failed(current), auth_failed(current)',
+    steps: [
+      { status: 'failed', hash: 'current' },
+      { status: 'auth_failed', hash: 'current' },
+    ],
+    state: 'failed',
+    queues: false,
+    connectQueues: true,
+  },
+  {
+    name: 'no_match(current), auth_failed(current)',
+    steps: [
+      { status: 'no_match', hash: 'current' },
+      { status: 'auth_failed', hash: 'current' },
+    ],
+    state: 'failed',
+    queues: false,
+    connectQueues: true,
+  },
+  {
+    name: 'no_match(other), auth_failed(current)',
+    steps: [
+      { status: 'no_match', hash: 'other' },
+      { status: 'auth_failed', hash: 'current' },
+    ],
+    state: 'failed',
+    queues: false,
+    connectQueues: true,
   },
   {
     name: 'no_match(current)',
@@ -276,6 +347,7 @@ describe('waiting its turn only when the maintenance hook will queue it', () => 
       }
       const card = discogsForSpines(db, [{ id: s0 }]).get(s0);
       expect(card?.state).toBe(row.state);
+      if (row.connectQueues) expect(card?.failure?.kind).toBe('auth');
       if (row.action !== undefined) {
         expect(matchesAction({ discogs: card ?? null })).toBe(row.action);
       }
@@ -288,6 +360,19 @@ describe('waiting its turn only when the maintenance hook will queue it', () => 
         notSearchedLine({ state: 'active', mediaKind: 'cd' }, true) ===
           NOT_SEARCHED_LINE;
       expect(waitingLine).toBe(grew);
+
+      if (row.connectQueues) {
+        // CR-01: a connect or a passing Test connection replays it once.
+        const beforeConnect = autoSearchCount(s0);
+        enqueueMissingSearches({ includeAuthFailed: true });
+        expect(autoSearchCount(s0)).toBe(beforeConnect + 1);
+        expect(discogsForSpines(db, [{ id: s0 }]).get(s0)).toMatchObject({
+          state: 'queued',
+          failure: null,
+        });
+        enqueueMissingSearches({ includeAuthFailed: true });
+        expect(autoSearchCount(s0)).toBe(beforeConnect + 1);
+      }
     });
   }
 
