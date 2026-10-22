@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
-status: executing
-stopped_at: Completed 04-14-PLAN.md
-last_updated: "2026-10-22T11:10:25.525Z"
+status: verifying
+stopped_at: Completed 04-09-PLAN.md
+last_updated: "2026-10-22T11:24:27.621Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: b6cf0a83c49c847bab2c27739d16aacfcaf68d2d
+state_head: 1fbcc5998281e5bb7b0c7f6abb949dfae69a6919
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 48
+  completed_plans: 49
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 
 Phase: 4 (Import & Review Queue) — EXECUTING
 Plan: 14 of 14
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-22 — Phase 4 execution started
 
 Progress: [████████░░] 75%
@@ -106,6 +106,7 @@ Progress: [████████░░] 75%
 | Phase 04 P13 | 6min | 2 tasks | 10 files |
 | Phase 04 P08 | 7min | 2 tasks | 9 files |
 | Phase 4 P14 | 7 min | 2 tasks | 7 files |
+| Phase 4 P09 | 12min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -238,6 +239,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-08: Menu in-flight spinner renders in the action-menu trigger slot
 - [Phase 4]: 04-14: getSpines needed no change; queries.test.ts pins counts, photoProgress, order, empty and discogsActive as characterization
 - [Phase 4]: 04-14: empty-state choice is the pure filterEmptyOf helper in review-status.ts; copy stays in spines-view.tsx
+- [Phase 4]: 04-09: Retry all failed skips a failed spine whose import is already waiting or running and does not count it as retried
+- [Phase 4]: 04-09: imports.failed uses the card's importPhaseOf rule and leaves out spines marked not on Discogs, matching the Failed filter
+- [Phase 4]: 04-09: status SQL uses the add_to_collection literal; the IMP-01 one-enqueue-site guard forbids type: 'add_to_collection' outside imports/store.ts
 
 ### Pending Todos
 
@@ -257,6 +261,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T11:10:25.132Z
-Stopped at: Completed 04-14-PLAN.md
+Last session: 2026-10-22T11:24:27.068Z
+Stopped at: Completed 04-09-PLAN.md
 Resume file: None

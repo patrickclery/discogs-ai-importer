@@ -32,7 +32,7 @@
 - [x] **REV-01**: User sees a list of all spines with the spine crop next to the extracted fields on every row
 - [x] **REV-02**: User can edit any extracted field; edits are stored separately from the original AI output
 - [x] **REV-03**: User can filter the list by status: pending, matched, imported, not found, not on Discogs, failed — with counts per status
-- [ ] **REV-04**: User can retry a failed item without re-uploading the photo
+- [x] **REV-04**: User can retry a failed item without re-uploading the photo
 - [x] **REV-05**: User can mark a spine "not on Discogs" (e.g. obscure or self-released CDs)
 
 ### Discogs
@@ -49,7 +49,7 @@
 - [x] **IMP-01**: User must explicitly confirm a candidate before anything is added to their Discogs collection (no auto-add)
 - [x] **IMP-02**: Confirmed releases are added to the user's chosen collection folder (default Uncategorized)
 - [x] **IMP-03**: User is warned if a release is already in their Discogs collection or already imported from another photo
-- [ ] **IMP-04**: Collection adds are never duplicated by retries or crashes; the Discogs instance ID is recorded for each import
+- [x] **IMP-04**: Collection adds are never duplicated by retries or crashes; the Discogs instance ID is recorded for each import
 
 ## v2 Requirements
 
@@ -105,7 +105,7 @@
 | REV-01 | Phase 2 | Complete |
 | REV-02 | Phase 2 | Complete |
 | REV-03 | Phase 4 | Complete |
-| REV-04 | Phase 4 | Pending |
+| REV-04 | Phase 4 | Complete |
 | REV-05 | Phase 4 | Complete |
 | DISC-01 | Phase 3 | Complete |
 | DISC-02 | Phase 3 | Complete |
@@ -116,7 +116,7 @@
 | IMP-01 | Phase 4 | Complete |
 | IMP-02 | Phase 4 | Complete |
 | IMP-03 | Phase 4 | Complete |
-| IMP-04 | Phase 4 | Pending |
+| IMP-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total
