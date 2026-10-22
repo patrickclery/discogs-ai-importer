@@ -195,3 +195,17 @@ export function duplicateDialogTitle(
   const verb = body.done ? 'Already imported' : 'Already being imported';
   return `${verb} from ${body.photo}, spine #${body.spineNumber}`;
 }
+
+/**
+ * The first already-in-collection line (UI-SPEC Copywriting, D-05): how
+ * many copies the owner already has, the first one's folder and the date
+ * Discogs recorded.
+ */
+export function alreadyLine(
+  _existing: Pick<
+    NonNullable<ImportDto['existing']>,
+    'count' | 'folderName' | 'dateAdded'
+  >,
+): string {
+  return '';
+}

@@ -6,6 +6,7 @@ import {
   addDisabledReason,
   addErrorText,
   addFolderName,
+  alreadyLine,
   BEING_ADDED_TOOLTIP,
   CHANGE_STARTED_ERROR,
   CONNECT_FIRST,
@@ -322,5 +323,51 @@ describe('duplicateDialogTitle (D-04, IMP-03)', () => {
         done: false,
       }),
     ).toBe('Already being imported from shelf-2.jpg, spine #3');
+  });
+});
+
+describe('alreadyLine (D-05)', () => {
+  const existing = {
+    count: 1,
+    folderName: 'Uncategorized',
+    dateAdded: '2015-11-30T10:54:13-08:00',
+  };
+
+  it('one copy names its folder and the date it was added', () => {
+    expect(alreadyLine(existing)).toBe(
+      'You already have this release on Discogs: 1 copy in Uncategorized, added 30 Nov 2015.',
+    );
+  });
+
+  it('two copies pluralize and name the first copy', () => {
+    expect(alreadyLine({ ...existing, count: 2 })).toBe(
+      'You already have this release on Discogs: 2 copies, the first in Uncategorized, added 30 Nov 2015.',
+    );
+  });
+
+  it('uses the date Discogs recorded, whatever the local time zone', () => {
+    expect(
+      alreadyLine({ ...existing, dateAdded: '2015-11-30T23:59:00-08:00' }),
+    ).toBe(
+      'You already have this release on Discogs: 1 copy in Uncategorized, added 30 Nov 2015.',
+    );
+  });
+
+  it('an unparseable date leaves out the added part', () => {
+    expect(alreadyLine({ ...existing, dateAdded: 'not a date' })).toBe(
+      'You already have this release on Discogs: 1 copy in Uncategorized.',
+    );
+    expect(
+      alreadyLine({ ...existing, dateAdded: '2015-13-45T00:00:00Z' }),
+    ).toBe(
+      'You already have this release on Discogs: 1 copy in Uncategorized.',
+    );
+  });
+
+  it('keeps a long folder name whole (the card wraps it)', () => {
+    const long = 'Folder '.repeat(20).trim();
+    expect(alreadyLine({ ...existing, folderName: long })).toContain(
+      `1 copy in ${long}, added`,
+    );
   });
 });
