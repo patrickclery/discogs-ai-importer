@@ -3,18 +3,22 @@ phase: 03
 review: 03-REVIEW.md
 titles: json
 findings:
-  - id: CR-01
-    severity: critical
-    disposition: open
-    title: "After a reconnect, an auth_failed search is never re-picked when the baseline covers the inputs, and the card keeps saying \"Reconnect Discogs\""
   - id: WR-01
     severity: warning
     disposition: open
-    title: "A not-searched card can show \"Fields changed\" and \"Search again\" while it also says the spine is waiting its turn"
+    title: "An orphaned or non-CD spine whose search was rejected is never replayed, and its card still says \"Reconnect Discogs in Settings\" after a successful reconnect"
+  - id: WR-02
+    severity: warning
+    disposition: open
+    title: "After a restart, the card copy \"Reconnect Discogs in Settings\" points to a button that does not exist"
   - id: IN-01
     severity: info
     disposition: open
-    title: "`latestAutoSearch` is dead production code whose doc names it the baseline"
+    title: "A stray JSDoc block now sits directly above `showsFieldsChanged`"
+  - id: CR-01
+    severity: critical
+    disposition: fixed
+    title: "A spine whose auto search ended `skipped` is never auto-searched again, while the UI says it is \"waiting its turn\""
   - id: IN-02
     severity: info
     disposition: open
@@ -27,10 +31,6 @@ findings:
     severity: info
     disposition: open
     title: "Test helpers are duplicated across the two new test suites"
-  - id: WR-02
-    severity: warning
-    disposition: fixed
-    title: "A rate-limit pause can make a running search time out and spend an attempt (violates D-06)"
   - id: WR-03
     severity: warning
     disposition: fixed
@@ -49,20 +49,21 @@ findings:
     title: "`useNowUntil` duplicates `useSecondsUntil`"
 open: 7
 total: 11
-recorded: 2026-10-22T00:27:33.248Z
+unparsed: 4
+recorded: 2026-10-22T01:09:32.384Z
 ---
 
 # Phase 03: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
 | WR-01 | warning | open | - |
+| WR-02 | warning | open | - |
 | IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| WR-02 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| CR-01 | critical | fixed | 03-REVIEW-FIX.md (not in the current review) |
+| IN-02 | info | open | - (not in the current review) |
+| IN-03 | info | open | - (not in the current review) |
+| IN-04 | info | open | - (not in the current review) |
 | WR-03 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-04 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-05 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
