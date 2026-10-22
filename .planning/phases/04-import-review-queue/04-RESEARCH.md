@@ -488,10 +488,10 @@ Handler unit tests use `fetchImpl` stubs plus the fake-clock gate, exactly like 
    - Resolution: Plan 04-06 reads the folder list with one inline gated GET in `POST /api/discogs/folders` (`{ refresh: true }`), only when Settings opens with no cached list or one older than 1 hour, or on "Reload folders"; the result is cached under `discogs_folders` in the settings table, and a paused gate answers `{ ok: false, kind: 'busy' }` instead of waiting (planner assumption A-04-13).
 2. **Should `already_in_collection` count as "matched" or "failed" in the filter?** — RESOLVED: matched.
    - D-10 says matched (it waits on the owner's choice). Keep that, but give it a distinct badge ("Already in your collection") so it is findable.
-   - Resolution: Plan 04-05's `reviewStatusOf` maps an `already_in_collection` import to `matched` (D-10 order); Plan 04-10's `ImportStateBadge` shows the distinct "Already in your collection" badge (TriangleAlert, text-warning), and Plan 04-04's panel offers Link existing copy and Add another copy.
+   - Resolution: Plan 04-05's `reviewStatusOf` maps an `already_in_collection` import to `matched` (D-10 order); Plan 04-10's `ImportStateBadge` shows the distinct "Already in your collection" badge (TriangleAlert, text-warning), and Plan 04-13's panel offers Link existing copy and Add another copy (Plan 04-04's routes).
 3. **Should "Retry all failed" also re-enqueue failed searches with `auth_failed` while still disconnected?** — RESOLVED: no; skip everything while disconnected.
    - Recommendation: one bulk route that loops over failed spines with the same per-spine functions. Skip searches (and imports) while `!discogsReady()` and return `{retried, skipped}`.
-   - Resolution: Plan 04-09's `POST /api/spines/retry-failed` loops over the failed spines in list order with Plan 04-03's per-spine `retrySpine` (import first, else search); while `!discogsReady()` it enqueues nothing and answers `{ retried: 0, skipped: n }`, and the filter bar shows "Nothing to retry until Discogs is connected." (planner assumption A-04-21).
+   - Resolution: Plan 04-09's `POST /api/spines/retry-failed` loops over the failed spines in list order with Plan 04-12's per-spine `retrySpine` (import first, else search); while `!discogsReady()` it enqueues nothing and answers `{ retried: 0, skipped: n }`, and the filter bar shows "Nothing to retry until Discogs is connected." (planner assumption A-04-21).
 
 ## Environment Availability
 
