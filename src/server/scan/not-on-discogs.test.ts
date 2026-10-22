@@ -36,15 +36,27 @@ function reviewInputs(id: string): string {
   ]);
 }
 
-function seedImport(spineId: string, status: string): void {
+function seedImport(
+  spineId: string,
+  status: string,
+  failed: { intentAt?: number | null; errorKind?: string | null } = {},
+): void {
   const now = Date.now();
   db()
     .prepare(
       `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
-         created_at, updated_at)
-       VALUES (@id, @spineId, 1031, 1, @status, @now, @now)`,
+         intent_at, error_kind, created_at, updated_at)
+       VALUES (@id, @spineId, 1031, 1, @status, @intentAt, @errorKind,
+         @now, @now)`,
     )
-    .run({ id: newId(), spineId, status, now });
+    .run({
+      id: newId(),
+      spineId,
+      status,
+      intentAt: failed.intentAt ?? null,
+      errorKind: failed.errorKind ?? null,
+      now,
+    });
 }
 
 /** Moves the clock on so a write would show in updated_at. */
@@ -130,4 +142,27 @@ describe('setNotOnDiscogs', () => {
     expect(setNotOnDiscogs(db(), id, true).status).toBe('ok');
     expect(spine(id).not_on_discogs).toBe(1);
   });
+
+  it.each(['not_found', 'rejected'])(
+    'a spine whose add Discogs refused (%s) after the intent can be marked',
+    async (errorKind) => {
+      const { spineIds } = await orphanScenario();
+      const id = spineIds[0];
+      seedImport(id, 'failed', { intentAt: 1_000, errorKind });
+      expect(setNotOnDiscogs(db(), id, true).status).toBe('ok');
+    },
+  );
+
+  it.each(['unavailable', 'interrupted', 'auth', 'other', 'removed'])(
+    'a spine whose failed import may be on Discogs (%s after the intent) is import_open and stays unmarked (WR-03)',
+    async (errorKind) => {
+      const { spineIds } = await orphanScenario();
+      const id = spineIds[0];
+      seedImport(id, 'failed', { intentAt: 1_000, errorKind });
+      expect(setNotOnDiscogs(db(), id, true)).toEqual({
+        status: 'import_open',
+      });
+      expect(spine(id).not_on_discogs).toBe(0);
+    },
+  );
 });

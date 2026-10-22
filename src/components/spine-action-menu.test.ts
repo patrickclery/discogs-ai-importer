@@ -8,8 +8,11 @@ import {
 
 // UI-SPEC E10: when the menu offers Mark, and the inline error copy.
 
-function withPhase(phase: ImportDto['phase']): ImportDto {
-  return { phase } as ImportDto;
+function withPhase(
+  phase: ImportDto['phase'],
+  canChangeMatch = true,
+): ImportDto {
+  return { phase, canChangeMatch } as ImportDto;
 }
 
 describe('canMarkNotOnDiscogs', () => {
@@ -54,6 +57,18 @@ describe('canMarkNotOnDiscogs', () => {
         }),
       ).toBe(false);
     }
+  });
+});
+
+describe('canMarkNotOnDiscogs on a failed import (WR-03)', () => {
+  it('never offers Mark while a failed import may be on Discogs (Change match not open)', () => {
+    expect(
+      canMarkNotOnDiscogs({
+        notOnDiscogs: false,
+        import: withPhase('failed', false),
+        reviewStatus: 'failed',
+      }),
+    ).toBe(false);
   });
 });
 

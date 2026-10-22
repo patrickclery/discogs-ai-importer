@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Spinner } from '@/components/ui/spinner';
 import { UNREACHABLE_REASON } from '@/lib/failure-reason';
+import { importMayBeOnDiscogs } from '@/lib/import-types';
 import type { SpineDto } from '@/lib/scan-types';
 import { spineNumber } from '@/lib/spine-review';
 
@@ -34,7 +35,8 @@ export function canMarkNotOnDiscogs(
   spine: Pick<SpineDto, 'notOnDiscogs' | 'import' | 'reviewStatus'>,
 ): boolean {
   if (spine.notOnDiscogs) return false;
-  if (spine.import !== null && spine.import.phase !== 'failed') return false;
+  // Open, or failed after its POST may have landed (WR-03).
+  if (spine.import !== null && importMayBeOnDiscogs(spine.import)) return false;
   return (
     spine.reviewStatus === 'pending' ||
     spine.reviewStatus === 'not_found' ||

@@ -1,5 +1,6 @@
 import 'server-only';
 import type Database from 'better-sqlite3';
+import { importMayBeOnDiscogsSql } from '../imports/sql';
 
 // "Not on Discogs" (REV-05, D-14): the owner's reversible mark for a disc
 // Discogs does not list. It changes only spines.not_on_discogs (and
@@ -20,7 +21,9 @@ export type SetNotOnDiscogsResult =
  * order: the spine exists, is active or orphaned (not_markable otherwise);
  * then, for a mark only, that its latest import has no Discogs copy
  * (imported, D-14) and is not pending, importing or held already in the
- * collection (import_open, A-04-19: the open job would still add it).
+ * collection (import_open, A-04-19: the open job would still add it), nor
+ * failed after its POST may have landed (import_open, WR-03: Retry or
+ * Change match must settle it first; importMayBeOnDiscogsSql).
  * Unmarking an active or orphaned spine is always allowed.
  */
 export function setNotOnDiscogs(
@@ -46,19 +49,26 @@ export function setNotOnDiscogs(
     if (flag) {
       const latest = db
         .prepare(
-          `SELECT status, instance_id FROM imports
-           WHERE spine_id = @spineId
-           ORDER BY created_at DESC, id DESC
+          `SELECT i.status, i.instance_id,
+             ${importMayBeOnDiscogsSql('i')} AS may_be_on_discogs
+           FROM imports i
+           WHERE i.spine_id = @spineId
+           ORDER BY i.created_at DESC, i.id DESC
            LIMIT 1`,
         )
         .get({ spineId }) as
-        | { status: string; instance_id: number | null }
+        | {
+            status: string;
+            instance_id: number | null;
+            may_be_on_discogs: number;
+          }
         | undefined;
       if (latest) {
         if (latest.instance_id !== null || latest.status === 'imported') {
           return { status: 'imported' };
         }
-        if (latest.status !== 'failed') return { status: 'import_open' };
+        // Open, or failed after its POST may have landed (WR-03).
+        if (latest.may_be_on_discogs === 1) return { status: 'import_open' };
       }
     }
     db.prepare(
