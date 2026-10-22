@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Local one-command app with settings, a portable data folder and a restart-safe job queue (completed 2026-10-19)
 - [x] **Phase 2: Shelf Scan** - Drop photos, one Claude call each, review horizontal spine crops next to editable AI-read fields (completed 2026-10-20)
-- [ ] **Phase 3: Discogs Match** - Connect Discogs via OAuth and get throttled candidate releases per spine, with manual search and paste-ID
+- [x] **Phase 3: Discogs Match** - Connect Discogs via OAuth and get throttled candidate releases per spine, with manual search and paste-ID (completed 2026-10-22)
 - [ ] **Phase 4: Import & Review Queue** - Confirm a candidate to add it to the collection exactly once; filter, retry and resolve every spine
 
 ## Phase Details
@@ -115,7 +115,7 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans:** 15/15 plans executed (2 gap closure)
+**Plans:** 15/15 plans complete (2 gap closure)
 
 Plans:
 **Wave 1**
@@ -180,7 +180,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
-| 3. Discogs Match | 15/15 | In Progress | - |
+| 3. Discogs Match | 15/15 | Complete    | 2026-10-22 |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
 
 ## Backlog
