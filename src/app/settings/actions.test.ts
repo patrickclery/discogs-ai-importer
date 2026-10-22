@@ -2,13 +2,24 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 import { revalidatePath } from 'next/cache';
 import { getDiscogsAuth, saveDiscogsAuth } from '@/server/discogs/auth';
-import { clearSecretAction, saveDiscogsCredentials } from './actions';
+import {
+  COLLECTION_FOLDER_KEY,
+  FOLDERS_CACHE_KEY,
+  getCollectionFolderId,
+} from '@/server/discogs/folders';
+import { getSetting, setSetting } from '@/server/settings';
+import {
+  clearSecretAction,
+  saveCollectionFolder,
+  saveDiscogsCredentials,
+} from './actions';
 
 const CANARY_KEY = 'CANARYKEY-0123456789wxyz';
 const CANARY_SECRET = 'CANARYSECRET-0123456789abcd';
@@ -266,5 +277,53 @@ describe('settings actions', () => {
     );
     expect(res).toMatchObject({ ok: true });
     expect(getDiscogsAuth()).toBeNull();
+  });
+});
+
+// saveCollectionFolder (D-03, IMP-02, T-04-22): only an integer of at least
+// 1 that the cached folder list holds is saved; anything else answers a
+// short reason and stores nothing.
+describe('saveCollectionFolder', () => {
+  useTempDataDir();
+  const stored = () => getSetting(COLLECTION_FOLDER_KEY, z.unknown());
+
+  beforeEach(() => {
+    vi.mocked(revalidatePath).mockClear();
+    setSetting(FOLDERS_CACHE_KEY, {
+      folders: [
+        { id: 1, name: 'Uncategorized', count: 4 },
+        { id: 2, name: 'Jazz', count: 3 },
+      ],
+      fetchedAt: 1_700_000_000_000,
+    });
+  });
+
+  it.each([
+    ['0', 0],
+    ['-1', -1],
+    ['1.5', 1.5],
+    ['NaN', Number.NaN],
+    ['a string', '2' as unknown as number],
+    ['an id missing from the cache', 9],
+  ])(
+    '%s answers ok false with a formError and stores nothing',
+    async (_l, id) => {
+      const res = await saveCollectionFolder(id);
+      expect(res.ok).toBe(false);
+      const formError = (res as { formError: string }).formError;
+      expect(formError.length).toBeGreaterThan(0);
+      expect(formError.length).toBeLessThanOrEqual(160);
+      expect(formError).not.toMatch(/\.$/);
+      expect(stored()).toBeNull();
+      expect(revalidatePath).not.toHaveBeenCalled();
+    },
+  );
+
+  it('saves a cached folder, answers its name and revalidates /settings', async () => {
+    const res = await saveCollectionFolder(2);
+    expect(res).toEqual({ ok: true, name: 'Jazz' });
+    expect(stored()).toBe(2);
+    expect(getCollectionFolderId()).toBe(2);
+    expect(revalidatePath).toHaveBeenCalledWith('/settings');
   });
 });
