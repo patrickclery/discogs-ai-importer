@@ -19,7 +19,9 @@
 // restart on the same data the import adopts that copy, so the collection
 // has exactly one. (e) the fake answers 502 after carrying out the add
 // (502-after-commit); the worker's retry adopts the copy instead of posting
-// again.
+// again. (f) a release that already has a copy no import records is held
+// already_in_collection with no add POST (D-05), its job ends succeeded with
+// its dedupe key freed, and /api/spines reads Already in your collection.
 // Later plans add their own named steps; step letters are stable.
 // Run: node scripts/verify-discogs-import.ts   (VERIFY_SKIP_BUILD=1 reuses
 // the build). It builds and starts from NEXT_DIST_DIR, default .next/verify,
@@ -39,6 +41,7 @@ import {
   fakeState,
   type ImportCtx,
   type ImportDbRow,
+  type ImportFakeState,
   importRow,
   spineByArtist,
   spineByCatno,
@@ -559,6 +562,74 @@ async function stepBadGatewayAfterCommit(ctx: ImportCtx): Promise<void> {
   );
 }
 
+// (f) D-05, IMP-03: a copy the owner already has stops the add before any
+// write, and the owner decides.
+async function stepAlreadyInCollection(ctx: ImportCtx): Promise<void> {
+  step('(f) a release already in the collection is held with no add POST');
+  const seeded = {
+    instance_id: 4242,
+    folder_id: 1,
+    date_added: '2015-11-30T10:54:13-08:00',
+  };
+  const state = (await ctx.fake.control({
+    collection: { 1002: [seeded] },
+  })) as ImportFakeState;
+  assert(
+    JSON.stringify(state.collection['1002']) === JSON.stringify([seeded]),
+    `the fake holds ${JSON.stringify(state.collection['1002'])}`,
+  );
+  const spineId = spineByCatno(ctx, 'TR-200');
+  await confirmRelease(ctx, spineId, 1002);
+  const row = await waitImport(ctx, spineId, [
+    'already_in_collection',
+    'imported',
+    'failed',
+  ]);
+  assert(
+    row.status === 'already_in_collection',
+    `import ended ${row.status}: ${row.error_kind} ${row.error}`,
+  );
+  const after = await fakeState(ctx);
+  const posted = after.postsByRelease['1002'] ?? 0;
+  assert(posted === 0, `${posted} add POSTs of 1002, expected 0`);
+  assert(
+    (after.collection['1002'] ?? []).length === 1,
+    'the fake collection changed',
+  );
+  const existing = JSON.parse(row.existing_json ?? 'null') as unknown;
+  assert(
+    JSON.stringify(existing) ===
+      JSON.stringify([
+        {
+          instanceId: seeded.instance_id,
+          folderId: seeded.folder_id,
+          dateAdded: seeded.date_added,
+        },
+      ]),
+    `existing_json is ${row.existing_json}`,
+  );
+  assert(
+    row.post_count === 0 && row.intent_at === null && row.instance_id === null,
+    `held import wrote an intent: ${JSON.stringify(row)}`,
+  );
+  const job = jobOf(ctx, row.job_id);
+  assert(
+    job?.status === 'succeeded' && job.dedupe_key === null,
+    `the job is ${JSON.stringify(job)}`,
+  );
+  const res = await fetch(`${ctx.baseUrl}/api/spines`, { cache: 'no-store' });
+  assert(res.status === 200, `GET /api/spines answered ${res.status}`);
+  const data = (await res.json()) as SpinesResponse;
+  const imp = data.spines.find((s) => s.id === spineId)?.import;
+  assert(
+    imp?.phase === 'already_in_collection' && imp.existing?.count === 1,
+    `the spine's import is ${JSON.stringify(imp)}`,
+  );
+  check(
+    `held already_in_collection: no 1002 add POST, existing_json is the seeded copy ${seeded.instance_id}, job succeeded with its dedupe key freed, /api/spines existing.count 1`,
+  );
+}
+
 runMain('verify-discogs-import', async (onCleanup) => {
   const ctx = await startImportStack('verify-discogs-import', onCleanup);
   stepSchema(ctx);
@@ -568,6 +639,7 @@ runMain('verify-discogs-import', async (onCleanup) => {
   await stepReadModel(ctx, importedSpineId);
   await stepKillMidPost(ctx);
   await stepBadGatewayAfterCommit(ctx);
+  await stepAlreadyInCollection(ctx);
   // Later plans insert their steps here.
 
   step('stop');

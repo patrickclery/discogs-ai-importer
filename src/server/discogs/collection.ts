@@ -5,6 +5,11 @@ import type { ExistingInstance } from '@/lib/import-types';
 // The owner's Discogs collection as the add_to_collection job reads it
 // (D-05, D-07, RESEARCH "Discogs API Facts"): response schemas, path
 // builders and the pure adopt and foreign rules. No request is sent here.
+//
+// Pagination (RESEARCH A6, A-04-07): Discogs lists a release's copies 50 per
+// page. The handler reads the first page only and treats any copy beyond it
+// as unknown: one release with more than 50 copies in one collection is not
+// expected. The schema accepts pages above 1 so such an answer still parses.
 
 export const CollectionReleasesSchema = z.object({
   pagination: z.object({ pages: z.number(), items: z.number() }).passthrough(),
@@ -109,10 +114,17 @@ export function pickAdoptable(
   return hits[0] ?? null;
 }
 
-/** Copies no import records: the owner's own, or another app's. */
+/**
+ * Copies no import records (the owner's own, or another app's), by
+ * ascending instance id: existing_json keeps this order, and its first entry
+ * is the copy the already-in-collection line describes and Link existing
+ * copy picks (IMP-03).
+ */
 export function foreignInstances(
   instances: ExistingInstance[],
   recorded: Set<number>,
 ): ExistingInstance[] {
-  return instances.filter((i) => !recorded.has(i.instanceId));
+  return instances
+    .filter((i) => !recorded.has(i.instanceId))
+    .sort((a, b) => a.instanceId - b.instanceId);
 }
