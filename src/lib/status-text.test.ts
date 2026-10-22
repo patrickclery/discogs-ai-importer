@@ -27,6 +27,35 @@ describe('headerParts', () => {
     expect(header({ ...input, failed: 0 })).toBe(text);
   });
 
+  it.each([
+    [{ a: 0, d: 3, paused: false }, 'Adding to Discogs · 3 left'],
+    [
+      { a: 2, d: 3, paused: false },
+      'Working · 2 queued · Adding to Discogs · 3 left',
+    ],
+    [{ a: 0, d: 3, paused: true }, 'Discogs paused · 3 left'],
+    [{ a: 2, d: 3, paused: true }, 'Working · 2 queued · Discogs paused'],
+    [{ a: 2, d: 0, paused: false }, 'Working · 2 queued'],
+  ])('imports only: %j reads %s', (input, text) => {
+    expect(header({ ...input, failed: 0, importsOnly: true })).toBe(text);
+  });
+
+  it('importsOnly false keeps the Phase 3 wording', () => {
+    expect(
+      header({ a: 0, d: 3, paused: false, failed: 0, importsOnly: false }),
+    ).toBe('Searching Discogs · 3 left');
+    expect(
+      header({ a: 1, d: 3, paused: false, failed: 0, importsOnly: false }),
+    ).toBe('Working · 1 queued · Discogs 3 left');
+  });
+
+  it('the import wording keeps every count a number', () => {
+    expect(
+      headerParts({ a: 2, d: 3, paused: false, failed: 0, importsOnly: true })
+        .main,
+    ).toEqual(['Working · ', 2, ' queued · Adding to Discogs · ', 3, ' left']);
+  });
+
   it('marks every count as a number for the mono Num', () => {
     expect(headerParts({ a: 1, d: 3, paused: false, failed: 0 }).main).toEqual([
       'Working · ',
@@ -57,6 +86,7 @@ function status(over: Partial<StatusResponse> = {}): StatusResponse {
       backlog: 0,
       pausedUntil: null,
       failedSpines: 0,
+      imports: { left: 0, failed: 0 },
     },
     ...over,
   };
@@ -82,6 +112,38 @@ describe('headerInputs', () => {
     expect(headerInputs(data, 1000).failed).toBe(2);
   });
 
+  it('importsLeft and importsFailed come from discogs.imports', () => {
+    const data = status();
+    data.discogs.backlog = 5;
+    data.discogs.imports = { left: 2, failed: 4 };
+    expect(headerInputs(data, 1000)).toMatchObject({
+      importsLeft: 2,
+      importsFailed: 4,
+      importsOnly: false,
+    });
+  });
+
+  it('importsOnly only when the whole backlog (at least 1) is imports', () => {
+    const data = status();
+    data.discogs.backlog = 3;
+    data.discogs.imports = { left: 3, failed: 0 };
+    expect(headerInputs(data, 1000).importsOnly).toBe(true);
+    data.discogs.backlog = 0;
+    data.discogs.imports = { left: 0, failed: 2 };
+    expect(headerInputs(data, 1000).importsOnly).toBe(false);
+  });
+
+  it('a status without imports reads 0 and not imports only', () => {
+    const data = status();
+    data.discogs.backlog = 3;
+    delete (data.discogs as Partial<StatusResponse['discogs']>).imports;
+    expect(headerInputs(data, 1000)).toMatchObject({
+      importsLeft: 0,
+      importsFailed: 0,
+      importsOnly: false,
+    });
+  });
+
   it('paused while pausedUntil is in the future, with whole seconds rounded up', () => {
     const data = status();
     data.discogs.pausedUntil = 20_500;
@@ -101,8 +163,17 @@ describe('headerInputs', () => {
   });
 });
 
-function tooltip(input: Parameters<typeof discogsTooltipLines>[0]): string[] {
-  return discogsTooltipLines(input).map(partsText);
+type TooltipInput = Parameters<typeof discogsTooltipLines>[0];
+
+function tooltip(
+  input: Omit<TooltipInput, 'importsLeft' | 'importsFailed'> &
+    Partial<Pick<TooltipInput, 'importsLeft' | 'importsFailed'>>,
+): string[] {
+  return discogsTooltipLines({
+    importsLeft: 0,
+    importsFailed: 0,
+    ...input,
+  }).map(partsText);
 }
 
 describe('discogsTooltipLines', () => {
@@ -142,6 +213,49 @@ describe('discogsTooltipLines', () => {
   it('0 s left drops the countdown line', () => {
     expect(
       tooltip({ connected: true, d: 3, failedSpines: 1, pausedSeconds: 0 }),
+    ).toEqual(['Discogs — 3 left, 1 search failed']);
+  });
+
+  it('adds the collection line under the Discogs line when imports are in progress or failed', () => {
+    expect(
+      tooltip({
+        connected: true,
+        d: 3,
+        failedSpines: 0,
+        pausedSeconds: 12,
+        importsLeft: 2,
+        importsFailed: 1,
+      }),
+    ).toEqual([
+      'Discogs — 3 left, 0 searches failed',
+      'Collection — 2 being added, 1 failed',
+      'Discogs asked the app to slow down. Searching picks up again in 12 seconds.',
+    ]);
+    expect(
+      tooltip({
+        connected: true,
+        d: 0,
+        failedSpines: 0,
+        pausedSeconds: 0,
+        importsLeft: 0,
+        importsFailed: 3,
+      }),
+    ).toEqual([
+      'Discogs — 0 left, 0 searches failed',
+      'Collection — 0 being added, 3 failed',
+    ]);
+  });
+
+  it('drops the collection line when nothing is being added or failed', () => {
+    expect(
+      tooltip({
+        connected: true,
+        d: 3,
+        failedSpines: 1,
+        pausedSeconds: 0,
+        importsLeft: 0,
+        importsFailed: 0,
+      }),
     ).toEqual(['Discogs — 3 left, 1 search failed']);
   });
 });

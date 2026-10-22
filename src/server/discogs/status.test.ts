@@ -13,6 +13,9 @@ import { discogsStatus } from './status';
 // The Discogs part of /api/status (D-07, Pitfall 8): backlog is queued +
 // running discogs jobs; failedSpines counts active or orphaned spines whose
 // latest auto or again search failed, so a successful retry stops counting.
+// Plan 04-09: imports.left counts queued + running add_to_collection jobs
+// (part of the backlog) and imports.failed counts active or orphaned spines
+// whose latest import reads failed (IMP-04, UI-SPEC Header status).
 
 let clock = 1_800_000_000_000;
 
@@ -46,17 +49,37 @@ function spine(state = 'active'): string {
   return id;
 }
 
-function job(lane: string, status: string): string {
+function job(lane: string, status: string, type = 'x'): string {
   const id = newId();
   const now = Date.now();
   db()
     .prepare(
       `INSERT INTO jobs (id, lane, type, payload, status, run_after,
          created_at, updated_at)
-       VALUES (@id, @lane, 'x', '{}', @status, @now, @now, @now)`,
+       VALUES (@id, @lane, @type, '{}', @status, @now, @now, @now)`,
     )
-    .run({ id, lane, status, now });
+    .run({ id, lane, type, status, now });
   return id;
+}
+
+/** An imports row; jobStatus null leaves job_id empty. */
+function importRow(
+  spineId: string,
+  status: string,
+  jobStatus: string | null = null,
+): void {
+  clock += 1000;
+  const jobId = jobStatus
+    ? job('discogs', jobStatus, 'add_to_collection')
+    : null;
+  db()
+    .prepare(
+      `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
+         job_id, created_at, updated_at)
+       VALUES (@id, @spineId, 1031, 1, @status, @jobId, @createdAt,
+         @createdAt)`,
+    )
+    .run({ id: newId(), spineId, status, jobId, createdAt: clock });
 }
 
 function search(
@@ -155,6 +178,57 @@ describe('discogsStatus', () => {
     search(spine('superseded'), 'auto', 'failed');
     search(spine('dismissed'), 'auto', 'failed');
     expect(discogsStatus(db()).failedSpines).toBe(1);
+  });
+
+  it('imports.left counts queued plus running add_to_collection jobs only', () => {
+    job('discogs', 'queued', 'add_to_collection');
+    job('discogs', 'running', 'add_to_collection');
+    job('discogs', 'failed', 'add_to_collection');
+    job('discogs', 'succeeded', 'add_to_collection');
+    job('discogs', 'queued', 'search_spine');
+    const s = discogsStatus(db());
+    expect(s).toMatchObject({ backlog: 3, imports: { left: 2 } });
+  });
+
+  it('imports.failed counts a spine whose latest import failed', () => {
+    importRow(spine(), 'failed');
+    importRow(spine(), 'imported', 'succeeded');
+    importRow(spine(), 'pending', 'queued');
+    importRow(spine(), 'importing', 'running');
+    expect(discogsStatus(db()).imports?.failed).toBe(1);
+  });
+
+  it('imports.failed counts a pending or importing import whose job failed, was cancelled or is missing', () => {
+    importRow(spine(), 'pending', 'failed');
+    importRow(spine(), 'importing', 'cancelled');
+    importRow(spine(), 'pending', null);
+    expect(discogsStatus(db()).imports?.failed).toBe(3);
+  });
+
+  it('imports.failed follows the latest import only', () => {
+    const retried = spine();
+    importRow(retried, 'failed');
+    importRow(retried, 'imported', 'succeeded');
+    const again = spine();
+    importRow(again, 'imported', 'succeeded');
+    importRow(again, 'failed');
+    expect(discogsStatus(db()).imports?.failed).toBe(1);
+  });
+
+  it('imports.failed counts orphaned spines and skips superseded, dismissed or marked ones', () => {
+    importRow(spine('orphaned'), 'failed');
+    importRow(spine('superseded'), 'failed');
+    importRow(spine('dismissed'), 'failed');
+    const marked = spine();
+    importRow(marked, 'failed');
+    db()
+      .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+      .run(marked);
+    expect(discogsStatus(db()).imports?.failed).toBe(1);
+  });
+
+  it('imports carries counts only', () => {
+    expect(discogsStatus(db()).imports).toEqual({ left: 0, failed: 0 });
   });
 
   it('reports not connected and no pause with no sign-in stored', () => {
