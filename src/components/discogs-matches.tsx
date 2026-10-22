@@ -195,6 +195,7 @@ function Body({
     <CandidateList
       spineId={spine.id}
       spineNumber={spineNumber(spine)}
+      cropUrl={spine.crop?.url ?? null}
       candidates={candidates}
       total={discogs?.candidateCount ?? candidates.length}
     />

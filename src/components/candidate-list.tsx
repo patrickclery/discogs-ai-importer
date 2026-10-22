@@ -105,12 +105,15 @@ function AddError({ message }: { message: string | null }) {
 export function CandidateList({
   spineId,
   spineNumber,
+  cropUrl,
   candidates,
   total,
 }: {
   spineId: string;
   /** spineNumber(spine), for the owner-action event after Add. */
   spineNumber: number;
+  /** The spine's crop URL, for the duplicate dialog after Add. */
+  cropUrl: string | null;
   /** The inline candidates (SpineDiscogsDto.topCandidates). */
   candidates: readonly CandidateDto[];
   /** Every stored candidate, deduped (SpineDiscogsDto.candidateCount). */
@@ -126,6 +129,7 @@ export function CandidateList({
     <AddToCollectionButton
       spineId={spineId}
       spineNumber={spineNumber}
+      cropUrl={cropUrl}
       candidateId={c.id}
       cardPendingId={pendingId}
       onPendingChange={setPendingId}

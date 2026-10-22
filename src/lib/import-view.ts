@@ -190,7 +190,8 @@ export function changeMatchState(
  * the other spine's photo and number, done or still on its way.
  */
 export function duplicateDialogTitle(
-  _body: Pick<DuplicateBody, 'photo' | 'spineNumber' | 'done'>,
+  body: Pick<DuplicateBody, 'photo' | 'spineNumber' | 'done'>,
 ): string {
-  return '';
+  const verb = body.done ? 'Already imported' : 'Already being imported';
+  return `${verb} from ${body.photo}, spine #${body.spineNumber}`;
 }
