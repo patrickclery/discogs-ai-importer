@@ -22,7 +22,7 @@ status: all_fixed
 
 ## Fixed Issues
 
-### CR-01: Change match on a failed-with-intent import is reachable only through a Retry that POSTs
+### CR-01: Change match on a failed-with-intent import is reachable only through a Retry that POSTs the release the owner wants to drop
 
 **Files modified:** `src/server/jobs/handlers/add-to-collection.ts`, `src/server/jobs/handlers/index.ts`, `src/server/imports/store.ts`, `src/server/imports/queries.ts`, `src/lib/import-types.ts`, `src/lib/import-view.ts`, `src/components/confirmed-match.tsx`, `src/app/api/spines/[id]/import/route.ts`, plus tests
 **Commit:** 7c6fa53
@@ -44,7 +44,7 @@ status: all_fixed
   - Route: DELETE answers 202.
   - Read model: the `checking` flag.
 
-### WR-01: Re-scan merge, Dismiss and re-attach treat a failed-with-intent import as closed
+### WR-01: Re-scan merge, Dismiss and re-attach treat a failed import with a written intent as closed, which hides a copy that may be on Discogs
 
 **Files modified:** `src/server/imports/sql.ts` (new), `src/server/scan/merge.ts`, `src/server/scan/orphans.ts`, `src/lib/import-types.ts`, `src/components/dismiss-spine-button.tsx`, plus tests
 **Commit:** 68d9707
@@ -54,7 +54,7 @@ status: all_fixed
 - **Where it is used:** it replaces `status <> 'failed'` in the merge `keepSpine`, the re-attach `CANDIDATE` filter and the Dismiss `OPEN_IMPORT` check.
 - **Client side:** the client mirror `importMayBeOnDiscogs(dto)` drives the Dismiss button.
 
-### WR-02: retrySpine retries an import on a spine marked not on Discogs
+### WR-02: retrySpine retries an import on a spine the owner marked "not on Discogs"
 
 **Files modified:** `src/server/imports/store.ts`, `src/server/imports/store.test.ts`
 **Commit:** ced3a50
@@ -68,7 +68,7 @@ status: all_fixed
 **Status:** fixed
 **Applied fix:** `setNotOnDiscogs` answers `import_open` when the latest import matches `importMayBeOnDiscogsSql`. `canMarkNotOnDiscogs` mirrors this through `importMayBeOnDiscogs`.
 
-### WR-04: The adopt rule's time guard produces false negatives; for allow_duplicate that means a second POST
+### WR-04: The adopt rule's time guard produces false negatives, and for allow_duplicate imports that means a second POST
 
 **Files modified:** `src/server/discogs/collection.ts`, `src/server/jobs/handlers/add-to-collection.ts`, `src/server/imports/store.ts`, plus tests
 **Commit:** 28af24a
@@ -79,7 +79,7 @@ status: all_fixed
 - **allow_duplicate:** an import with `allow_duplicate` now holds `already_in_collection`, instead of POSTing, when an unplaced copy may come from an earlier POST.
 - **Add another copy:** it adds the held copies to the snapshot, so the next attempt neither re-holds nor adopts them.
 
-### WR-05: A local "Add another copy" is held while the other spine's add is unresolved
+### WR-05: A local "Add another copy" is held as already_in_collection while the other spine's add is still unresolved
 
 **Files modified:** `src/server/jobs/handlers/add-to-collection.ts`, `src/server/imports/store.ts` (doc), plus tests
 **Commit:** 251283d
@@ -89,7 +89,7 @@ status: all_fixed
 - **No mutual wait:** an import with an intent never waits, so two imports cannot wait on each other.
 - **No new flag:** I added no `local_duplicate` flag. The deferral alone closes the race.
 
-### WR-06: A spine with an open import and an older failed search reads "Failed"
+### WR-06: A spine with a held or waiting import and an older failed search reads "Failed", and Retry all failed cannot clear it
 
 **Files modified:** `src/lib/review-status.ts`, `src/lib/review-status.test.ts`, `src/app/api/spines/retry-failed/route.ts` (comment), `src/app/api/spines/retry-failed/route.test.ts` (comment)
 **Commit:** fe043d0
