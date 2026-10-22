@@ -33,6 +33,34 @@ const FAILED_SPINES_SQL = `
     AND (l.status IN ('failed', 'auth_failed')
       OR (l.status = 'queued' AND j.status = @failedJob))`;
 
+// The imports part of the backlog (Plan 04-09): add_to_collection jobs still
+// waiting or running.
+const IMPORTS_LEFT_SQL = `
+  SELECT COUNT(*) AS n FROM jobs
+  WHERE lane = @lane AND type = @type AND status IN ('queued', 'running')`;
+
+// The latest import per active or orphaned spine not marked not on Discogs
+// (the marked line wins on the card); it counts as failed when it ended
+// failed, or is still pending or importing while its job failed, was
+// cancelled or is missing (importPhaseOf, the card's own rule).
+const IMPORTS_FAILED_SQL = `
+  WITH latest AS (
+    SELECT i.status, i.job_id,
+      ROW_NUMBER() OVER (
+        PARTITION BY i.spine_id ORDER BY i.created_at DESC, i.id DESC
+      ) AS rn
+    FROM imports i
+    JOIN spines sp ON sp.id = i.spine_id
+    WHERE sp.state IN ('active', 'orphaned') AND sp.not_on_discogs = 0
+  )
+  SELECT COUNT(*) AS n
+  FROM latest l
+  LEFT JOIN jobs j ON j.id = l.job_id
+  WHERE l.rn = 1
+    AND (l.status = 'failed'
+      OR (l.status IN ('pending', 'importing')
+        AND (j.id IS NULL OR j.status IN ('failed', 'cancelled'))))`;
+
 /** A secrets file that cannot be read means not connected, never a 500. */
 function isConnected(): boolean {
   try {
@@ -53,10 +81,18 @@ export function discogsStatus(
   const failedSpines = (
     db.prepare(FAILED_SPINES_SQL).get({ failedJob: 'failed' }) as { n: number }
   ).n;
+  const importsLeft = (
+    db
+      .prepare(IMPORTS_LEFT_SQL)
+      .get({ lane: 'discogs', type: 'add_to_collection' }) as { n: number }
+  ).n;
+  const importsFailed = (db.prepare(IMPORTS_FAILED_SQL).get() as { n: number })
+    .n;
   return {
     connected: isConnected(),
     backlog,
     pausedUntil: discogsGate().pausedUntil(),
     failedSpines,
+    imports: { left: importsLeft, failed: importsFailed },
   };
 }

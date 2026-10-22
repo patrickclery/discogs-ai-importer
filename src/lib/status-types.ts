@@ -21,11 +21,15 @@ export type StatusResponse = {
    * Discogs part (D-07): backlog is queued + running on the discogs lane,
    * failedSpines the active or orphaned spines whose latest automatic
    * search failed; the pause field is the epoch ms a 429 pause ends, or null.
+   * imports (Plan 04-09): left is queued + running add_to_collection jobs (a
+   * part of backlog), failed the active or orphaned spines whose latest
+   * import reads failed. Counts only, never a username or release data.
    */
   discogs: {
     connected: boolean;
     backlog: number;
     pausedUntil: number | null;
     failedSpines: number;
+    imports: { left: number; failed: number };
   };
 };

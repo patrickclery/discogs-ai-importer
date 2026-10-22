@@ -163,6 +163,8 @@ export function StatusIndicator() {
       d: input.d,
       failedSpines: data.discogs?.failedSpines ?? 0,
       pausedSeconds: input.pausedSeconds,
+      importsLeft: input.importsLeft,
+      importsFailed: input.importsFailed,
     });
     tooltip = (
       <>

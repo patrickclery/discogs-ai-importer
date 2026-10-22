@@ -16,6 +16,8 @@
 // 2; one POST /api/spines/retry-failed {} answers { retried: 2, skipped: 0 },
 // and once the lane drains failed is 0, the TR-200 spine is pending again
 // and Juniper Vale is imported with exactly one 1031 copy in the fake.
+// (f) GET /api/status then carries discogs.imports { left: 0, failed: 0 }
+// and never the fake username.
 // Later plans add their own named steps; step letters are stable.
 // Run: node scripts/verify-review-queue.ts   (VERIFY_SKIP_BUILD=1 reuses the
 // build). It builds and starts from NEXT_DIST_DIR, default .next/verify, so
@@ -28,6 +30,7 @@ import {
   confirm,
   connectAndScan,
   discogsIdle,
+  FAKE_USERNAME,
   fakeState,
   type ImportCtx,
   spineByArtist,
@@ -348,6 +351,29 @@ async function stepRetryAllFailed(ctx: ImportCtx): Promise<void> {
   );
 }
 
+// (f) the header status counts imports, and only counts.
+async function stepStatusImports(ctx: ImportCtx): Promise<void> {
+  step('(f) GET /api/status has discogs.imports and no username');
+  const res = await fetch(`${ctx.baseUrl}/api/status`, { cache: 'no-store' });
+  assert(res.status === 200, `GET /api/status answered ${res.status}`);
+  const text = await res.text();
+  assert(
+    !text.includes(FAKE_USERNAME),
+    '/api/status contains the Discogs username',
+  );
+  const data = JSON.parse(text) as {
+    discogs?: { imports?: { left?: unknown; failed?: unknown } };
+  };
+  const imports = data.discogs?.imports;
+  assert(
+    JSON.stringify(imports) === JSON.stringify({ left: 0, failed: 0 }),
+    `discogs.imports is ${JSON.stringify(imports)}`,
+  );
+  check(
+    '/api/status discogs.imports is { left: 0, failed: 0 } after the retries; no username in the body',
+  );
+}
+
 runMain('verify-review-queue', async (onCleanup) => {
   const ctx = await startImportStack('verify-review-queue', onCleanup);
   const photoId = await stepInitialCounts(ctx);
@@ -355,6 +381,7 @@ runMain('verify-review-queue', async (onCleanup) => {
   await stepPage(ctx);
   await stepMarkedMoves(ctx);
   await stepRetryAllFailed(ctx);
+  await stepStatusImports(ctx);
   // Later plans insert their steps here.
 
   step('stop');
