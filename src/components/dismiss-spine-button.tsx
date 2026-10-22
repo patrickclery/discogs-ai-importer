@@ -16,6 +16,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
 import type { SpineDto } from '@/lib/scan-types';
 import { spineNumber } from '@/lib/spine-review';
@@ -23,7 +28,13 @@ import { spineNumber } from '@/lib/spine-review';
 // Dismiss an orphaned spine (UI-SPEC Dismiss confirm, D-16): the only
 // destructive action in Phase 2. The card disappears; its edits stay in the
 // database (A-21). Focus then moves to the next card's first field, or to the
-// section header's Re-scan button when no card follows.
+// section header's Re-scan button when no card follows. A spine with an
+// import that is not failed can't be dismissed (RESEARCH Pitfall 5, UI-SPEC
+// E14): the trigger is disabled with the reason in a tooltip.
+
+/** UI-SPEC Copywriting: the disabled Dismiss spine tooltip. */
+export const DISMISS_BLOCKED_REASON =
+  "Spines with a match being added or already added can't be dismissed.";
 
 /** Where focus goes once this card is gone: the next card, else Re-scan. */
 function focusTargetAfter(spineId: string): () => void {
@@ -62,6 +73,7 @@ export function DismissSpineButton({ spine }: { spine: SpineDto }) {
   const [error, setError] = useState<string | null>(null);
   const dismissed = useRef(false);
   const number = spineNumber(spine);
+  const blocked = spine.import !== null && spine.import.phase !== 'failed';
 
   async function confirm(e: MouseEvent<HTMLButtonElement>) {
     // Keep the dialog open until the request settles.
@@ -92,6 +104,30 @@ export function DismissSpineButton({ spine }: { spine: SpineDto }) {
     } finally {
       setPending(false);
     }
+  }
+
+  if (blocked) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users reach the disabled reason
+            tabIndex={0}
+            className="inline-flex max-w-full rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              disabled
+            >
+              Dismiss spine
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{DISMISS_BLOCKED_REASON}</TooltipContent>
+      </Tooltip>
+    );
   }
 
   return (

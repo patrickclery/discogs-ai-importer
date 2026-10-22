@@ -72,8 +72,9 @@ function oldItem(r: OldSpineRow): MatchItem {
  *   active; per field, an unedited value (value IS ai_value) takes the new
  *   read, an edited one keeps the owner's value while ai_value and
  *   confidence take the new read (D-15);
- * - unmatched old: superseded without edits, orphaned with any edit (old
- *   crop and detection kept, D-16);
+ * - unmatched old: orphaned with any edit, a non-failed import or the
+ *   not-on-Discogs mark (old crop and detection kept, D-16, Pitfall 5);
+ *   superseded otherwise;
  * - unmatched new: a new active spine created by this run.
  * Old spines in state active or orphaned take part, so an orphan found
  * again returns to active with its edits (A-19).
@@ -155,10 +156,21 @@ export function mergeRunIntoSpines(
        confidence = excluded.confidence,
        updated_at = excluded.updated_at`,
   );
-  const hasEdits = db.prepare(
-    `SELECT EXISTS (SELECT 1 FROM spine_fields
-       WHERE spine_id = @spineId AND ${fieldEdited('value', 'ai_value')})
-     AS edited`,
+  // RESEARCH Pitfall 5: an unmatched spine is kept as orphaned, never
+  // superseded, when the owner edited it, when it has an import that is not
+  // failed, or when it is marked not on Discogs. Otherwise it would vanish,
+  // its replacement would look un-imported, and the same disc could be
+  // confirmed and added a second time. A failed-only import does not keep it
+  // (A-04-16).
+  const keepSpine = db.prepare(
+    `SELECT (
+       EXISTS (SELECT 1 FROM spine_fields
+         WHERE spine_id = @spineId AND ${fieldEdited('value', 'ai_value')})
+       OR EXISTS (SELECT 1 FROM imports
+         WHERE spine_id = @spineId AND status <> 'failed')
+       OR EXISTS (SELECT 1 FROM spines
+         WHERE id = @spineId AND not_on_discogs = 1)
+     ) AS keep`,
   );
   const retire = db.prepare(
     `UPDATE spines SET state = @state, updated_at = @now WHERE id = @spineId`,
@@ -188,8 +200,8 @@ export function mergeRunIntoSpines(
   let superseded = 0;
   let orphaned = 0;
   for (const o of unmatchedOld) {
-    const { edited } = hasEdits.get({ spineId: o.key }) as { edited: number };
-    const state = edited === 1 ? 'orphaned' : 'superseded';
+    const { keep } = keepSpine.get({ spineId: o.key }) as { keep: number };
+    const state = keep === 1 ? 'orphaned' : 'superseded';
     retire.run({ state, now, spineId: o.key });
     if (state === 'orphaned') orphaned += 1;
     else superseded += 1;

@@ -25,6 +25,17 @@ export async function POST(
       { status: 404 },
     );
   }
+  if (result === 'has_import') {
+    // T-04-28 (RESEARCH Pitfall 5): its copy is, or may be, on Discogs.
+    return Response.json(
+      {
+        error: 'has_import',
+        message:
+          "Spines with a match being added or already added can't be dismissed.",
+      },
+      { status: 409 },
+    );
+  }
   if (result === 'conflict') {
     return Response.json(
       {
