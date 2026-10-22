@@ -34,6 +34,17 @@ export type CreateImportResult =
   | { status: 'retry_first' }
   | { status: 'no_candidate' };
 
+/** The other spine already holding the release (D-04), as the dialog shows it. */
+export type DuplicateOf = {
+  /** The other spine's photo file name. */
+  photo: string;
+  /** The other spine's number on its photo (#n). */
+  spineNumber: number;
+  cropUrl: string | null;
+  /** The other spine's import already finished. */
+  done: boolean;
+};
+
 export type ImportDbRow = {
   id: string;
   spine_id: string;
@@ -130,7 +141,7 @@ export function getImport(
  */
 export function createImport(
   db: Database.Database,
-  input: { spineId: string; candidateId: string },
+  input: { spineId: string; candidateId: string; allowDuplicate?: boolean },
 ): CreateImportResult {
   const tx = db.transaction((): CreateImportResult => {
     const spine = db

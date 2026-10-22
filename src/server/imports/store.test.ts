@@ -466,6 +466,145 @@ describe('enqueueImport (Pitfall 3, moved from Plan 04-01)', () => {
   });
 });
 
+/** The spine's photo name, #n and crop URL as the duplicate answer gives them. */
+function shownAs(spineId: string): {
+  photo: string;
+  spineNumber: number;
+  cropUrl: string | null;
+} {
+  const r = db()
+    .prepare(
+      `SELECT p.original_name AS photo, d.idx, d.crop_path FROM spines s
+       JOIN photos p ON p.id = s.photo_id
+       JOIN spine_detections d ON d.id = s.current_detection_id
+       WHERE s.id = ?`,
+    )
+    .get(spineId) as { photo: string; idx: number; crop_path: string | null };
+  return {
+    photo: r.photo,
+    spineNumber: r.idx + 1,
+    cropUrl: r.crop_path ? `/api/files/${r.crop_path}` : null,
+  };
+}
+
+describe('createImport local duplicate (D-04, IMP-03)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it.each([
+    ['pending', false],
+    ['importing', false],
+    ['imported', true],
+    ['already_in_collection', false],
+  ] as const)(
+    'another listed spine holding the release %s gives duplicate with its photo, #n, crop and done %s',
+    async (status, done) => {
+      const { spineIds } = await orphanScenario();
+      const other = confirm(spineIds[1]);
+      setImport(other.importId, { status });
+      const candidateId = seedCandidate(spineIds[0]);
+      const before = snapshot();
+      const res = createImport(db(), { spineId: spineIds[0], candidateId });
+      const shown = shownAs(spineIds[1]);
+      expect(shown.photo).toBe('shelf.jpg');
+      expect(shown.cropUrl).toMatch(/^\/api\/files\//);
+      expect(res).toEqual({ status: 'duplicate', ...shown, done });
+      expect(snapshot()).toBe(before);
+    },
+  );
+
+  it('an orphaned spine still listed counts as the other spine', async () => {
+    const { spineIds, orphanId } = await orphanScenario();
+    confirm(orphanId);
+    const res = createImport(db(), {
+      spineId: spineIds[0],
+      candidateId: seedCandidate(spineIds[0]),
+    });
+    expect(res.status).toBe('duplicate');
+  });
+
+  it('the oldest holder is the one named', async () => {
+    const { spineIds } = await orphanScenario();
+    const first = confirm(spineIds[2]);
+    setImport(first.importId, { created_at: 1_000 });
+    const second = confirm(spineIds[1]);
+    setImport(second.importId, { created_at: 2_000 });
+    const res = createImport(db(), {
+      spineId: spineIds[0],
+      candidateId: seedCandidate(spineIds[0]),
+    });
+    expect(res).toMatchObject({
+      status: 'duplicate',
+      spineNumber: shownAs(spineIds[2]).spineNumber,
+    });
+  });
+
+  it('allowDuplicate creates the import and leaves allow_duplicate 0', async () => {
+    const { spineIds } = await orphanScenario();
+    confirm(spineIds[1]);
+    const res = createImport(db(), {
+      spineId: spineIds[0],
+      candidateId: seedCandidate(spineIds[0]),
+      allowDuplicate: true,
+    });
+    expect(res.status).toBe('ok');
+    if (res.status !== 'ok') return;
+    expect(importRow(res.importId)).toMatchObject({
+      status: 'pending',
+      release_id: 1031,
+      allow_duplicate: 0,
+    });
+    expect(count('jobs', `type = 'add_to_collection'`)).toBe(2);
+  });
+
+  it('allowDuplicate false still answers duplicate', async () => {
+    const { spineIds } = await orphanScenario();
+    confirm(spineIds[1]);
+    const res = createImport(db(), {
+      spineId: spineIds[0],
+      candidateId: seedCandidate(spineIds[0]),
+      allowDuplicate: false,
+    });
+    expect(res.status).toBe('duplicate');
+  });
+
+  it('another release on another spine is no duplicate', async () => {
+    const { spineIds } = await orphanScenario();
+    confirm(spineIds[1], 2042);
+    const res = createImport(db(), {
+      spineId: spineIds[0],
+      candidateId: seedCandidate(spineIds[0]),
+    });
+    expect(res.status).toBe('ok');
+  });
+
+  it.each(['superseded', 'dismissed'])(
+    'the other spine %s gives no duplicate',
+    async (state) => {
+      const { spineIds } = await orphanScenario();
+      confirm(spineIds[1]);
+      db()
+        .prepare('UPDATE spines SET state = ? WHERE id = ?')
+        .run(state, spineIds[1]);
+      const res = createImport(db(), {
+        spineId: spineIds[0],
+        candidateId: seedCandidate(spineIds[0]),
+      });
+      expect(res.status).toBe('ok');
+    },
+  );
+
+  it("the other spine's failed import gives no duplicate", async () => {
+    const { spineIds } = await orphanScenario();
+    failedImport(spineIds[1]);
+    const res = createImport(db(), {
+      spineId: spineIds[0],
+      candidateId: seedCandidate(spineIds[0]),
+    });
+    expect(res.status).toBe('ok');
+  });
+});
+
 describe('createImport retry_first (D-07)', () => {
   useTempDataDir();
   useTempSecrets();
