@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-10-22T10:11:43.889Z"
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-10-22T10:19:07.579Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: 83d791dd067123c9113c11819af0838195325d1a
+state_head: d92d9f0385be4a735fe4443ec2eaf1eafab6bbbd
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 42
+  completed_plans: 43
   percent: 75
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 4 (Import & Review Queue) — EXECUTING
-Plan: 8 of 14
+Plan: 9 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 — Phase 4 execution started
 
@@ -100,6 +100,7 @@ Progress: [████████░░] 75%
 | Phase 04 P12 | 8min | 2 tasks | 9 files |
 | Phase 04 P03 | 5min | 2 tasks | 8 files |
 | Phase 04 P05 | 8 min | 2 tasks | 14 files |
+| Phase 04 P07 | 5 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -218,6 +219,9 @@ Recent decisions affecting current work:
 - [Phase 04]: reviewStatusOf follows D-10 literally (failed search beats an open import); getSpines counts/statusById/photoProgress ignore status and review filters
 - [Phase 04]: discogsActive also covers waiting/importing imports so /spines polls every 3 s during imports
 - [Phase 04]: Moved-out toast checks the cached query data at announce time (actions refetch before announcing), else one later update
+- [Phase 04]: 04-07: Re-scan keeps a spine with an edit, a non-failed import or the not-on-Discogs mark as orphaned; failed-only imports are superseded (A-04-16)
+- [Phase 04]: 04-07: Automatic Discogs searches skip spines with a non-failed import or the mark via AUTO_SEARCH_ELIGIBLE_SQL; explicit searches untouched (A-04-15)
+- [Phase 04]: 04-07: Dismiss of an orphan with a non-failed import returns has_import (409); the button is disabled with the UI-SPEC tooltip
 
 ### Pending Todos
 
@@ -237,6 +241,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T10:11:43.657Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-10-22T10:19:07.322Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None
