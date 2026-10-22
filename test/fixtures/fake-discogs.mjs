@@ -39,6 +39,24 @@
 //        been deleted.' } otherwise.
 //   GET  /img/{name}.jpeg  a small JPEG rendered once with sharp at startup.
 //        No rate-limit headers; never counted against the limit.
+// Collection (Plan 04-01, RESEARCH "Discogs API Facts"): an in-memory
+// collection, Map releaseId -> [{ instance_id, folder_id, date_added }],
+// with instance ids issued from 5001. Signed with a live access token only
+// (401 otherwise; revoked answers 401 too); a path naming another username
+// answers 403.
+//   GET  /users/{u}/collection/folders  { folders: [ { id 0, name 'All',
+//        count: every copy }, { id 1, name 'Uncategorized', count }, ...the
+//        folders set through /__control ] }, each with a resource_url.
+//   GET  /users/{u}/collection/releases/{id}  200 { pagination: { page 1,
+//        pages 1, per_page 50, items, urls {} }, releases } by ascending
+//        instance id; an empty list when the release is not owned or does
+//        not exist (like the live probe); id 0 answers a FastAPI-style 422
+//        { detail: [...], message }.
+//   POST /users/{u}/collection/folders/{f}/releases/{id}  folder 0 answers
+//        422, ids above 899999999 answer 404; otherwise it records a new
+//        copy (date_added at second resolution with a -07:00 offset) and
+//        answers 201 { instance_id, resource_url }. Every add POST counts
+//        in the state's posts.
 // Every API answer except an injected 429 carries X-Discogs-Ratelimit
 // (FAKE_DISCOGS_LIMIT, default 600 so tests run fast), -Remaining and -Used
 // over a moving 60 s window.
@@ -51,7 +69,15 @@
 //        (1 = the next; /img and /__control never count) with 429, an
 //        empty body and no rate-limit headers, carrying Retry-After when
 //        retryAfter (seconds) is a number; at5xx: N does the same with
-//        a 502. limit changes X-Discogs-Ratelimit. Answers the current state.
+//        a 502. limit changes X-Discogs-Ratelimit. collection: { [releaseId]:
+//        instances[] } seeds (or, with [], resets) those releases' copies;
+//        a seeded copy without instance_id gets the next one, folder_id
+//        defaults to 1 and date_added to now. folders: [{ id, name }] sets
+//        the extra folders listed after 0 and 1. Answers the current state,
+//        which also carries collection ({ [releaseId]: instances[] }) and
+//        posts (the number of add POSTs answered 201).
+// Log lines keep the request path, username included: the fake may see it;
+// the app's own error text may not.
 //   GET  /__control  the current state, including the last oauth_callback
 //        received (a URL, not a secret).
 // Issued values carry fixed prefixes (fake-rt-, fake-rts-, fake-verifier-,
@@ -105,6 +131,19 @@ const requestTokens = new Map();
 const accessTokens = new Map();
 /** timestamps of API requests in the last 60 s */
 let hits = [];
+/** releaseId -> [{ instance_id, folder_id, date_added }] */
+const collection = new Map();
+let nextInstance = 5001;
+/** Add POSTs answered 201. */
+let posts = 0;
+/** Folders listed after 0 and 1: [{ id, name }]. */
+let extraFolders = [];
+
+/** ISO 8601 at second resolution with a -07:00 offset, like Discogs. */
+function dateAdded(ms = Date.now()) {
+  const shifted = new Date(ms - 7 * 3_600_000).toISOString();
+  return `${shifted.slice(0, 19)}-07:00`;
+}
 
 const enc = (s) =>
   encodeURIComponent(s).replace(
@@ -215,7 +254,39 @@ function readBody(req) {
 }
 
 function controlState() {
-  return { ...modes, lastCallback, pendingRequestTokens: requestTokens.size };
+  return {
+    ...modes,
+    lastCallback,
+    pendingRequestTokens: requestTokens.size,
+    collection: Object.fromEntries(
+      [...collection].map(([id, list]) => [String(id), list]),
+    ),
+    posts,
+  };
+}
+
+function seedCollection(patch) {
+  for (const [key, list] of Object.entries(patch ?? {})) {
+    const releaseId = Number(key);
+    if (!Number.isInteger(releaseId) || releaseId < 1) continue;
+    if (!Array.isArray(list) || list.length === 0) {
+      collection.delete(releaseId);
+      continue;
+    }
+    collection.set(
+      releaseId,
+      list
+        .map((i) => ({
+          instance_id: Number.isInteger(i?.instance_id)
+            ? i.instance_id
+            : nextInstance++,
+          folder_id: Number.isInteger(i?.folder_id) ? i.folder_id : 1,
+          date_added:
+            typeof i?.date_added === 'string' ? i.date_added : dateAdded(),
+        }))
+        .sort((a, b) => a.instance_id - b.instance_id),
+    );
+  }
 }
 
 async function handleControl(req, res) {
@@ -244,6 +315,14 @@ async function handleControl(req, res) {
     }
     if (Number.isInteger(patch.limit) && patch.limit > 0) {
       modes.limit = patch.limit;
+    }
+    if (patch.collection && typeof patch.collection === 'object') {
+      seedCollection(patch.collection);
+    }
+    if (Array.isArray(patch.folders)) {
+      extraFolders = patch.folders
+        .filter((f) => Number.isInteger(f?.id) && f.id > 1)
+        .map((f) => ({ id: f.id, name: String(f.name ?? `Folder ${f.id}`) }));
     }
   }
   sendJson(res, 200, {}, controlState());
@@ -482,6 +561,138 @@ function handleRelease(res, idText, rate, base) {
   return 200;
 }
 
+function folderCount(folderId) {
+  let n = 0;
+  for (const list of collection.values()) {
+    for (const i of list) if (folderId === 0 || i.folder_id === folderId) n++;
+  }
+  return n;
+}
+
+function handleFolders(res, user, rate) {
+  const folders = [
+    { id: 0, name: 'All' },
+    { id: 1, name: 'Uncategorized' },
+    ...extraFolders,
+  ].map((f) => ({
+    id: f.id,
+    name: f.name,
+    count: folderCount(f.id),
+    resource_url: `https://api.discogs.com/users/${user}/collection/folders/${f.id}`,
+  }));
+  sendJson(res, 200, rate, { folders });
+  return 200;
+}
+
+function handleCollectionRelease(res, idText, rate) {
+  const id = Number(idText);
+  if (!/^\d+$/.test(idText) || id < 1) {
+    sendJson(res, 422, rate, {
+      detail: [
+        {
+          type: 'greater_than_equal',
+          loc: ['path', 'release_id'],
+          msg: 'Input should be greater than or equal to 1',
+          input: idText,
+        },
+      ],
+      message: 'See "detail" for validation errors.',
+    });
+    return 422;
+  }
+  const releases = (collection.get(id) ?? []).map((i) => ({
+    id,
+    instance_id: i.instance_id,
+    folder_id: i.folder_id,
+    date_added: i.date_added,
+    rating: 0,
+    basic_information: { id, title: `Release ${id}` },
+  }));
+  sendJson(res, 200, rate, {
+    pagination: {
+      page: 1,
+      pages: 1,
+      per_page: 50,
+      items: releases.length,
+      urls: {},
+    },
+    releases,
+  });
+  return 200;
+}
+
+async function handleAdd(req, res, user, folderText, idText, rate) {
+  await readBody(req);
+  const folderId = Number(folderText);
+  const id = Number(idText);
+  if (folderId === 0) {
+    sendJson(res, 422, rate, {
+      detail: [
+        {
+          type: 'greater_than_equal',
+          loc: ['path', 'folder_id'],
+          msg: 'Input should be greater than or equal to 1',
+          input: folderText,
+        },
+      ],
+      message: 'See "detail" for validation errors.',
+    });
+    return 422;
+  }
+  if (id < 1 || id > 899_999_999) {
+    sendJson(res, 404, rate, {
+      message: 'That release does not exist or may have been deleted.',
+    });
+    return 404;
+  }
+  const instance = {
+    instance_id: nextInstance++,
+    folder_id: folderId,
+    date_added: dateAdded(),
+  };
+  collection.set(id, [...(collection.get(id) ?? []), instance]);
+  posts += 1;
+  sendJson(res, 201, rate, {
+    instance_id: instance.instance_id,
+    resource_url: `https://api.discogs.com/users/${user}/collection/folders/${folderId}/release/${id}/instance/${instance.instance_id}`,
+  });
+  return 201;
+}
+
+/** Answers a /users/{u}/collection/... request; null when none matches. */
+async function answerCollection(req, res, url, oauth, rate) {
+  const m =
+    /^\/users\/([^/]+)\/collection\/(folders|releases\/([^/]+)|folders\/(\d+)\/releases\/(\d+))$/.exec(
+      url.pathname,
+    );
+  if (!m) return null;
+  const isAdd = m[4] !== undefined;
+  const isFolders = m[2] === 'folders';
+  if (isAdd ? req.method !== 'POST' : req.method !== 'GET') {
+    sendJson(res, 405, rate, { message: 'Method not allowed.' });
+    return 405;
+  }
+  if (!accessOk(oauth)) {
+    unauthorized(res, rate);
+    return 401;
+  }
+  let user;
+  try {
+    user = decodeURIComponent(m[1]);
+  } catch {
+    user = null;
+  }
+  if (user !== USERNAME) {
+    sendJson(res, 403, rate, {
+      message: "You don't have permission to access this resource.",
+    });
+    return 403;
+  }
+  if (isFolders) return handleFolders(res, USERNAME, rate);
+  if (isAdd) return handleAdd(req, res, USERNAME, m[4], m[5], rate);
+  return handleCollectionRelease(res, m[3], rate);
+}
+
 /** Counts an injected failure down; true when this request is the one. */
 function injected(key) {
   if (modes[key] === null) return false;
@@ -560,6 +771,8 @@ async function answerApi(req, res, url, oauth, rate) {
   if (release && req.method === 'GET') {
     return handleRelease(res, release[1], rate, base);
   }
+  const collectionStatus = await answerCollection(req, res, url, oauth, rate);
+  if (collectionStatus !== null) return collectionStatus;
   switch (url.pathname) {
     case '/oauth/request_token':
       handleRequestToken(res, oauth, rate);

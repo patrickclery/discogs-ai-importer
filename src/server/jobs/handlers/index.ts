@@ -3,6 +3,7 @@ import { enqueueMissingSearches } from '../../discogs/enqueue';
 import { discogsGate } from '../../discogs/gate';
 import { reconcileVisionRuns } from '../../scan/reconcile';
 import type { JobHandler, Lane } from '../types';
+import { runAddToCollection } from './add-to-collection';
 import { runFetchRelease } from './fetch-release';
 import { runNoop } from './noop';
 import { runScanPhoto } from './scan-photo';
@@ -24,6 +25,12 @@ export const handlers: Record<string, JobHandler> = {
   fetch_release: {
     run: (payload, ctx) => runFetchRelease(payload, ctx),
     timeoutMs: 60_000,
+  },
+  // Discogs lane: one paced GET of the owner's copies, then at most one add
+  // POST (D-07), plus the gate waits between them.
+  add_to_collection: {
+    run: (payload, ctx) => runAddToCollection(payload, ctx),
+    timeoutMs: 90_000,
   },
 };
 

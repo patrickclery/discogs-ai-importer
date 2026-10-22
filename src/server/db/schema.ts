@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   index,
   integer,
@@ -13,6 +14,7 @@ import {
   SEARCH_STAGES,
   SEARCH_STATUSES,
 } from '@/lib/discogs-types';
+import { IMPORT_STATUSES } from '@/lib/import-types';
 import { PHOTO_STATUSES, SPINE_STATES } from '@/lib/scan-types';
 import { SPINE_FIELDS } from '@/lib/vision-contract';
 
@@ -178,6 +180,10 @@ export const spines = sqliteTable(
     currentDetectionId: text('current_detection_id'),
     createdRunId: text('created_run_id'),
     state: text('state', { enum: SPINE_STATES }).notNull().default('active'),
+    /** The owner marked it as not on Discogs (REV-05, D-14). */
+    notOnDiscogs: integer('not_on_discogs', { mode: 'boolean' })
+      .notNull()
+      .default(false),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
@@ -283,3 +289,61 @@ export const discogsCandidates = sqliteTable(
 
 export type DiscogsSearchRow = typeof discogsSearches.$inferSelect;
 export type DiscogsCandidateRow = typeof discogsCandidates.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Phase 4: import (D-07, D-08). One row per confirmed release per spine. A
+// failed row stays as history; at most one non-failed row per spine.
+
+/** One confirmed release being added to (or added to) the Discogs collection. */
+export const imports = sqliteTable(
+  'imports',
+  {
+    id: text('id').primaryKey(),
+    spineId: text('spine_id')
+      .notNull()
+      .references(() => spines.id),
+    /** The confirmed candidate (D-01); no FK: a re-search replaces it. */
+    candidateId: text('candidate_id'),
+    releaseId: integer('release_id').notNull(),
+    /** The folder this import used (D-03); at least 1. */
+    folderId: integer('folder_id').notNull(),
+    status: text('status', { enum: IMPORT_STATUSES })
+      .notNull()
+      .default('pending'),
+    /** The owner chose "Add another copy" (D-05). */
+    allowDuplicate: integer('allow_duplicate', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    /** Reconciled after an ambiguous POST (D-07). */
+    adopted: integer('adopted', { mode: 'boolean' }).notNull().default(false),
+    /** "Link existing copy" (D-05). */
+    linked: integer('linked', { mode: 'boolean' }).notNull().default(false),
+    instanceId: integer('instance_id'),
+    /** Set just before a POST (epoch ms). */
+    intentAt: integer('intent_at'),
+    /** JSON array of the instance ids seen right before the POST. */
+    snapshotJson: text('snapshot_json'),
+    /** JSON ExistingInstance[] for already_in_collection, ascending. */
+    existingJson: text('existing_json'),
+    /** JSON ImportCandidateSnapshot of the confirmed candidate. */
+    candidateJson: text('candidate_json'),
+    postCount: integer('post_count').notNull().default(0),
+    errorKind: text('error_kind'),
+    error: text('error'),
+    jobId: text('job_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    importedAt: integer('imported_at'),
+  },
+  (t) => [
+    uniqueIndex('imports_spine_open_idx')
+      .on(t.spineId)
+      .where(sql`${t.status} <> 'failed'`),
+    uniqueIndex('imports_instance_idx')
+      .on(t.instanceId)
+      .where(sql`${t.instanceId} IS NOT NULL`),
+    index('imports_release_idx').on(t.releaseId),
+  ],
+);
+
+export type ImportRow = typeof imports.$inferSelect;

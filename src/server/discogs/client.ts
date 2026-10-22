@@ -7,17 +7,28 @@ import { buildOAuthHeader } from './oauth';
 
 // The one way this app talks to api.discogs.com (D-04, D-05, D-06). Every
 // request carries the project User-Agent, waits on the process-wide gate and
-// is classified into one of the error classes below. Read-only by
-// construction: only GET is sent, plus the single POST that finishes
-// connecting (T-03-09). Error messages carry the status, method and path
-// only: never headers, the query, the body or a secret (T-03-04). Nothing
-// here logs the request.
+// is classified into one of the error classes below. It reads only, except
+// for two POSTs: the token exchange that finishes connecting (T-03-09) and
+// the single add-to-collection POST (D-06), which needs the stored sign-in,
+// a folder of 1 or more and the stored username in the path. Every other
+// method or path is refused before any request. Error messages carry the
+// status, method and path only, with the username segment written as :u:
+// never headers, the query, the body, the username or a secret (T-03-04,
+// T-04-04). Nothing here logs the request.
 
 const REQUEST_TIMEOUT_MS = 20_000;
 /** Pause when a 429 carries no usable Retry-After (D-06). */
 const DEFAULT_RATE_LIMIT_PAUSE_MS = 60_000;
-/** The only non-GET request allowed in this phase. */
+/** The POST that finishes connecting (T-03-09). */
 const ACCESS_TOKEN_PATH = '/oauth/access_token';
+/**
+ * The add-to-collection POST (D-06),
+ * POST /users/{username}/collection/folders/{folderId}/releases/{releaseId}:
+ * a folder of 1 or more (folder 0, "All", is read-only) and a positive
+ * release id.
+ */
+const ADD_TO_FOLDER =
+  /^\/users\/([^/]+)\/collection\/folders\/[1-9]\d{0,9}\/releases\/[1-9]\d{0,11}$/;
 
 export type DiscogsAuthMode = 'none' | 'consumer' | 'request' | 'oauth';
 
@@ -103,8 +114,23 @@ export class DiscogsUnavailableError extends Error {
   }
 }
 
-function isAllowed(method: string, path: string): boolean {
-  return method === 'GET' || (method === 'POST' && path === ACCESS_TOKEN_PATH);
+/**
+ * GET anything; POST only the token exchange and the add to a folder of the
+ * stored user, signed with the stored sign-in. Everything else is refused.
+ */
+function isAllowed(req: DiscogsRequest, method: string): boolean {
+  if (method === 'GET') return true;
+  if (method !== 'POST') return false;
+  if (req.path === ACCESS_TOKEN_PATH) return true;
+  const add = ADD_TO_FOLDER.exec(req.path);
+  if (!add || req.auth !== 'oauth') return false;
+  const username = getDiscogsAuth()?.username;
+  return !!username && add[1] === encodeURIComponent(username);
+}
+
+/** The path with the segment after /users/ written as :u (T-04-04). */
+export function redactUserPath(path: string): string {
+  return path.replace(/^\/users\/[^/]*/, '/users/:u');
 }
 
 /** A short, secret-free cause such as ECONNREFUSED, when there is one. */
@@ -176,10 +202,10 @@ export async function discogsFetch(
   deps: DiscogsFetchDeps = {},
 ): Promise<DiscogsResponse> {
   const method = (req.method ?? 'GET').toUpperCase();
-  const label = `Discogs ${method} ${req.path}`;
-  // Phase prohibition: nothing is ever written to the owner's account.
-  if (!isAllowed(method, req.path)) {
-    throw new DiscogsRequestError(`${label} refused: read-only client`);
+  const label = `Discogs ${method} ${redactUserPath(req.path)}`;
+  // The only write to the owner's account is the add POST (D-06).
+  if (!isAllowed(req, method)) {
+    throw new DiscogsRequestError(`${label} refused: not an allowed request`);
   }
   const url = buildUrl(req);
   const authorization = authHeader(req);
