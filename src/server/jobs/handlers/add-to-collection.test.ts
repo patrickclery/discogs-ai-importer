@@ -11,11 +11,15 @@ import {
   saveDiscogsAuth,
 } from '../../discogs/auth';
 import { type DiscogsGate, resetDiscogsGateForTests } from '../../discogs/gate';
-import { enqueueImport } from '../../imports/store';
+import { cancelImport, enqueueImport } from '../../imports/store';
 import { SECRET_ENV_NAMES, saveSecrets } from '../../secrets';
 import { claimNext, failOrRetry } from '../queue';
 import type { JobContext } from '../types';
-import { runAddToCollection } from './add-to-collection';
+import {
+  CHECK_UNSURE_REASON,
+  runAddToCollection,
+  runCheckImport,
+} from './add-to-collection';
 
 // add_to_collection (D-05, D-07, D-09, IMP-03, IMP-04): every attempt reads
 // the owner's copies first, adopts a copy its own earlier POST made, holds a
@@ -349,7 +353,7 @@ describe('add_to_collection handler', () => {
     });
   });
 
-  it('a 429 on the add defers and leaves the import importing', async () => {
+  it('a 429 on the add defers and takes back the intent it wrote: Discogs created nothing (CR-01)', async () => {
     seedSpine();
     const { importId, ctx } = queuedImport();
     const { stub, result } = run(
@@ -363,9 +367,81 @@ describe('add_to_collection handler', () => {
     const err = await errorOf(result);
     expect(err.name).toBe('JobDeferredError');
     expect(stub.posts()).toHaveLength(1);
-    const row = importRow(importId);
-    expect(row.status).toBe('importing');
-    expect(row.intent_at).not.toBeNull();
+    expect(importRow(importId)).toMatchObject({
+      status: 'pending',
+      intent_at: null,
+      snapshot_json: null,
+      post_count: 0,
+    });
+  });
+
+  it("a 429 on a retry's add restores the earlier intent, not none (CR-01)", async () => {
+    seedSpine();
+    const intentAt = Date.now() - 5_000;
+    const { importId, ctx } = queuedImport({
+      status: 'importing',
+      intentAt,
+      snapshot: [],
+      postCount: 1,
+    });
+    const { stub, result } = run(
+      importId,
+      ctx,
+      route(
+        () => copiesResponse([]),
+        () => new Response('', { status: 429 }),
+      ),
+    );
+    await expect(result).rejects.toMatchObject({ name: 'JobDeferredError' });
+    expect(stub.posts()).toHaveLength(1);
+    expect(importRow(importId)).toMatchObject({
+      status: 'importing',
+      intent_at: intentAt,
+      snapshot_json: '[]',
+      post_count: 1,
+    });
+  });
+
+  it('a pause set after the read defers before the intent: no intent, no POST (CR-01)', async () => {
+    seedSpine();
+    const { importId, ctx } = queuedImport();
+    const { stub, result } = run(importId, ctx, (call) => {
+      if (call.method === 'POST') return added(7001);
+      // Another request's 429 pauses the gate while this read is answered.
+      gate.pause(5_000);
+      return copiesResponse([]);
+    });
+    await expect(result).rejects.toMatchObject({ name: 'JobDeferredError' });
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId)).toMatchObject({
+      status: 'pending',
+      intent_at: null,
+      post_count: 0,
+    });
+  });
+
+  it('a 404 on the read of an import whose intent is written fails other, never rejected (CR-01)', async () => {
+    seedSpine();
+    const { importId, ctx } = queuedImport({
+      status: 'importing',
+      intentAt: Date.now() - 5_000,
+      snapshot: [],
+      postCount: 1,
+    });
+    const { stub, result } = run(
+      importId,
+      ctx,
+      route(
+        () => status(404),
+        () => added(7001),
+      ),
+    );
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId)).toMatchObject({
+      status: 'failed',
+      error_kind: 'other',
+    });
   });
 
   it('a 401 on the read ends the import failed with auth and releases the dedupe key', async () => {
@@ -878,5 +954,171 @@ describe('add_to_collection handler', () => {
       status: 'importing',
       error_kind: null,
     });
+  });
+});
+
+describe('check_import (Change match on a failed import that may have landed, CR-01)', () => {
+  useTempDataDir();
+  useTempSecrets();
+  let gate: DiscogsGate;
+  let clock: ReturnType<typeof fakeClock>;
+
+  beforeEach(() => {
+    clock = fakeClock();
+    gate = resetDiscogsGateForTests(clock);
+  });
+
+  /** A failed import with an intent, Change match sent, its check claimed. */
+  function checkingImport(seed: ImportSeed = {}): {
+    importId: string;
+    ctx: JobContext;
+  } {
+    const importId = insertImport({
+      status: 'failed',
+      intentAt: Date.now() - 5_000,
+      snapshot: [6001],
+      postCount: 1,
+      errorKind: 'unavailable',
+      ...seed,
+    });
+    const res = cancelImport(getDb().$client, seed.spineId ?? SPINE);
+    expect(res.status).toBe('checking');
+    const claimed = claimNext('discogs');
+    if (!claimed) throw new Error('no job claimed');
+    expect(claimed.type).toBe('check_import');
+    return { importId, ctx: ctxOf(claimed) };
+  }
+
+  function check(importId: string, ctx: JobContext, router: Router) {
+    const stub = stubFetch(router);
+    const result = runCheckImport({ importId }, ctx, {
+      fetch: { fetchImpl: stub.fetchImpl, gate },
+    });
+    return { stub, result };
+  }
+
+  const preexisting = () => ({
+    instance_id: 6001,
+    date_added: discogsDate(Date.now() - 3_600_000),
+  });
+
+  it('nothing landed: one read, never a POST, the import is deleted and the key freed', async () => {
+    seedSpine();
+    const { importId, ctx } = checkingImport();
+    const { stub, result } = check(
+      importId,
+      ctx,
+      route(
+        () => copiesResponse([preexisting()]),
+        () => added(7001),
+      ),
+    );
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.calls).toEqual([{ method: 'GET', path: GET_PATH }]);
+    expect(
+      getDb()
+        .$client.prepare('SELECT 1 FROM imports WHERE id = ?')
+        .get(importId),
+    ).toBeUndefined();
+    expect(dedupeKey(ctx.job.id)).toBeNull();
+  });
+
+  it('a copy that landed is adopted, never a POST', async () => {
+    seedSpine();
+    const { importId, ctx } = checkingImport();
+    const { stub, result } = check(
+      importId,
+      ctx,
+      route(
+        () => copiesResponse([preexisting(), { instance_id: 7001 }]),
+        () => added(7002),
+      ),
+    );
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId)).toMatchObject({
+      status: 'imported',
+      instance_id: 7001,
+      adopted: 1,
+      post_count: 1,
+    });
+  });
+
+  it('more than one page of copies cannot prove nothing landed: failed other, row kept, no POST', async () => {
+    seedSpine();
+    const { importId, ctx } = checkingImport();
+    const { stub, result } = check(importId, ctx, (call) => {
+      if (call.method === 'POST') return added(7001);
+      return new Response(
+        JSON.stringify({
+          pagination: { page: 1, pages: 2, per_page: 50, items: 51, urls: {} },
+          releases: [],
+        }),
+        { status: 200 },
+      );
+    });
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId)).toMatchObject({
+      status: 'failed',
+      error_kind: 'other',
+      error: CHECK_UNSURE_REASON,
+    });
+    expect(dedupeKey(ctx.job.id)).toBeNull();
+  });
+
+  it('a 404 on the read fails other, never rejected, so Change match stays refused', async () => {
+    seedSpine();
+    const { importId, ctx } = checkingImport();
+    const { stub, result } = check(
+      importId,
+      ctx,
+      route(
+        () => status(404),
+        () => added(7001),
+      ),
+    );
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId)).toMatchObject({
+      status: 'failed',
+      error_kind: 'other',
+    });
+    expect(cancelImport(getDb().$client, SPINE).status).toBe('checking');
+  });
+
+  it('a 429 on the read defers and leaves the check pending', async () => {
+    seedSpine();
+    const { importId, ctx } = checkingImport();
+    const { stub, result } = check(
+      importId,
+      ctx,
+      route(
+        () => new Response('', { status: 429 }),
+        () => added(7001),
+      ),
+    );
+    await expect(result).rejects.toMatchObject({ name: 'JobDeferredError' });
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId).status).toBe('pending');
+  });
+
+  it('a check whose import was re-queued by another job does nothing', async () => {
+    seedSpine();
+    const { importId, ctx } = checkingImport();
+    getDb()
+      .$client.prepare(`UPDATE imports SET job_id = 'other-job' WHERE id = ?`)
+      .run(importId);
+    const { stub, result } = check(
+      importId,
+      ctx,
+      route(
+        () => copiesResponse([]),
+        () => added(7001),
+      ),
+    );
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.calls).toHaveLength(0);
+    expect(importRow(importId).status).toBe('pending');
   });
 });

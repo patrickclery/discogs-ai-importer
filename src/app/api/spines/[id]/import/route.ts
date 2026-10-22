@@ -143,8 +143,11 @@ export async function POST(
 
 /**
  * Change match (D-02): DELETE undoes the confirmed match only while nothing
- * can have reached Discogs (cancelImport); otherwise 409 started and nothing
- * changes. Same JSON-only guard as POST, with an empty strict body (T-04-16).
+ * can have reached Discogs (cancelImport). A failed import whose POST may
+ * have landed answers 202 checking (CR-01): a check_import job reads the
+ * owner's copies, never POSTs, and finishes the change when nothing landed.
+ * Otherwise 409 started and nothing changes. Same JSON-only guard as POST,
+ * with an empty strict body (T-04-16).
  */
 export async function DELETE(
   req: Request,
@@ -164,6 +167,8 @@ export async function DELETE(
         'started',
         "It's already being added to Discogs, so the match can't be changed now.",
       );
+    case 'checking':
+      return Response.json({ checking: true }, { status: 202 });
     default:
       return Response.json({ cancelled: true }, { status: 200 });
   }

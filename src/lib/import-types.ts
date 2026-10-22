@@ -126,6 +126,11 @@ export type ImportDto = {
   failure: ImportFailure | null;
   canChangeMatch: boolean;
   canRetry: boolean;
+  /**
+   * Change match is checking the owner's copies before it finishes (CR-01):
+   * a check_import job, never a POST, is waiting or running for it.
+   */
+  checking: boolean;
 };
 
 /**

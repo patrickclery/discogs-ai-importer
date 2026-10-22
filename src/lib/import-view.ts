@@ -48,10 +48,12 @@ export type ImportStateTone = 'waiting' | 'importing' | 'success';
  * was added to.
  */
 export function importStateLine(
-  dto: Pick<ImportDto, 'phase' | 'folderName' | 'linked' | 'importedAt'>,
+  dto: Pick<ImportDto, 'phase' | 'folderName' | 'linked' | 'importedAt'> &
+    Partial<Pick<ImportDto, 'checking'>>,
   now: number,
 ): { tone: ImportStateTone; text: string } | null {
   const folder = addFolderName(dto.folderName);
+  if (dto.checking) return { tone: 'importing', text: CHECKING_LINE };
   switch (dto.phase) {
     case 'waiting':
       return {
@@ -84,10 +86,13 @@ export function importStateLine(
   }
 }
 
+/** Change match is checking the owner's copies first (CR-01). */
+export const CHECKING_LINE =
+  'Checking your Discogs collection before changing the match. Nothing is added.';
+export const CHECKING_TOOLTIP = 'Checking your Discogs collection first.';
+
 export const BEING_ADDED_TOOLTIP =
   "It's being added now. Wait for it to finish.";
-export const RETRY_FIRST_TOOLTIP =
-  'Retry first. Discogs may already have added it.';
 /** The 409 started answer to Change match (same copy as the route). */
 export const CHANGE_STARTED_ERROR =
   "It's already being added to Discogs, so the match can't be changed now.";
@@ -168,20 +173,27 @@ export type ChangeMatchState = {
 /**
  * Change match follows the API's canChangeMatch (the same rule the DELETE
  * route applies, so the card never offers a change after something may
- * have reached Discogs). A failed import that may have been added says to
- * retry first (D-07 reconcile path); anything else is being added now.
+ * have reached Discogs). A failed import that may have been added is
+ * offered too: its DELETE checks the owner's copies first and never adds
+ * anything (CR-01). Anything else is being added now, or being checked.
  */
 export function changeMatchState(
-  dto: Pick<ImportDto, 'phase' | 'canChangeMatch'>,
+  dto: Pick<ImportDto, 'phase' | 'canChangeMatch'> &
+    Partial<Pick<ImportDto, 'checking'>>,
 ): ChangeMatchState {
   if (dto.phase === 'imported') {
     return { show: false, enabled: false, tooltip: null };
   }
   if (dto.canChangeMatch) return { show: true, enabled: true, tooltip: null };
+  // A failed import that may have been added stays clickable: the DELETE
+  // checks the owner's copies first and never adds anything (CR-01).
+  if (dto.phase === 'failed') {
+    return { show: true, enabled: true, tooltip: null };
+  }
   return {
     show: true,
     enabled: false,
-    tooltip: dto.phase === 'failed' ? RETRY_FIRST_TOOLTIP : BEING_ADDED_TOOLTIP,
+    tooltip: dto.checking ? CHECKING_TOOLTIP : BEING_ADDED_TOOLTIP,
   };
 }
 

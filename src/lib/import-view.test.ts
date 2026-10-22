@@ -9,6 +9,8 @@ import {
   alreadyLine,
   BEING_ADDED_TOOLTIP,
   CHANGE_STARTED_ERROR,
+  CHECKING_LINE,
+  CHECKING_TOOLTIP,
   CONNECT_FIRST,
   changeMatchState,
   duplicateDialogTitle,
@@ -16,7 +18,6 @@ import {
   importStateLine,
   NOT_ON_DISCOGS_ERROR,
   RECONNECT_FIRST,
-  RETRY_FIRST_TOOLTIP,
 } from './import-view';
 
 const NOW = Date.UTC(2026, 9, 22, 12, 0, 0);
@@ -46,6 +47,7 @@ function dto(over: Partial<ImportDto> = {}): ImportDto {
     failure: null,
     canChangeMatch: true,
     canRetry: false,
+    checking: false,
     ...over,
   };
 }
@@ -173,6 +175,15 @@ describe('importStateLine', () => {
       null,
     );
   });
+
+  it('a Change match that is checking the collection says so, never "adding" (CR-01)', () => {
+    expect(
+      importStateLine(dto({ phase: 'importing', checking: true }), NOW),
+    ).toEqual({ tone: 'importing', text: CHECKING_LINE });
+    expect(CHECKING_LINE).toBe(
+      'Checking your Discogs collection before changing the match. Nothing is added.',
+    );
+  });
 });
 
 describe('importFailureLine (D-09)', () => {
@@ -262,13 +273,18 @@ describe('changeMatchState (D-02)', () => {
     );
   });
 
-  it('a failed import without canChangeMatch says retry first', () => {
+  it('a failed import that may have been added is offered: the DELETE checks first (CR-01)', () => {
     expect(
       changeMatchState(dto({ phase: 'failed', canChangeMatch: false })),
-    ).toEqual({ show: true, enabled: false, tooltip: RETRY_FIRST_TOOLTIP });
-    expect(RETRY_FIRST_TOOLTIP).toBe(
-      'Retry first. Discogs may already have added it.',
-    );
+    ).toEqual({ show: true, enabled: true, tooltip: null });
+  });
+
+  it('a change that is checking the collection is disabled with the checking tooltip (CR-01)', () => {
+    expect(
+      changeMatchState(
+        dto({ phase: 'waiting', canChangeMatch: false, checking: true }),
+      ),
+    ).toEqual({ show: true, enabled: false, tooltip: CHECKING_TOOLTIP });
   });
 
   it('a failed import Discogs refused can change', () => {

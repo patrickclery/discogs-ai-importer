@@ -28,6 +28,8 @@ import { fileUrl } from '../scan/queries';
 // built with DQS=0, so string literals are single-quoted.
 
 export const ADD_TO_COLLECTION_JOB_TYPE = 'add_to_collection';
+/** Change match's reconcile-only job (CR-01): reads, never POSTs. */
+export const CHECK_IMPORT_JOB_TYPE = 'check_import';
 
 export type CreateImportResult =
   | { status: 'ok'; importId: string; jobId: string }
@@ -322,10 +324,44 @@ export function enqueueImport(
   return tx.immediate();
 }
 
+/**
+ * Queues the check_import job (CR-01) for a failed import whose POST may
+ * have landed, under the dedupe key import-check:{importId}, and sets
+ * imports.job_id to it so the card and markInterruptedImports follow it. A
+ * queued or running check is reused; a finished one gives up its key first.
+ * Call inside an IMMEDIATE transaction.
+ */
+function enqueueImportCheck(
+  db: Database.Database,
+  importId: string,
+): { id: string; created: boolean } {
+  const dedupeKey = `import-check:${importId}`;
+  const holder = db
+    .prepare('SELECT id, status FROM jobs WHERE dedupe_key = @dedupeKey')
+    .get({ dedupeKey }) as { id: string; status: string } | undefined;
+  let job: { id: string; created: boolean };
+  if (holder && (holder.status === 'queued' || holder.status === 'running')) {
+    job = { id: holder.id, created: false };
+  } else {
+    if (holder) releaseDedupeKey(holder.id);
+    job = enqueue({
+      lane: 'discogs',
+      type: CHECK_IMPORT_JOB_TYPE,
+      payload: { importId },
+      dedupeKey,
+    });
+  }
+  db.prepare(
+    'UPDATE imports SET job_id = @jobId, updated_at = @now WHERE id = @importId',
+  ).run({ jobId: job.id, now: Date.now(), importId });
+  return job;
+}
+
 export type CancelImportResult =
   | { status: 'ok' }
   | { status: 'not_found' }
-  | { status: 'started' };
+  | { status: 'started' }
+  | { status: 'checking'; jobId: string };
 
 type LatestImport = ImportDbRow & { job_status: string | null };
 
@@ -361,7 +397,11 @@ function phaseOf(row: LatestImport): ImportPhase {
  * already_in_collection hold with no intent, or a failed import with no
  * intent or one Discogs refused (not_found, rejected). The row is deleted:
  * nothing reached Discogs, so there is nothing to audit (A-04-10, A-04-11).
- * Anything else answers started and changes nothing. One IMMEDIATE
+ * A failed import whose POST may have landed answers checking (CR-01): the
+ * row goes back to pending, error cleared, and a check_import job reads the
+ * owner's copies without ever POSTing; it adopts a copy that landed, or
+ * deletes the row when nothing did, which completes the change. Anything
+ * else answers started and changes nothing. One IMMEDIATE
  * transaction, so a worker cannot claim the job between the check and the
  * cancel (T-04-14); cancelQueuedJob's status = 'queued' predicate is the
  * fence regardless.
@@ -380,7 +420,20 @@ export function cancelImport(
       errorKind: row.error_kind,
       jobStatus: row.job_status,
     });
-    if (!allowed) return { status: 'started' };
+    if (!allowed) {
+      // canChangeMatchOf refuses a failed import only when its intent is
+      // written and Discogs did not refuse the add: check, never POST.
+      if (phase !== 'failed' || row.intent_at === null) {
+        return { status: 'started' };
+      }
+      db.prepare(
+        `UPDATE imports SET status = 'pending', error = NULL,
+           error_kind = NULL, updated_at = @now
+         WHERE id = @id`,
+      ).run({ id: row.id, now: Date.now() });
+      const job = enqueueImportCheck(db, row.id);
+      return { status: 'checking', jobId: job.id };
+    }
     if (phase === 'waiting') {
       if (!row.job_id || !cancelQueuedJob(row.job_id)) {
         return { status: 'started' };

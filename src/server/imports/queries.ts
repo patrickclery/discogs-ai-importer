@@ -14,7 +14,7 @@ import {
 } from '@/lib/import-types';
 import { collectionFolderName } from '../discogs/folders';
 import { capCodePoints } from '../discogs/inputs';
-import type { ImportDbRow } from './store';
+import { CHECK_IMPORT_JOB_TYPE, type ImportDbRow } from './store';
 
 // The import half of the /spines read model (IMP-01, IMP-02, IMP-04, D-03,
 // D-05, D-07). One query per page, whatever the spine count: each listed
@@ -35,7 +35,7 @@ const LATEST_IMPORTS_SQL = `
     FROM imports i
     WHERE i.spine_id IN (SELECT value FROM json_each(@ids))
   )
-  SELECT l.*, j.status AS job_status,
+  SELECT l.*, j.status AS job_status, j.type AS job_type,
     c.id IS NOT NULL AS candidate_exists,
     c.thumb_url IS NOT NULL AS has_thumb
   FROM latest l
@@ -46,6 +46,7 @@ const LATEST_IMPORTS_SQL = `
 
 type LatestImportRow = ImportDbRow & {
   job_status: string | null;
+  job_type: string | null;
   candidate_exists: number;
   has_thumb: number;
 };
@@ -151,6 +152,8 @@ export function toImportDto(
   row: ImportDbRow,
   opts: {
     jobStatus: string | null;
+    /** The job's type; check_import marks Change match checking (CR-01). */
+    jobType?: string | null;
     candidateExists: boolean;
     hasThumb: boolean;
     folderName: string;
@@ -188,6 +191,9 @@ export function toImportDto(
       jobStatus: opts.jobStatus,
     }),
     canRetry: canRetryOf(phase),
+    checking:
+      opts.jobType === CHECK_IMPORT_JOB_TYPE &&
+      (phase === 'waiting' || phase === 'importing'),
   };
 }
 
@@ -215,6 +221,7 @@ export function importsForSpines(
       r.spine_id,
       toImportDto(r, {
         jobStatus: r.job_status,
+        jobType: r.job_type,
         candidateExists: r.candidate_exists === 1,
         hasThumb: r.has_thumb === 1,
         folderName: nameOf(r.folder_id),

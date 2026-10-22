@@ -278,6 +278,33 @@ const OPTS = {
 };
 
 describe('toImportDto', () => {
+  describe('checking (CR-01)', () => {
+    it('a pending import whose job is a queued or running check_import is checking', () => {
+      for (const jobStatus of ['queued', 'running']) {
+        const dto = toImportDto(row({ status: 'pending', intent_at: 1_000 }), {
+          ...OPTS,
+          jobStatus,
+          jobType: 'check_import',
+        });
+        expect(dto.checking).toBe(true);
+        expect(dto.canChangeMatch).toBe(false);
+      }
+    });
+
+    it('an add_to_collection job, or a check that gave up, is not checking', () => {
+      expect(
+        toImportDto(row(), { ...OPTS, jobType: 'add_to_collection' }).checking,
+      ).toBe(false);
+      expect(
+        toImportDto(row({ intent_at: 1_000 }), {
+          ...OPTS,
+          jobStatus: 'failed',
+          jobType: 'check_import',
+        }).checking,
+      ).toBe(false);
+    });
+  });
+
   describe('failure kind and reason', () => {
     for (const kind of IMPORT_ERROR_KINDS) {
       it(`error_kind ${kind} maps to failure kind ${kind}`, () => {

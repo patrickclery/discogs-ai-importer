@@ -13,6 +13,7 @@ import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
 import {
   ADD_TO_COLLECTION_JOB_TYPE,
   addAnotherCopy,
+  CHECK_IMPORT_JOB_TYPE,
   cancelImport,
   createImport,
   enqueueImport,
@@ -274,8 +275,8 @@ describe('cancelImport (Change match, D-02)', () => {
     },
   );
 
-  it.each(['unavailable', 'interrupted'])(
-    'a failed import with an intent and %s answers started and changes nothing',
+  it.each(['unavailable', 'interrupted', 'auth', 'other', 'removed'])(
+    'a failed import with an intent and %s answers checking: a check_import job, never an add (CR-01)',
     async (kind) => {
       const { spineIds } = await orphanScenario();
       const { importId, jobId } = confirm(spineIds[0]);
@@ -284,10 +285,33 @@ describe('cancelImport (Change match, D-02)', () => {
         status: 'failed',
         intent_at: 1_000,
         error_kind: kind,
+        snapshot_json: '[5]',
       });
-      const before = snapshot();
+      const res = cancelImport(db(), spineIds[0]);
+      expect(res.status).toBe('checking');
+      if (res.status !== 'checking') return;
+      expect(job(res.jobId)).toMatchObject({
+        status: 'queued',
+        dedupe_key: `import-check:${importId}`,
+      });
+      expect(
+        db().prepare('SELECT type FROM jobs WHERE id = ?').get(res.jobId),
+      ).toEqual({ type: CHECK_IMPORT_JOB_TYPE });
+      expect(
+        count('jobs', `type = 'add_to_collection' AND status = 'queued'`),
+      ).toBe(0);
+      // The intent and snapshot stay: the check adopts a copy that landed.
+      expect(importRow(importId)).toMatchObject({
+        status: 'pending',
+        intent_at: 1_000,
+        snapshot_json: '[5]',
+        error_kind: null,
+        error: null,
+        job_id: res.jobId,
+      });
+      // A second click while the check is queued reuses it.
       expect(cancelImport(db(), spineIds[0])).toEqual({ status: 'started' });
-      expect(snapshot()).toBe(before);
+      expect(count('jobs', `type = 'check_import'`)).toBe(1);
     },
   );
 

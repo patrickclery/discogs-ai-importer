@@ -230,6 +230,7 @@ export function ConfirmedMatch({
   const change = changeMatchState(dto);
   const refused =
     refusedId === dto.id &&
+    !dto.checking &&
     (dto.phase === 'waiting' || dto.phase === 'importing');
   const changeReason = refused
     ? BEING_ADDED_TOOLTIP
@@ -258,6 +259,9 @@ export function ConfirmedMatch({
         ? "Couldn't change the match"
         : "Couldn't retry the import";
     let done = false;
+    // 202: Change match is checking the owner's copies first (CR-01); the
+    // panel stays until the check finishes, so focus stays put.
+    let checking = false;
     try {
       const res = await fetch(
         action === 'change'
@@ -280,6 +284,7 @@ export function ConfirmedMatch({
         return;
       }
       done = true;
+      checking = action === 'change' && res.status === 202;
       // No toast: the badge and the panel change in place (UI-SPEC).
       await refresh();
       announceSpineAction(spine.id, number);
@@ -288,7 +293,7 @@ export function ConfirmedMatch({
     } finally {
       setPending(null);
     }
-    if (done) {
+    if (done && !checking) {
       // Change match: the candidate list is back, focus its first Add.
       // Retry: the panel is waiting again, focus Change match.
       focusInCard(

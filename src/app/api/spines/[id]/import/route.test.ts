@@ -187,6 +187,39 @@ describe('DELETE /api/spines/{id}/import (Change match)', () => {
     });
     expect(rows()).toBe(before);
   });
+
+  it('202 checking over a failed import whose POST may have landed: a check_import job, no add job (CR-01)', async () => {
+    const { spineIds } = await orphanScenario();
+    connect();
+    const importId = await confirmed(spineIds[0]);
+    db()
+      .prepare(
+        `UPDATE jobs SET status = 'failed'
+         WHERE id = (SELECT job_id FROM imports WHERE id = ?)`,
+      )
+      .run(importId);
+    db()
+      .prepare(
+        `UPDATE imports SET status = 'failed', intent_at = 1000,
+           snapshot_json = '[]', error_kind = 'unavailable' WHERE id = ?`,
+      )
+      .run(importId);
+    const res = await call('DELETE', spineIds[0], {});
+    expect(res.status).toBe(202);
+    expect(await res.json()).toEqual({ checking: true });
+    expect(
+      db()
+        .prepare(
+          `SELECT type, status FROM jobs WHERE lane = 'discogs' AND status = 'queued'`,
+        )
+        .all(),
+    ).toEqual([{ type: 'check_import', status: 'queued' }]);
+    expect(
+      db()
+        .prepare('SELECT status, intent_at FROM imports WHERE id = ?')
+        .get(importId),
+    ).toEqual({ status: 'pending', intent_at: 1000 });
+  });
 });
 
 describe('POST /api/spines/{id}/import retry_first (D-07)', () => {

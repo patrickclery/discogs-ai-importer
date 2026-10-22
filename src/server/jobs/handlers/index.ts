@@ -4,7 +4,7 @@ import { discogsGate } from '../../discogs/gate';
 import { markInterruptedImports } from '../../imports/recovery';
 import { reconcileVisionRuns } from '../../scan/reconcile';
 import type { JobHandler, Lane } from '../types';
-import { runAddToCollection } from './add-to-collection';
+import { runAddToCollection, runCheckImport } from './add-to-collection';
 import { runFetchRelease } from './fetch-release';
 import { runNoop } from './noop';
 import { runScanPhoto } from './scan-photo';
@@ -32,6 +32,12 @@ export const handlers: Record<string, JobHandler> = {
   add_to_collection: {
     run: (payload, ctx) => runAddToCollection(payload, ctx),
     timeoutMs: 90_000,
+  },
+  // Discogs lane: Change match on a failed import that may have landed
+  // (CR-01): one paced GET of the owner's copies, never a POST.
+  check_import: {
+    run: (payload, ctx) => runCheckImport(payload, ctx),
+    timeoutMs: 60_000,
   },
 };
 
