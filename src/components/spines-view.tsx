@@ -5,7 +5,19 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { CircleCheck, CircleX, ImageOff, Rows3 } from 'lucide-react';
+import {
+  CircleCheck,
+  CircleSlash,
+  CircleX,
+  Clock,
+  ImageOff,
+  Library,
+  ListChecks,
+  ListFilter,
+  type LucideIcon,
+  Rows3,
+  SearchX,
+} from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
@@ -36,7 +48,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { REVIEW_STATUS_LABELS, type ReviewStatus } from '@/lib/import-types';
 import { spinesRefetchInterval } from '@/lib/photo-status';
-import { leftCount, movedOutOf, nextShownId } from '@/lib/review-status';
+import {
+  filterEmptyOf,
+  leftCount,
+  movedOutOf,
+  nextShownId,
+} from '@/lib/review-status';
 import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
 async function fetchSpines(
@@ -196,6 +213,79 @@ function NothingNeedsReview({ onShowAll }: { onShowAll: () => void }) {
   );
 }
 
+/** Per-status empty state copy and icon (UI-SPEC Per-status empty states). */
+const STATUS_EMPTY: Record<
+  ReviewStatus,
+  { icon: LucideIcon; title: string; body: (folder: string) => string }
+> = {
+  pending: {
+    icon: ListChecks,
+    title: 'Nothing left to pick',
+    body: () =>
+      'Every spine has a match, is imported, or is marked. Check Failed and Not found for anything that still needs you.',
+  },
+  matched: {
+    icon: Clock,
+    title: 'Nothing waiting to import',
+    body: () =>
+      "Spines show here after you click Add on a match, until they're in your collection.",
+  },
+  imported: {
+    icon: Library,
+    title: 'Nothing imported yet',
+    body: (folder) =>
+      `Click Add to ${folder} on a match. The spine shows here once it's in your Discogs collection.`,
+  },
+  not_found: {
+    icon: SearchX,
+    title: 'Every searched spine has matches',
+    body: () => 'Spines show here when Discogs finds nothing for them.',
+  },
+  not_on_discogs: {
+    icon: CircleSlash,
+    title: 'No spines marked',
+    body: () =>
+      "Use Mark not on Discogs on a spine Discogs doesn't list, such as a self-released CD.",
+  },
+  failed: {
+    icon: CircleCheck,
+    title: 'Nothing failed',
+    body: () => 'Every search and import went through.',
+  },
+};
+
+/** An empty filtered list: icon, heading, body and one outline action. */
+function FilterEmptyState({
+  icon: Icon,
+  title,
+  body,
+  action,
+  onAction,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <Empty className="pt-16 pb-12">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Icon className="size-5" />
+        </EmptyMedia>
+        <EmptyTitle className="text-base font-medium">{title}</EmptyTitle>
+        <EmptyDescription>{body}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button variant="outline" onClick={onAction}>
+          {action}
+        </Button>
+      </EmptyContent>
+    </Empty>
+  );
+}
+
 /**
  * The /spines page body (REV-01, RESEARCH Pattern 7). Server-rendered from
  * `initialData`, then GET /api/spines every 1.5 s while any photo is active.
@@ -331,6 +421,11 @@ export function SpinesView({
     </Alert>
   ) : null;
 
+  // D-11: an empty status or Needs review filter says so instead of
+  // showing a blank list.
+  const filterEmpty = data
+    ? filterEmptyOf(status, review, data.spines.length)
+    : null;
   let body: ReactNode;
   if (!data) {
     body = pollError ?? <ListSkeleton />;
@@ -338,8 +433,32 @@ export function SpinesView({
     body = <PhotoNotFound onShowAll={() => void setPhoto(null)} />;
   } else if (data.photoOptions.length === 0) {
     body = <NoSpinesYet />;
-  } else if (review && data.spines.length === 0) {
+  } else if (filterEmpty?.kind === 'review') {
     body = <NothingNeedsReview onShowAll={() => void setReview(false)} />;
+  } else if (filterEmpty?.kind === 'combined') {
+    body = (
+      <FilterEmptyState
+        icon={ListFilter}
+        title="No spines match these filters"
+        body="Turn off Needs review or pick another status."
+        action="Clear filters"
+        onAction={() => {
+          void setStatus(null);
+          void setReview(false);
+        }}
+      />
+    );
+  } else if (filterEmpty?.kind === 'status') {
+    const copy = STATUS_EMPTY[filterEmpty.status];
+    body = (
+      <FilterEmptyState
+        icon={copy.icon}
+        title={copy.title}
+        body={copy.body(folderName)}
+        action="Show all spines"
+        onAction={() => void setStatus(null)}
+      />
+    );
   } else {
     body = (
       <div className="flex flex-col gap-6">

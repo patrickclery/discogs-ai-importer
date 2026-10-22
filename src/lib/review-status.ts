@@ -118,10 +118,19 @@ export type FilterEmpty =
   | { kind: 'combined' }
   | { kind: 'review' };
 
+/**
+ * Which empty state replaces an empty list, or null while `shown` spines
+ * are listed or no filter is on: a status with Needs review gets the
+ * combined state, a status alone its own, Needs review alone its own.
+ */
 export function filterEmptyOf(
-  _status: ReviewStatus | null,
-  _review: boolean,
-  _shown: number,
+  status: ReviewStatus | null,
+  review: boolean,
+  shown: number,
 ): FilterEmpty | null {
-  return null;
+  if (shown > 0) return null;
+  if (status !== null) {
+    return review ? { kind: 'combined' } : { kind: 'status', status };
+  }
+  return review ? { kind: 'review' } : null;
 }
