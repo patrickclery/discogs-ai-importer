@@ -295,3 +295,26 @@ export function cancelImport(
   });
   return tx.immediate();
 }
+
+export type RetrySpineResult =
+  | { status: 'ok'; kind: 'import'; importId: string; jobId: string }
+  | { status: 'ok'; kind: 'search'; searchId: string }
+  | { status: 'nothing_to_retry' }
+  | { status: 'busy' }
+  | { status: 'not_found' };
+
+/** Retry import (D-13). */
+export function retryImport(
+  _db: Database.Database,
+  _importRow: ImportDbRow,
+): { id: string; created: boolean } {
+  throw new Error('retryImport: not implemented');
+}
+
+/** Per-spine Retry (REV-04, D-13). */
+export function retrySpine(
+  _db: Database.Database,
+  _spineId: string,
+): RetrySpineResult {
+  return { status: 'nothing_to_retry' };
+}

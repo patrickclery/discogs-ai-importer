@@ -5,11 +5,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { orphanScenario } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
-import { createSearch } from '../discogs/store';
+import { getCollectionFolderId } from '../discogs/folders';
+import { createSearch, finishSearch } from '../discogs/store';
 import { newId } from '../ids';
 import { cancelQueuedJob } from '../jobs/queue';
 import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
-import { cancelImport, createImport } from './store';
+import {
+  ADD_TO_COLLECTION_JOB_TYPE,
+  cancelImport,
+  createImport,
+  enqueueImport,
+  retrySpine,
+} from './store';
 
 // The import store's owner-facing rules (D-02, D-07, D-13, IMP-01):
 // Change match (cancelImport, cancelQueuedJob), Retry (retryImport,
@@ -142,7 +149,10 @@ function setJob(id: string, status: string): void {
     .run({ status, id });
 }
 
-function count(table: 'imports' | 'jobs', where = '1 = 1'): number {
+function count(
+  table: 'imports' | 'jobs' | 'discogs_searches',
+  where = '1 = 1',
+): number {
   return (
     db().prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).get() as {
       n: number;
@@ -311,5 +321,343 @@ describe('cancelImport (Change match, D-02)', () => {
     expect(cancelImport(db(), spineIds[0])).toEqual({ status: 'ok' });
     expect(importRow(latest.importId)).toBeUndefined();
     expect(importRow(old.importId)?.status).toBe('failed');
+  });
+});
+
+/** An auto search of the spine that ended failed (Retry search, D-06). */
+function failedSearch(spineId: string): string {
+  const searchId = createSearch(db(), {
+    spineId,
+    kind: 'auto',
+    inputs: { artist: 'A', title: 'T', catno: null, rawText: null },
+    inputHash: `h-${newId()}`,
+  });
+  finishSearch(db(), searchId, { status: 'failed', error: 'HTTP 500' });
+  return searchId;
+}
+
+function againSearches(spineId: string): number {
+  return count(
+    'discogs_searches',
+    `spine_id = '${spineId}' AND kind = 'again'`,
+  );
+}
+
+/** A confirmed import that ended failed after its job finished. */
+function failedImport(
+  spineId: string,
+  opts: { intentAt?: number | null; kind?: string; releaseId?: number } = {},
+): { importId: string; jobId: string } {
+  const made = confirm(spineId, opts.releaseId);
+  setJob(made.jobId, 'failed');
+  setImport(made.importId, {
+    status: 'failed',
+    intent_at: opts.intentAt ?? null,
+    error_kind: opts.kind ?? 'unavailable',
+    error: 'Discogs answered 502',
+  });
+  return made;
+}
+
+describe('createImport base rules (IMP-01, moved from Plan 04-01)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it('reads the release id and snapshot from the candidate row', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId } = confirm(spineIds[0], 2042);
+    const row = importRow(importId);
+    expect(row?.release_id).toBe(2042);
+    expect(row?.status).toBe('pending');
+    const snap = db()
+      .prepare('SELECT candidate_json FROM imports WHERE id = ?')
+      .get(importId) as { candidate_json: string };
+    expect(JSON.parse(snap.candidate_json)).toMatchObject({
+      title: 'Artist - Title 2042',
+      labels: ['Label A'],
+      formats: [{ name: 'CD', qty: '1', descriptions: ['Album'] }],
+    });
+  });
+
+  it("an unknown candidate or another spine's candidate gives no_candidate and writes nothing", async () => {
+    const { spineIds } = await orphanScenario();
+    const other = seedCandidate(spineIds[1]);
+    for (const candidateId of ['no-such-candidate', other]) {
+      expect(createImport(db(), { spineId: spineIds[0], candidateId })).toEqual(
+        { status: 'no_candidate' },
+      );
+    }
+    expect(count('imports')).toBe(0);
+    expect(count('jobs', `type = 'add_to_collection'`)).toBe(0);
+  });
+
+  it('a superseded spine gives not_importable; an unknown spine not_found', async () => {
+    const { supersededId } = await orphanScenario();
+    const candidateId = seedCandidate(supersededId);
+    expect(createImport(db(), { spineId: supersededId, candidateId })).toEqual({
+      status: 'not_importable',
+    });
+    expect(
+      createImport(db(), { spineId: 'no-such-spine', candidateId }),
+    ).toEqual({ status: 'not_found' });
+    expect(count('imports')).toBe(0);
+  });
+
+  it('a spine marked not on Discogs gives not_on_discogs', async () => {
+    const { spineIds } = await orphanScenario();
+    const candidateId = seedCandidate(spineIds[0]);
+    db()
+      .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+      .run(spineIds[0]);
+    expect(createImport(db(), { spineId: spineIds[0], candidateId })).toEqual({
+      status: 'not_on_discogs',
+    });
+    expect(count('imports')).toBe(0);
+  });
+
+  it('a second confirm on the same spine gives already_confirmed with one row and one job', async () => {
+    const { spineIds } = await orphanScenario();
+    confirm(spineIds[0]);
+    expect(
+      createImport(db(), {
+        spineId: spineIds[0],
+        candidateId: seedCandidate(spineIds[0], 2042),
+      }),
+    ).toEqual({ status: 'already_confirmed' });
+    expect(count('imports')).toBe(1);
+    expect(count('jobs', `type = 'add_to_collection'`)).toBe(1);
+  });
+
+  it('records the collection folder setting (1 with no setting)', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId } = confirm(spineIds[0]);
+    expect(getCollectionFolderId()).toBe(1);
+    expect(importRow(importId)?.folder_id).toBe(getCollectionFolderId());
+  });
+});
+
+describe('enqueueImport (Pitfall 3, moved from Plan 04-01)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it('returns the same job while it is queued', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId, jobId } = confirm(spineIds[0]);
+    expect(enqueueImport(db(), importId)).toEqual({
+      id: jobId,
+      created: false,
+    });
+    expect(count('jobs', `type = 'add_to_collection'`)).toBe(1);
+  });
+
+  it('after the first job finished, frees its key and creates a new job', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId, jobId } = confirm(spineIds[0]);
+    setJob(jobId, 'failed');
+    const next = enqueueImport(db(), importId);
+    expect(next.created).toBe(true);
+    expect(next.id).not.toBe(jobId);
+    expect(job(jobId).dedupe_key).toBeNull();
+    expect(job(next.id)).toMatchObject({
+      status: 'queued',
+      dedupe_key: `import:${spineIds[0]}:1031`,
+    });
+    expect(importRow(importId)?.job_id).toBe(next.id);
+  });
+});
+
+describe('createImport retry_first (D-07)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it.each(['unavailable', 'interrupted', 'auth', 'other'])(
+    'refuses a new confirm over a failed import with an intent and %s',
+    async (kind) => {
+      const { spineIds } = await orphanScenario();
+      failedImport(spineIds[0], { intentAt: 1_000, kind });
+      const candidateId = seedCandidate(spineIds[0], 2042);
+      const before = snapshot();
+      expect(
+        createImport(db(), { spineId: spineIds[0], candidateId }).status,
+      ).toBe('retry_first');
+      expect(snapshot()).toBe(before);
+    },
+  );
+
+  it.each([
+    ['no intent', null, 'unavailable'],
+    ['an intent refused with not_found', 1_000, 'not_found'],
+    ['an intent refused with rejected', 1_000, 'rejected'],
+  ])(
+    'allows a new import over a failed one with %s',
+    async (_label, intentAt, kind) => {
+      const { spineIds } = await orphanScenario();
+      const old = failedImport(spineIds[0], { intentAt, kind });
+      const res = createImport(db(), {
+        spineId: spineIds[0],
+        candidateId: seedCandidate(spineIds[0], 2042),
+      });
+      expect(res.status).toBe('ok');
+      expect(count('imports')).toBe(2);
+      expect(importRow(old.importId)?.status).toBe('failed');
+    },
+  );
+});
+
+describe('retrySpine (REV-04, D-13)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it('a failed import goes back to pending on the same row, keeping its intent', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId, jobId } = failedImport(spineIds[0], {
+      intentAt: 1_000,
+      kind: 'unavailable',
+    });
+    setImport(importId, {
+      snapshot_json: '[9001,9002]',
+      allow_duplicate: 1,
+      existing_json: '[]',
+    });
+    const res = retrySpine(db(), spineIds[0]);
+    expect(res.status === 'ok' && res.kind).toBe('import');
+    if (res.status !== 'ok' || res.kind !== 'import') return;
+    expect(res.importId).toBe(importId);
+    expect(res.jobId).not.toBe(jobId);
+    expect(importRow(importId)).toMatchObject({
+      status: 'pending',
+      error: null,
+      error_kind: null,
+      intent_at: 1_000,
+      snapshot_json: '[9001,9002]',
+      allow_duplicate: 1,
+      existing_json: '[]',
+      job_id: res.jobId,
+    });
+    expect(job(jobId).dedupe_key).toBeNull();
+    expect(job(res.jobId)).toMatchObject({
+      status: 'queued',
+      type: ADD_TO_COLLECTION_JOB_TYPE,
+      dedupe_key: `import:${spineIds[0]}:1031`,
+    });
+    expect(count('imports')).toBe(1);
+  });
+
+  it('a pending import whose job failed reads failed and is retried', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId, jobId } = confirm(spineIds[0]);
+    setJob(jobId, 'failed');
+    const res = retrySpine(db(), spineIds[0]);
+    expect(res.status === 'ok' && res.kind).toBe('import');
+    expect(importRow(importId)?.status).toBe('pending');
+    expect(job(importRow(importId)?.job_id ?? '').status).toBe('queued');
+  });
+
+  it('retries the import only when both the import and the search failed', async () => {
+    const { spineIds } = await orphanScenario();
+    failedImport(spineIds[0]);
+    failedSearch(spineIds[0]);
+    const res = retrySpine(db(), spineIds[0]);
+    expect(res.status === 'ok' && res.kind).toBe('import');
+    expect(againSearches(spineIds[0])).toBe(0);
+  });
+
+  it('re-runs a failed search with the current fields when no import failed', async () => {
+    const { spineIds } = await orphanScenario();
+    failedSearch(spineIds[0]);
+    const res = retrySpine(db(), spineIds[0]);
+    expect(res.status === 'ok' && res.kind).toBe('search');
+    if (res.status !== 'ok' || res.kind !== 'search') return;
+    const row = db()
+      .prepare(
+        `SELECT s.kind, s.status, j.type, j.status AS job_status
+         FROM discogs_searches s JOIN jobs j ON j.id = s.job_id
+         WHERE s.id = ?`,
+      )
+      .get(res.searchId);
+    expect(row).toEqual({
+      kind: 'again',
+      status: 'queued',
+      type: 'search_spine',
+      job_status: 'queued',
+    });
+    expect(count('imports')).toBe(0);
+  });
+
+  it('nothing failed: nothing_to_retry and nothing is enqueued', async () => {
+    const { spineIds } = await orphanScenario();
+    const before = snapshot();
+    expect(retrySpine(db(), spineIds[0])).toEqual({
+      status: 'nothing_to_retry',
+    });
+    expect(snapshot()).toBe(before);
+    const imported = confirm(spineIds[1]);
+    setJob(imported.jobId, 'succeeded');
+    setImport(imported.importId, { status: 'imported', instance_id: 9001 });
+    failedSearch(spineIds[1]);
+    const mid = snapshot();
+    expect(retrySpine(db(), spineIds[1])).toEqual({
+      status: 'nothing_to_retry',
+    });
+    expect(snapshot()).toBe(mid);
+    expect(againSearches(spineIds[1])).toBe(0);
+  });
+
+  it('a second retry while the job is queued returns the same job', async () => {
+    const { spineIds } = await orphanScenario();
+    failedImport(spineIds[0]);
+    const first = retrySpine(db(), spineIds[0]);
+    const jobs = count('jobs');
+    const second = retrySpine(db(), spineIds[0]);
+    expect(second).toEqual(first);
+    expect(count('jobs')).toBe(jobs);
+  });
+
+  it('busy while the import job is running, and nothing changes', async () => {
+    const { spineIds } = await orphanScenario();
+    const { jobId } = confirm(spineIds[0]);
+    setJob(jobId, 'running');
+    const before = snapshot();
+    expect(retrySpine(db(), spineIds[0])).toEqual({ status: 'busy' });
+    expect(snapshot()).toBe(before);
+  });
+
+  it('not_found for an unknown spine', () => {
+    expect(retrySpine(db(), 'no-such-spine')).toEqual({
+      status: 'not_found',
+    });
+  });
+});
+
+describe('one add_to_collection enqueue site (IMP-01 guard)', () => {
+  // Every later plan must reach the add POST through createImport or
+  // retryImport, which both go through enqueueImport. A second module that
+  // enqueues the type (or inserts it into jobs) fails here. The handler
+  // registry only names the type to run it, so it is skipped.
+  const root = path.resolve(__dirname, '../..');
+  const registry = path.join(root, 'server/jobs/handlers/index.ts');
+  const SITE =
+    /type:\s*(ADD_TO_COLLECTION_JOB_TYPE|['"`]add_to_collection['"`])|INSERT INTO jobs[\s\S]{0,400}?add_to_collection/g;
+
+  function sources(dir: string): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) return sources(p);
+      return /\.(ts|tsx)$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)
+        ? [p]
+        : [];
+    });
+  }
+
+  it('only src/server/imports/store.ts enqueues the add_to_collection type, once', () => {
+    const sites: string[] = [];
+    for (const file of sources(root)) {
+      if (file === registry) continue;
+      const text = fs.readFileSync(file, 'utf8');
+      for (const _ of text.matchAll(SITE)) {
+        sites.push(path.relative(root, file));
+      }
+    }
+    expect(sites).toEqual([path.join('server', 'imports', 'store.ts')]);
   });
 });

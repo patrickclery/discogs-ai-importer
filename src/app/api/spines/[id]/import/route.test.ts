@@ -188,3 +188,29 @@ describe('DELETE /api/spines/{id}/import (Change match)', () => {
     expect(rows()).toBe(before);
   });
 });
+
+describe('POST /api/spines/{id}/import retry_first (D-07)', () => {
+  useTempDataDir();
+  useTempSecrets();
+
+  it('409 retry_first over a failed import with an unresolved intent, and nothing changes', async () => {
+    const { spineIds } = await orphanScenario();
+    connect();
+    const importId = await confirmed(spineIds[0]);
+    db()
+      .prepare(
+        `UPDATE imports SET status = 'failed', intent_at = 1000,
+           error_kind = 'unavailable' WHERE id = ?`,
+      )
+      .run(importId);
+    const candidateId = seedCandidate(spineIds[0], 2042);
+    const before = rows();
+    const res = await call('POST', spineIds[0], { candidateId });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: 'retry_first',
+      message: 'Retry the import first. Discogs may already have added it.',
+    });
+    expect(rows()).toBe(before);
+  });
+});
