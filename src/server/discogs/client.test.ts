@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
-import { isAuthInvalid, saveDiscogsAuth } from './auth';
+import { clearDiscogsAuth, isAuthInvalid, saveDiscogsAuth } from './auth';
 import {
   DiscogsAuthError,
   DiscogsNotFoundError,
@@ -402,6 +402,262 @@ describe('discogsFetch', () => {
       );
       expect((await rejection(result)).name).toBe('DiscogsRequestError');
       expect(fetchImpl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('write gate (D-06, IMP-04)', () => {
+    const ADD = '/users/fake-owner/collection/folders/1/releases/1011';
+
+    beforeEach(() => {
+      saveDiscogsAuth({
+        token: CANARY_TOKEN,
+        tokenSecret: CANARY_TOKEN_SECRET,
+        username: 'fake-owner',
+      });
+    });
+
+    it('POST /users/fake-owner/collection/folders/1/releases/1011 with auth oauth reaches fetch (folder 1 accepted, IMP-02)', async () => {
+      const { result, calls } = await run(
+        { method: 'POST', path: ADD, auth: 'oauth' },
+        () => reply(201, '{"instance_id":5,"resource_url":"x"}'),
+      );
+      const res = await result;
+      expect(res.status).toBe(201);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].init.method).toBe('POST');
+      expect(new URL(calls[0].url).pathname).toBe(ADD);
+    });
+
+    it('a folder above 1 is accepted', async () => {
+      const { result, calls } = await run(
+        {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/8765/releases/1011',
+          auth: 'oauth',
+        },
+        () => reply(201, '{}'),
+      );
+      await result;
+      expect(calls).toHaveLength(1);
+    });
+
+    const refused: Array<{ why: string; req: DiscogsRequest }> = [
+      {
+        why: 'folder 0 (All is read-only, IMP-02)',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/0/releases/1011',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'a non-numeric folder id',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/abc/releases/1011',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'a negative folder id',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/-1/releases/1011',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'a zero-padded folder id',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/01/releases/1011',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'a non-numeric release id',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/1/releases/abc',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'a negative release id',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/1/releases/-1011',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'release id 0',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/1/releases/0',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'another username',
+        req: {
+          method: 'POST',
+          path: '/users/someone-else/collection/folders/1/releases/1011',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'the username in another case',
+        req: {
+          method: 'POST',
+          path: '/users/FAKE-OWNER/collection/folders/1/releases/1011',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'a trailing slash',
+        req: { method: 'POST', path: `${ADD}/`, auth: 'oauth' },
+      },
+      {
+        why: 'a sub-path of the add path',
+        req: { method: 'POST', path: `${ADD}/instances/9`, auth: 'oauth' },
+      },
+      {
+        why: 'PUT on the add path',
+        req: { method: 'PUT', path: ADD, auth: 'oauth' },
+      },
+      {
+        why: 'DELETE on the add path',
+        req: { method: 'DELETE', path: ADD, auth: 'oauth' },
+      },
+      {
+        why: 'DELETE of an instance',
+        req: {
+          method: 'DELETE',
+          path: '/users/fake-owner/collection/folders/1/releases/1011/instances/9',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'PATCH on the add path',
+        req: { method: 'PATCH', path: ADD, auth: 'oauth' },
+      },
+      {
+        why: 'POST to the folders list (create a folder)',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'POST to a folder (rename a folder)',
+        req: {
+          method: 'POST',
+          path: '/users/fake-owner/collection/folders/1',
+          auth: 'oauth',
+        },
+      },
+      {
+        why: 'POST to the user profile',
+        req: { method: 'POST', path: '/users/fake-owner', auth: 'oauth' },
+      },
+      {
+        why: 'the add POST with auth request',
+        req: {
+          method: 'POST',
+          path: ADD,
+          auth: 'request',
+          token: CANARY_TOKEN,
+          tokenSecret: CANARY_TOKEN_SECRET,
+        },
+      },
+      {
+        why: 'the add POST with auth consumer',
+        req: { method: 'POST', path: ADD, auth: 'consumer' },
+      },
+      {
+        why: 'the add POST with auth none',
+        req: { method: 'POST', path: ADD, auth: 'none' },
+      },
+      {
+        why: 'HEAD',
+        req: { method: 'HEAD', path: ADD, auth: 'oauth' },
+      },
+    ];
+    for (const { why, req } of refused) {
+      it(`refuses ${why} before fetch is called`, async () => {
+        const { result, calls } = await run(req, () => reply(201, '{}'));
+        const err = await rejection(result);
+        expect(err).toBeInstanceOf(DiscogsRequestError);
+        expect(err.message).toContain('refused: not an allowed request');
+        expect(calls).toHaveLength(0);
+      });
+    }
+
+    it('refuses the add POST when no username is stored', async () => {
+      clearDiscogsAuth();
+      const { result, calls } = await run(
+        { method: 'POST', path: ADD, auth: 'oauth' },
+        () => reply(201, '{}'),
+      );
+      expect(await rejection(result)).toBeInstanceOf(DiscogsRequestError);
+      expect(calls).toHaveLength(0);
+    });
+
+    for (const p of [
+      '/users/fake-owner/collection/folders',
+      '/users/fake-owner/collection/releases/1011',
+    ]) {
+      it(`GET ${p} is allowed`, async () => {
+        const { result, calls } = await run({ path: p, auth: 'oauth' }, () =>
+          reply(200, '{}'),
+        );
+        await result;
+        expect(calls).toHaveLength(1);
+        expect(calls[0].init.method).toBe('GET');
+      });
+    }
+
+    it('a 500 on the add POST names /users/:u/ and never the username (canary)', async () => {
+      saveDiscogsAuth({
+        token: CANARY_TOKEN,
+        tokenSecret: CANARY_TOKEN_SECRET,
+        username: 'CANARYUSER-0123',
+      });
+      const { result } = await run(
+        {
+          method: 'POST',
+          path: '/users/CANARYUSER-0123/collection/folders/1/releases/1011',
+          auth: 'oauth',
+        },
+        () => reply(500, '{"message":"CANARYUSER-0123 broke"}'),
+      );
+      const err = await rejection(result);
+      expect(err).toBeInstanceOf(DiscogsUnavailableError);
+      expect(err.message).toContain('/users/:u/');
+      expect(err.message).not.toContain('CANARYUSER');
+      expect(String(err.stack ?? '')).not.toContain('CANARYUSER');
+    });
+
+    it('a refused request for the canary user never names the username', async () => {
+      saveDiscogsAuth({
+        token: CANARY_TOKEN,
+        tokenSecret: CANARY_TOKEN_SECRET,
+        username: 'CANARYUSER-0123',
+      });
+      const { result, calls } = await run(
+        {
+          method: 'DELETE',
+          path: '/users/CANARYUSER-0123/collection/folders/1/releases/1011',
+          auth: 'oauth',
+        },
+        () => reply(204, ''),
+      );
+      const err = await rejection(result);
+      expect(err.message).toContain('/users/:u/');
+      expect(err.message).not.toContain('CANARYUSER');
+      expect(calls).toHaveLength(0);
     });
   });
 
