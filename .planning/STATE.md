@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Completed 04-13-PLAN.md
-last_updated: "2026-10-22T10:50:56.572Z"
+stopped_at: Completed 04-08-PLAN.md
+last_updated: "2026-10-22T11:01:22.515Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: 51345551b48ab39cd75a6ae5e2807ba53169327f
+state_head: e4ca90365e350702f3ba727680ef5f9bc5d2256a
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 46
+  completed_plans: 47
   percent: 75
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 4 (Import & Review Queue) — EXECUTING
-Plan: 12 of 14
+Plan: 13 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 — Phase 4 execution started
 
@@ -104,6 +104,7 @@ Progress: [████████░░] 75%
 | Phase 04 P11 | 3 min | 2 tasks | 2 files |
 | Phase 04 P04 | 12 min | 2 tasks | 10 files |
 | Phase 04 P13 | 6min | 2 tasks | 10 files |
+| Phase 04 P08 | 7min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -231,6 +232,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-13: the Add button owns the duplicate request; DuplicateImportDialog is presentational (pending, error props) and Cancel returns focus to Add
 - [Phase 04]: 04-13: Discogs dates show the calendar date Discogs wrote (en-GB, UTC); a non-date drops the added part
 - [Phase 04]: 04-13: crop URLs render only from /api/files/ (T-04-33)
+- [Phase 04]: 04-08: A repeated not-on-Discogs mark or unmark answers ok and writes nothing
+- [Phase 04]: 04-08: The not-on-Discogs mark wins over an earlier failed import in the card (marked line, not the failed panel)
+- [Phase 04]: 04-08: Menu in-flight spinner renders in the action-menu trigger slot
 
 ### Pending Todos
 
@@ -250,6 +254,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T10:50:56.330Z
-Stopped at: Completed 04-13-PLAN.md
+Last session: 2026-10-22T11:01:22.117Z
+Stopped at: Completed 04-08-PLAN.md
 Resume file: None
