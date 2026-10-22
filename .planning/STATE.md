@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-10-22T10:02:31.198Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-10-22T10:11:43.889Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: 7eb88d75e89d44354b96605f2f58524231a6fe4e
+state_head: 83d791dd067123c9113c11819af0838195325d1a
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 41
+  completed_plans: 42
   percent: 75
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 4 (Import & Review Queue) — EXECUTING
-Plan: 7 of 14
+Plan: 8 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 — Phase 4 execution started
 
@@ -99,6 +99,7 @@ Progress: [████████░░] 75%
 | Phase 04 P02 | 8min | 3 tasks | 12 files |
 | Phase 04 P12 | 8min | 2 tasks | 9 files |
 | Phase 04 P03 | 5min | 2 tasks | 8 files |
+| Phase 04 P05 | 8 min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -214,6 +215,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-03: panel state lines name the import's own folder (D-03); the Add label names the Settings folder
 - [Phase 04]: 04-03: Change match after a 409 started stays disabled while that import is still waiting or importing
 - [Phase 04]: 04-03: import UI copy lives in src/lib/import-view.ts pure helpers; later plans extend it
+- [Phase 04]: reviewStatusOf follows D-10 literally (failed search beats an open import); getSpines counts/statusById/photoProgress ignore status and review filters
+- [Phase 04]: discogsActive also covers waiting/importing imports so /spines polls every 3 s during imports
+- [Phase 04]: Moved-out toast checks the cached query data at announce time (actions refetch before announcing), else one later update
 
 ### Pending Todos
 
@@ -233,6 +237,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T10:02:30.960Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-10-22T10:11:43.657Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None
