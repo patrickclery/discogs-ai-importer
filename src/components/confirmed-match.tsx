@@ -15,6 +15,7 @@ import {
   CHANGE_MATCH_ATTR,
   focusInCard,
 } from '@/components/add-to-collection-button';
+import { AlreadyInCollection } from '@/components/already-in-collection';
 import { CandidateRowContent } from '@/components/candidate-row';
 import { announceSpineAction } from '@/components/import-ui-context';
 import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
@@ -46,8 +47,9 @@ import { spineNumber } from '@/lib/spine-review';
 // row. Change match sends DELETE /api/spines/{id}/import and Retry import
 // POST /api/spines/{id}/retry (Plan 04-12's routes decide what is safe; the
 // card follows the API's canChangeMatch and canRetry). Every request error
-// is an inline line under the action row, never a toast. Plan 04-13 adds the
-// already-in-collection decision.
+// is an inline line under the action row, never a toast. An
+// already_in_collection hold renders AlreadyInCollection (D-05): its
+// decision line, Link existing copy and Add another copy, then Change match.
 
 /**
  * The confirmed release in CandidateRowContent's shape, from the import's
@@ -219,6 +221,8 @@ export function ConfirmedMatch({
   // The import Change match was refused for (409 started): the button
   // stays disabled while that import is still on its way.
   const [refusedId, setRefusedId] = useState<string | null>(null);
+  // Link existing copy or Add another copy is in flight (D-05).
+  const [deciding, setDeciding] = useState(false);
   if (!dto) return null;
 
   const number = spineNumber(spine);
@@ -327,7 +331,7 @@ export function ConfirmedMatch({
           variant="ghost"
           size="sm"
           data-change-match=""
-          disabled={pending !== null || changeReason !== null}
+          disabled={pending !== null || deciding || changeReason !== null}
           tabIndex={changeReason !== null ? -1 : undefined}
           onClick={() => void run('change')}
         >
@@ -347,15 +351,31 @@ export function ConfirmedMatch({
     );
   }
 
+  const decision =
+    dto.phase === 'already_in_collection' && dto.existing ? dto.existing : null;
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-start gap-4 rounded-lg border p-2">
         <CandidateRowContent candidate={candidate} />
       </div>
-      <ImportStateLine dto={dto} pausedSeconds={pausedSeconds} />
-      {actions.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
-      ) : null}
+      {decision ? (
+        <AlreadyInCollection
+          spineId={spine.id}
+          spineNumber={number}
+          existing={decision}
+          disabled={pending !== null}
+          onPendingChange={setDeciding}
+          trailing={actions}
+        />
+      ) : (
+        <>
+          <ImportStateLine dto={dto} pausedSeconds={pausedSeconds} />
+          {actions.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">{actions}</div>
+          ) : null}
+        </>
+      )}
       {error && dto.phase !== 'imported' ? (
         <p role="alert" className="text-xs break-words text-destructive">
           {error}

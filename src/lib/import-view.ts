@@ -202,10 +202,42 @@ export function duplicateDialogTitle(
  * Discogs recorded.
  */
 export function alreadyLine(
-  _existing: Pick<
+  existing: Pick<
     NonNullable<ImportDto['existing']>,
     'count' | 'folderName' | 'dateAdded'
   >,
 ): string {
-  return '';
+  const folder = addFolderName(existing.folderName);
+  const copies =
+    existing.count === 1
+      ? `1 copy in ${folder}`
+      : `${existing.count} copies, the first in ${folder}`;
+  const date = discogsDate(existing.dateAdded);
+  const added = date === null ? '' : `, added ${date}`;
+  return `You already have this release on Discogs: ${copies}${added}.`;
+}
+
+/** The second already-in-collection line (UI-SPEC Copywriting, D-05). */
+export const ALREADY_DECISION_LINE =
+  'Link this spine to that copy, or add another copy if you own two.';
+
+const DISCOGS_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/**
+ * A Discogs date_added (ISO 8601 with an offset) as "30 Nov 2015", using
+ * the calendar date Discogs wrote (not the viewer's time zone), or null
+ * when it is not a real date.
+ */
+function discogsDate(iso: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/u.exec(iso);
+  if (!m || Number.isNaN(Date.parse(iso))) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const utc = new Date(Date.UTC(y, mo - 1, d));
+  if (utc.getUTCMonth() !== mo - 1 || utc.getUTCDate() !== d) return null;
+  return DISCOGS_DATE.format(utc);
 }
