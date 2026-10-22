@@ -971,6 +971,17 @@ describe('addAnotherCopy (Add another copy, D-05 remote)', () => {
     expect(count('imports')).toBe(1);
   });
 
+  it('the held copies join the snapshot, kept with any earlier one, so the add never holds or adopts them again (WR-04)', async () => {
+    const { spineIds } = await orphanScenario();
+    const { importId } = heldImport(spineIds[0], [
+      { instanceId: 7003, folderId: 1 },
+      { instanceId: 7001, folderId: 1 },
+    ]);
+    setImport(importId, { intent_at: 1_000, snapshot_json: '[6001]' });
+    expect(addAnotherCopy(db(), spineIds[0]).status).toBe('ok');
+    expect(importRow(importId)?.snapshot_json).toBe('[6001,7001,7003]');
+  });
+
   it('a second call while the job is queued returns the same job', async () => {
     const { spineIds } = await orphanScenario();
     heldImport(spineIds[0], [{ instanceId: 7001, folderId: 1 }]);

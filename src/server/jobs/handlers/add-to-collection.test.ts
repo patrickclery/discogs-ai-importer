@@ -732,6 +732,101 @@ describe('add_to_collection handler', () => {
     });
   });
 
+  it('a local clock minutes ahead of Discogs cannot hide the landed copy: one page adopts it, never a second POST (WR-04)', async () => {
+    seedSpine();
+    // The intent was stamped 10 minutes ahead of Discogs's date_added.
+    const intentAt = Date.now() + 600_000;
+    const { importId, ctx } = queuedImport({
+      status: 'importing',
+      allowDuplicate: true,
+      intentAt,
+      snapshot: [6001],
+      postCount: 1,
+    });
+    const { stub, result } = run(
+      importId,
+      ctx,
+      route(
+        () =>
+          copiesResponse([
+            { instance_id: 6001, date_added: discogsDate(Date.now() - 1e7) },
+            { instance_id: 7001, date_added: discogsDate(Date.now()) },
+          ]),
+        () => added(7002),
+      ),
+    );
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId)).toMatchObject({
+      status: 'imported',
+      instance_id: 7001,
+      adopted: 1,
+      post_count: 1,
+    });
+  });
+
+  it('allow_duplicate with an unplaced copy past one page holds instead of posting again (WR-04)', async () => {
+    seedSpine();
+    const intentAt = Date.now() + 600_000;
+    const { importId, ctx } = queuedImport({
+      status: 'importing',
+      allowDuplicate: true,
+      intentAt,
+      snapshot: [6001],
+      postCount: 1,
+    });
+    const { stub, result } = run(importId, ctx, (call) => {
+      if (call.method === 'POST') return added(7002);
+      return new Response(
+        JSON.stringify({
+          pagination: { page: 1, pages: 2, per_page: 50, items: 51, urls: {} },
+          releases: [
+            {
+              id: RELEASE,
+              instance_id: 7001,
+              folder_id: 1,
+              date_added: discogsDate(Date.now()),
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.posts()).toHaveLength(0);
+    expect(importRow(importId).status).toBe('already_in_collection');
+  });
+
+  it('a retry keeps the earlier snapshot and adds the copies seen now (WR-04)', async () => {
+    seedSpine();
+    const { importId, ctx } = queuedImport({
+      status: 'importing',
+      allowDuplicate: true,
+      intentAt: Date.now() - 5_000,
+      snapshot: [6001, 6005],
+      postCount: 1,
+    });
+    const { stub, result } = run(
+      importId,
+      ctx,
+      route(
+        () =>
+          copiesResponse([
+            { instance_id: 6001, date_added: discogsDate(Date.now() - 1e7) },
+          ]),
+        () => added(7001),
+      ),
+    );
+    await expect(result).resolves.toBeUndefined();
+    expect(stub.posts()).toHaveLength(1);
+    expect(importRow(importId)).toMatchObject({
+      status: 'imported',
+      instance_id: 7001,
+      snapshot_json: '[6001,6005]',
+      post_count: 2,
+    });
+  });
+
   it('a copy no import records holds already_in_collection with no POST, ascending existing_json and a released key', async () => {
     seedSpine();
     const { importId, ctx } = queuedImport();

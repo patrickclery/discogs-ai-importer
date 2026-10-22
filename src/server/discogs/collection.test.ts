@@ -28,13 +28,14 @@ const none = new Set<number>();
 
 function adopt(
   instances: ExistingInstance[],
-  opts: { snapshot?: number[]; recorded?: number[] } = {},
+  opts: { snapshot?: number[]; recorded?: number[]; complete?: boolean } = {},
 ): number | null {
   return (
     pickAdoptable(instances, {
       intentAt: INTENT,
       snapshot: new Set(opts.snapshot ?? []),
       recorded: new Set(opts.recorded ?? []),
+      complete: opts.complete,
     })?.instanceId ?? null
   );
 }
@@ -74,6 +75,30 @@ describe('pickAdoptable', () => {
     ['an empty date', ''],
   ])('never adopts a copy with %s', (_what, date) => {
     expect(adopt([copy(7001, date)])).toBeNull();
+  });
+
+  describe('a complete read (one page) compares no dates (WR-04)', () => {
+    it('adopts a new copy dated long before the intent: a fast local clock cannot hide it', () => {
+      expect(
+        adopt([copy(7001, iso(INTENT - 600_000))], { complete: true }),
+      ).toBe(7001);
+    });
+
+    it('adopts a new copy with an unparseable date', () => {
+      expect(adopt([copy(7001, 'yesterday-ish')], { complete: true })).toBe(
+        7001,
+      );
+    });
+
+    it('still never adopts a snapshot or recorded copy', () => {
+      expect(
+        adopt([copy(7001, iso(INTENT)), copy(7002, iso(INTENT))], {
+          complete: true,
+          snapshot: [7001],
+          recorded: [7002],
+        }),
+      ).toBeNull();
+    });
   });
 
   it('with two new copies adopts the lower instance_id (the first add)', () => {

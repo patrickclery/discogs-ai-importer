@@ -634,8 +634,9 @@ export type AddAnotherCopyResult =
 /**
  * Add another copy (D-05, the remote decision; T-04-31): the owner owns
  * two, so the held import (already_in_collection) gets allow_duplicate 1,
- * goes back to pending with its error cleared and is re-enqueued on the
- * same row; that attempt skips the hold and adds once. A second call while
+ * goes back to pending with its error cleared, the held copies join its
+ * snapshot (WR-04), and it is re-enqueued on the same row; that attempt
+ * skips the hold and adds once. A second call while
  * that job is still queued returns the same job; anything else is not_held.
  * One IMMEDIATE transaction.
  */
@@ -656,11 +657,25 @@ export function addAnotherCopy(
       }
       return { status: 'not_held' };
     }
+    // The owner saw the held copies and wants one more: they join the
+    // snapshot, so the add neither adopts nor holds on them again (WR-04).
+    const seen = new Set<number>();
+    if (row.snapshot_json) {
+      for (const id of jsonArray(row.snapshot_json)) {
+        if (Number.isSafeInteger(id)) seen.add(id as number);
+      }
+    }
+    for (const c of existingCopies(row.existing_json)) seen.add(c.instanceId);
     db.prepare(
       `UPDATE imports SET allow_duplicate = 1, status = 'pending',
-         error = NULL, error_kind = NULL, updated_at = @now
+         snapshot_json = @snapshot, error = NULL, error_kind = NULL,
+         updated_at = @now
        WHERE id = @id`,
-    ).run({ id: row.id, now: Date.now() });
+    ).run({
+      id: row.id,
+      snapshot: JSON.stringify([...seen].sort((a, b) => a - b)),
+      now: Date.now(),
+    });
     const job = enqueueImport(db, row.id);
     return { status: 'ok', importId: row.id, jobId: job.id };
   });

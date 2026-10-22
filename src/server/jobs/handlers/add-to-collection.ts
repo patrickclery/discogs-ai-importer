@@ -310,6 +310,7 @@ async function runImportJob(
       intentAt: row.intent_at,
       snapshot,
       recorded,
+      complete: pages <= 1,
     });
     if (hit) {
       const now = Date.now();
@@ -329,14 +330,15 @@ async function runImportJob(
   }
 
   const foreign = foreignInstances(instances, recorded);
+  // After an earlier intent, an unrecorded copy outside its snapshot that
+  // was not adopted (an answer of more than one page) may be that POST's.
+  const unplaced =
+    row.intent_at !== null && foreign.some((i) => !snapshot.has(i.instanceId));
 
   // Check mode (CR-01) stops here, with no POST. Nothing landed only when
   // the read saw every copy and none is outside the pre-POST snapshot and
   // unrecorded; then the import is deleted, which completes Change match.
   if (mode === 'check') {
-    const unplaced =
-      row.intent_at !== null &&
-      foreign.some((i) => !snapshot.has(i.instanceId));
     if (pages > 1 || unplaced) {
       fail('other', CHECK_UNSURE_REASON);
       return;
@@ -354,8 +356,10 @@ async function runImportJob(
     return;
   }
 
-  // 3. A copy no import records: the owner chooses (D-05).
-  if (foreign.length > 0 && row.allow_duplicate === 0) {
+  // 3. A copy no import records: the owner chooses (D-05). Also with
+  // allow_duplicate when a copy may be an earlier POST's (WR-04): another
+  // POST could make a duplicate the owner did not ask for.
+  if (foreign.length > 0 && (row.allow_duplicate === 0 || unplaced)) {
     db.prepare(
       `UPDATE imports SET status = 'already_in_collection',
          existing_json = @existing, error_kind = NULL, error = NULL,
@@ -385,7 +389,12 @@ async function runImportJob(
   }
 
   // The intent, fenced on this claim (D-07; same predicate as
-  // isClaimCurrent), written before any POST can be sent.
+  // isClaimCurrent), written before any POST can be sent. A retry adds the
+  // copies seen now to the earlier snapshot instead of replacing it
+  // (WR-04): a copy that existed before the first intent never becomes
+  // adoptable.
+  const intentSnapshot = new Set(snapshot);
+  for (const i of instances) intentSnapshot.add(i.instanceId);
   const writeIntent = db.transaction((): number | null => {
     if (!claimIsCurrent()) return null;
     const now = Date.now();
@@ -396,7 +405,7 @@ async function runImportJob(
        WHERE id = @id`,
     ).run({
       id: importId,
-      snapshot: JSON.stringify(instances.map((i) => i.instanceId)),
+      snapshot: JSON.stringify([...intentSnapshot].sort((a, b) => a - b)),
       now,
     });
     return now;

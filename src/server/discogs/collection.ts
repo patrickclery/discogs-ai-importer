@@ -43,7 +43,8 @@ export const FoldersResponseSchema = z.object({
 
 /**
  * date_added has one-second resolution and the two clocks may differ; the
- * snapshot is the primary adopt rule, this margin only a secondary guard.
+ * snapshot is the primary adopt rule, this margin only a secondary guard
+ * for an answer of more than one page (pickAdoptable).
  */
 export const ADOPT_SKEW_MS = 120_000;
 
@@ -93,13 +94,22 @@ export function toInstances(parsed: CollectionReleases): ExistingInstance[] {
 
 /**
  * The copy an earlier attempt's POST created, or null: the lowest-numbered
- * copy not in the pre-POST snapshot, not recorded on any import, and dated
- * at or after intentAt minus ADOPT_SKEW_MS. An unparseable date is never
- * adopted (A-04-04).
+ * copy not in the pre-POST snapshot and not recorded on any import. When
+ * the read saw every copy (`complete`, one page), the snapshot already
+ * excludes every copy that existed before the intent, so no date is
+ * compared: a local clock ahead of Discogs's cannot hide the copy (WR-04).
+ * Otherwise a copy past page 1 may be old, so the copy must also be dated
+ * at or after intentAt minus ADOPT_SKEW_MS, and an unparseable date is
+ * never adopted (A-04-04).
  */
 export function pickAdoptable(
   instances: ExistingInstance[],
-  opts: { intentAt: number; snapshot: Set<number>; recorded: Set<number> },
+  opts: {
+    intentAt: number;
+    snapshot: Set<number>;
+    recorded: Set<number>;
+    complete?: boolean;
+  },
 ): ExistingInstance | null {
   const hits = instances
     .filter(
@@ -107,6 +117,7 @@ export function pickAdoptable(
         !opts.snapshot.has(i.instanceId) && !opts.recorded.has(i.instanceId),
     )
     .filter((i) => {
+      if (opts.complete) return true;
       const t = Date.parse(i.dateAdded);
       return Number.isFinite(t) && t >= opts.intentAt - ADOPT_SKEW_MS;
     })
