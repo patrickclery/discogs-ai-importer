@@ -76,6 +76,10 @@ created: "2026-10-21"
 | T-03-40 | Denial of service | connect backfill | low | mitigate | Idempotent enqueue; skips auth_failed and failed spines | closed |
 | T-03-41 | Tampering | GET /api/spines/{id}/candidates | low | mitigate | Named param; 404 for unknown/superseded/dismissed | closed |
 | T-03-42 | Tampering | candidates POST refusals | medium | mitigate | Route tests: 404 foreign/automatic/unknown, 409, 415 | closed |
+| T-03-43 | Denial of service | enqueueMissingSearches on every lease tick | medium | mitigate | Baseline precheck before IMMEDIATE tx (enqueue.ts); selector limited to UNSEARCHED_STATUSES_SQL; invariant table in discogs-matches.test.ts | closed |
+| T-03-44 | Denial of service | dedupe key released on a skipped automatic search | low | accept | New auto search needs Re-attach or re-scan (owner action); paced gate | closed |
+| T-03-45 | Tampering | status lists interpolated into SQL (store.ts) | low | mitigate | statusListSql takes only `as const satisfies SearchStatus[]` constants; other values @named | closed |
+| T-03-46 | Information disclosure | baseline failure reason on card | low | accept | Same stored text, REASON_MAX 160 via shortReason | closed |
 | T-03-SC | Tampering | npm installs / shadcn add | high | mitigate | package.json and lockfile unchanged in phase 3; collapsible uses installed radix-ui | closed |
 
 *Status: open · closed · open — below high threshold (non-blocking)*
@@ -98,6 +102,8 @@ created: "2026-10-21"
 | AR-03-02 | T-03-19 | Sending artist, title and catalog number to Discogs is the feature; no photo or crop leaves the machine | Plan 03-03 | 2026-10-21 |
 | AR-03-03 | T-03-28 | /api/status exposes counts, a timestamp and a connected flag only; local single-user app | Plan 03-06 | 2026-10-21 |
 | AR-03-04 | T-03-37 | Real-account backfill runs through the paced gate (~54/min) with the project User-Agent; 429 pauses and resumes | Plan 03-13 | 2026-10-21 |
+| AR-03-05 | T-03-44 | Re-searching a re-activated spine needs an owner action and still goes through the paced gate | Plan 03-14 | 2026-10-21 |
+| AR-03-06 | T-03-46 | Card shows the same capped (160 code point) stored error text as any failed search; no new data leaves the server | Plan 03-14 | 2026-10-21 |
 
 *Accepted risks do not resurface in future audit runs.*
 
@@ -108,6 +114,7 @@ created: "2026-10-21"
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-10-21 | 43 | 43 | 0 | gsd-security-auditor (ASVS L1, block_on high) |
+| 2026-10-21 | 47 | 47 | 0 | secure-phase L1 short-circuit (plan 03-14: T-03-43..46 added) |
 
 ---
 
@@ -119,3 +126,11 @@ created: "2026-10-21"
 - [x] `status: verified` set in frontmatter
 
 **Approval:** verified 2026-10-21
+
+## Security Audit 2026-10-22
+
+| Metric | Count |
+|---|---|
+| Threats found | 4 |
+| Closed | 4 |
+| Open | 0 |
