@@ -72,6 +72,8 @@ Integration scripts against `test/fixtures/fake-discogs.mjs` (`scripts/verify-di
 | 03-13-01 | 13 | 9 | DISC-01..04 | — | N/A | report | `node scripts/report-discogs-live.ts` | ✅ | manual |
 | 03-13-02 | 13 | 9 | DISC-01..04 | — | N/A | manual | — | — | manual |
 | 03-13-03 | 13 | 9 | DISC-01..04 | — | N/A | report | `node scripts/report-discogs-live.ts` | ✅ | manual |
+| 03-14-01 | 14 | 1 | DISC-03 | — | N/A | unit | `vitest run src/server/discogs/reactivated-spine.test.ts` | ✅ | ✅ green |
+| 03-14-02 | 14 | 1 | DISC-03 | — | N/A | unit | `vitest run src/components/discogs-matches.test.ts src/server/discogs/reactivated-spine.test.ts` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -97,6 +99,7 @@ Existing infrastructure covers all phase requirements.
 | Show all / Show fewer | DISC-04 | Visual | On a disc with many matches, click Show all, then Show fewer. The list grows and shrinks. |
 | Header countdown when slowed down | DISC-02 | Timing, visual | During a big batch the header shows how many searches are waiting and a short wait message if Discogs slows you down. |
 | Search Discogs… dialog | DISC-06 | Interactive | Open the dialog, search by text and by pasted release link. Results scroll, buttons stay visible, a picked result shows as "Added manually". Pasting a master link shows a plain message. |
+| Reconnect clears "Reconnect Discogs" on a disc whose Retry ended auth_failed | DISC-03 | Escalated: code bug (03-REVIEW.md CR-01, plan 03-14 re-review); a test would be red until fixed | Revoke the app on discogs.com, click Retry on a failed disc, then reconnect in Settings. The disc should be searched again or show its last real result, not "Reconnect Discogs in Settings". |
 | Narrow window and wording | All | Visual / copy | Shrink the window: nothing overlaps. No screen says "token", "OAuth" or "429". |
 
 ---
@@ -127,3 +130,11 @@ Existing infrastructure covers all phase requirements.
 | Gaps found | 8 |
 | Resolved | 8 |
 | Escalated | 0 |
+
+## Validation Audit 2026-10-22
+
+| Metric | Count |
+|---|---|
+| Gaps found | 3 |
+| Resolved | 2 |
+| Escalated | 1 |
