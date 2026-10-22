@@ -32,13 +32,29 @@ function useNow(intervalMs: number): number {
   return now;
 }
 
-/** `{n} spines · {model label} · scanned {relative time}`, or the live status. */
-export function sectionSubline(photo: PhotoDto, now: number): string {
+/** A photo's imported and listed (active + orphaned) spines (D-12). */
+export type PhotoProgress = { imported: number; total: number };
+
+/**
+ * `{i} / {n} imported · {model label} · scanned {relative time}` for a done
+ * photo with spines (D-12, `{n}` counts its active and orphaned spines
+ * whatever the filters), else the Phase 2 line: the live status while
+ * active, `No CDs found` for an empty done photo, `{n} spines` otherwise.
+ */
+export function sectionSubline(
+  photo: PhotoDto,
+  now: number,
+  progress?: PhotoProgress,
+): string {
   if (isActiveStatus(photo.status)) return statusView(photo, now).subline;
-  const count =
-    photo.status === 'done' && photo.spineCount === 0
-      ? 'No CDs found'
-      : pluralize(photo.spineCount, 'spine', 'spines');
+  let count: string;
+  if (photo.status === 'done' && progress && progress.total > 0) {
+    count = `${progress.imported} / ${progress.total} imported`;
+  } else if (photo.status === 'done' && photo.spineCount === 0) {
+    count = 'No CDs found';
+  } else {
+    count = pluralize(photo.spineCount, 'spine', 'spines');
+  }
   const scanned =
     photo.finishedAt === null
       ? null
@@ -230,6 +246,7 @@ export function PhotoSection({
   connected,
   needsReconnect = false,
   pausedUntil,
+  progress,
 }: {
   photo: PhotoDto;
   spines: SpineDto[];
@@ -241,9 +258,12 @@ export function PhotoSection({
   needsReconnect?: boolean;
   /** The Discogs pause end (epoch ms), or null. */
   pausedUntil: number | null;
+  /** SpinesResponse.photoProgress for this photo (D-12). */
+  progress?: PhotoProgress;
 }) {
   const headingId = `photo-${photo.id}`;
   const now = useNow(photo.status === 'calling' ? 1000 : 30_000);
+  const subline = sectionSubline(photo, now, progress);
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <div className="sticky top-14 z-30 flex items-center gap-2 border-b bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -259,9 +279,10 @@ export function PhotoSection({
             </h2>
             <p
               className="truncate text-xs text-muted-foreground"
+              title={subline}
               suppressHydrationWarning
             >
-              {sectionSubline(photo, now)}
+              {subline}
             </p>
           </div>
           {photo.status !== 'done' ||

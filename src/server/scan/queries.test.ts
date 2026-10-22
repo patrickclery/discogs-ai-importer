@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { REVIEW_STATUSES } from '@/lib/import-types';
 import {
   foreignCandidate,
   orphanScenario,
 } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
-import { REVIEW_STATUSES } from '@/lib/import-types';
 import { getDb } from '../db/client';
 import { newId } from '../ids';
 import { getSpines } from './queries';
@@ -85,8 +85,8 @@ function listedCount(photoId?: string): number {
 /**
  * The orphan scenario plus a second photo, with spine 0 imported, the
  * orphan linked to an existing copy, spine 1 matched (queued job), spine 2
- * failed, spine 3 marked not on Discogs and the second photo's spine
- * dismissed-free and pending.
+ * failed, spine 3 marked not on Discogs and the second photo's one spine
+ * pending.
  */
 async function mixedShelf() {
   const scenario = await orphanScenario();
@@ -98,7 +98,9 @@ async function mixedShelf() {
   seedImport(s2, 'failed');
   markNotOnDiscogs(s3);
   const otherPhotoId = (
-    db().prepare('SELECT photo_id FROM spines WHERE id = ?').get(otherSpineId) as {
+    db()
+      .prepare('SELECT photo_id FROM spines WHERE id = ?')
+      .get(otherSpineId) as {
       photo_id: string;
     }
   ).photo_id;
@@ -121,9 +123,9 @@ describe('getSpines photoProgress', () => {
   it('ignores the status and review filters', async () => {
     const { photoId, otherPhotoId } = await mixedShelf();
     const unfiltered = getSpines().photoProgress;
-    expect(getSpines({ status: 'pending', review: true }).photoProgress).toEqual(
-      unfiltered,
-    );
+    expect(
+      getSpines({ status: 'pending', review: true }).photoProgress,
+    ).toEqual(unfiltered);
     expect(getSpines({ status: 'imported' }).photoProgress).toEqual(unfiltered);
     expect(Object.keys(unfiltered).sort()).toEqual(
       [photoId, otherPhotoId].sort(),

@@ -35,8 +35,8 @@ import {
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { REVIEW_STATUS_LABELS, type ReviewStatus } from '@/lib/import-types';
-import { pluralize, spinesRefetchInterval } from '@/lib/photo-status';
-import { movedOutOf, nextShownId } from '@/lib/review-status';
+import { spinesRefetchInterval } from '@/lib/photo-status';
+import { leftCount, movedOutOf, nextShownId } from '@/lib/review-status';
 import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
 async function fetchSpines(
@@ -105,6 +105,15 @@ export function groupByPhoto(spines: readonly SpineDto[]) {
     else by.set(s.photoId, [s]);
   }
   return by;
+}
+
+/** `{n} {noun}` with the number in mono (UI-SPEC Typography, counts). */
+function Count({ n, one, many }: { n: number; one: string; many: string }) {
+  return (
+    <>
+      <span className="font-mono">{n}</span> {n === 1 ? one : many}
+    </>
+  );
 }
 
 function ListSkeleton() {
@@ -348,6 +357,7 @@ export function SpinesView({
               connected={data.discogs.connected}
               needsReconnect={data.discogs.needsReconnect}
               pausedUntil={data.discogs.pausedUntil}
+              progress={data.photoProgress[p.id]}
             />
           ))}
         </ImportUiProvider>
@@ -356,6 +366,10 @@ export function SpinesView({
   }
 
   const spineCount = data?.counts.all ?? 0;
+  // D-12: imported and left (pending + matched + not found + failed) cover
+  // the photo filter and ignore the status and review filters.
+  const importedCount = data?.counts.byStatus.imported ?? 0;
+  const left = data ? leftCount(data.counts.byStatus) : 0;
   const photoCount = !data
     ? 0
     : photo
@@ -366,7 +380,21 @@ export function SpinesView({
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-medium tracking-tight">Spines</h1>
         <p className="text-sm text-muted-foreground">
-          {`${pluralize(spineCount, 'spine', 'spines')} from ${pluralize(photoCount, 'photo', 'photos')}. Changes save when you leave a field.`}
+          <Count n={spineCount} one="spine" many="spines" />
+          {' from '}
+          <Count n={photoCount} one="photo" many="photos" />
+          {left === 0 && spineCount > 0 ? (
+            ' · every spine is imported or marked'
+          ) : (
+            <>
+              {' · '}
+              <span className="font-mono">{importedCount}</span>
+              {' imported · '}
+              <span className="font-mono">{left}</span>
+              {' left'}
+            </>
+          )}
+          {'. Changes save when you leave a field.'}
         </p>
         {data ? (
           <div className="pt-6">
