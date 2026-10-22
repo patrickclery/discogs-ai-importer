@@ -1,7 +1,8 @@
 ---
 phase: "4"
 slug: "import-review-queue"
-status: draft
+status: approved
+reviewed_at: "2026-10-22"
 shadcn_initialized: true
 preset: "none (style new-york, base radix, base color neutral, cssVariables; tokens overridden per 01-UI-SPEC.md)"
 created: "2026-10-22"
