@@ -93,6 +93,8 @@ function connect(): void {
 }
 
 describe('POST /api/discogs/test', () => {
+  // A passing test backfills: never against the owner's data/app.db (T-03-49).
+  useTempDataDir();
   let dir = '';
   const names = ['SECRETS_FILE', ...Object.values(SECRET_ENV_NAMES)];
   const saved: Record<string, string | undefined> = {};

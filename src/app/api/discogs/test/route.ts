@@ -81,15 +81,16 @@ export async function POST(req: Request) {
         reason: 'Discogs answered without a username',
       });
     }
-    // The stored sign-in works again, so drop any Reconnect needed state
-    // and queue the spines it left auth_failed, as a connect does (WR-04).
-    if (isAuthInvalid()) {
-      clearAuthInvalid();
-      try {
-        enqueueMissingSearches({ includeAuthFailed: true });
-      } catch (err) {
-        console.error('[discogs] test backfill failed:', err);
-      }
+    // A passing test proves the stored sign-in works now: drop any
+    // Reconnect needed state, then look up again every spine a rejected
+    // sign-in left auth_failed, as a connect does. That holds whether or not
+    // this process still remembers the rejection: the flag lives in memory
+    // and resets on restart (WR-04, CR-01).
+    if (isAuthInvalid()) clearAuthInvalid();
+    try {
+      enqueueMissingSearches({ includeAuthFailed: true });
+    } catch (err) {
+      console.error('[discogs] test backfill failed:', err);
     }
     return result({ ok: true, username: identity.data.username });
   } catch (err) {
