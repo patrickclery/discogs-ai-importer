@@ -9,6 +9,10 @@ import {
 } from '@/server/claude/cli';
 import { clearDiscogsAuth, clearPendingConnect } from '@/server/discogs/auth';
 import {
+  collectionFolderName,
+  setCollectionFolderId,
+} from '@/server/discogs/folders';
+import {
   clearSecret,
   getSecret,
   SECRET_KEYS,
@@ -126,6 +130,35 @@ export async function saveVisionModel(
   }
   revalidatePath('/settings');
   return { ok: true };
+}
+
+const FolderIdInput = z.number().int().min(1);
+
+/**
+ * Saves the collection folder new imports go to (D-03, IMP-02, T-04-22).
+ * The id must be an integer of at least 1 in the cached folder list; the
+ * reason on failure is capped at 160 characters.
+ */
+export async function saveCollectionFolder(
+  id: number,
+): Promise<{ ok: true; name: string } | { ok: false; formError: string }> {
+  const parsed = FolderIdInput.safeParse(id);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      formError: 'that folder is not in your Discogs folder list',
+    };
+  }
+  try {
+    setCollectionFolderId(parsed.data);
+  } catch (err) {
+    const reason = (err instanceof Error ? err.message : String(err))
+      .replace(/\.\s*$/, '')
+      .slice(0, 160);
+    return { ok: false, formError: reason };
+  }
+  revalidatePath('/settings');
+  return { ok: true, name: collectionFolderName(parsed.data) };
 }
 
 /** One headless Claude call with the stored vision model (D-10, D-18). */

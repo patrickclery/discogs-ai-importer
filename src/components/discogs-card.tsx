@@ -1,6 +1,7 @@
 import { CircleCheck, TriangleAlert } from 'lucide-react';
 import { Suspense } from 'react';
 import { CallbackUrlField } from '@/components/callback-url-field';
+import { CollectionFolderField } from '@/components/collection-folder-field';
 import {
   CONNECT_BUTTON_ID,
   ConnectDiscogsButton,
@@ -73,6 +74,7 @@ function ConnectedSection({ username }: { username: string }) {
           }
         </p>
       </div>
+      <CollectionFolderField />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TestDiscogsButton />
         <DisconnectDiscogsButton />
@@ -118,7 +120,7 @@ function AccountSection({ connection }: { connection: DiscogsConnection }) {
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         {
-          'Connecting opens discogs.com so you can approve this app. The app only reads from Discogs for now. Nothing is added to your collection.'
+          'Connecting opens discogs.com so you can approve this app. The app adds a release to your Discogs collection only when you click Add on a match.'
         }
       </p>
       <ConnectDiscogsButton
