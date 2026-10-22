@@ -954,6 +954,90 @@ describe('add_to_collection handler', () => {
     });
   });
 
+  describe('another import of the same release still being resolved (WR-05)', () => {
+    /** Spine 2's import posted, its answer was lost, its job is on backoff. */
+    function unresolvedSibling(): { siblingJob: string; runAfter: number } {
+      seedSpine('active', 'spine-2');
+      const siblingId = insertImport({
+        spineId: 'spine-2',
+        status: 'importing',
+        intentAt: Date.now() - 5_000,
+        snapshot: [],
+        postCount: 1,
+      });
+      const job = enqueueImport(getDb().$client, siblingId);
+      const runAfter = Date.now() + 60_000;
+      getDb()
+        .$client.prepare('UPDATE jobs SET run_after = ? WHERE id = ?')
+        .run(runAfter, job.id);
+      return { siblingJob: job.id, runAfter };
+    }
+
+    it('an import with no intent waits for it, with no request', async () => {
+      seedSpine();
+      const { runAfter } = unresolvedSibling();
+      const { importId, ctx } = queuedImport();
+      const { stub, result } = run(
+        importId,
+        ctx,
+        route(
+          () => copiesResponse([{ instance_id: 7001 }]),
+          () => added(7002),
+        ),
+      );
+      const err = await errorOf(result);
+      expect(err.name).toBe('JobDeferredError');
+      expect(err.runAfter).toBe(runAfter + 1_000);
+      expect(stub.calls).toHaveLength(0);
+      expect(importRow(importId)).toMatchObject({
+        status: 'pending',
+        intent_at: null,
+        existing_json: null,
+      });
+    });
+
+    it("does not wait once that import's job has given up", async () => {
+      seedSpine();
+      const { siblingJob } = unresolvedSibling();
+      getDb()
+        .$client.prepare(`UPDATE jobs SET status = 'failed' WHERE id = ?`)
+        .run(siblingJob);
+      const { importId, ctx } = queuedImport();
+      const { stub, result } = run(
+        importId,
+        ctx,
+        route(
+          () => copiesResponse([]),
+          () => added(7002),
+        ),
+      );
+      await expect(result).resolves.toBeUndefined();
+      expect(stub.gets()).toHaveLength(1);
+      expect(importRow(importId).status).toBe('imported');
+    });
+
+    it('an import with its own intent never waits, so two imports never wait on each other', async () => {
+      seedSpine();
+      unresolvedSibling();
+      const { importId, ctx } = queuedImport({
+        status: 'importing',
+        intentAt: Date.now() - 5_000,
+        snapshot: [],
+        postCount: 1,
+      });
+      const { stub, result } = run(
+        importId,
+        ctx,
+        route(
+          () => copiesResponse([]),
+          () => added(7002),
+        ),
+      );
+      await expect(result).resolves.toBeUndefined();
+      expect(stub.gets()).toHaveLength(1);
+    });
+  });
+
   it('a paused gate defers without a request', async () => {
     seedSpine();
     gate.pause(5000);

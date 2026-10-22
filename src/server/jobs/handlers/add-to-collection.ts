@@ -24,7 +24,9 @@ import { type JobContext, JobDeferredError } from '../types';
 // (RESEARCH Pattern 2), in this order:
 //   0. pre-checks, no request: a finished or missing import returns; a
 //      superseded or dismissed spine fails removed; no sign-in, or one known
-//      to be invalid, fails auth; a paused gate defers;
+//      to be invalid, fails auth; a paused gate defers; an import with no
+//      intent defers while another import of the same release has an
+//      unresolved intent and a live job (WR-05);
 //   1. read the owner's copies of the release (GET collection/releases);
 //   2. when an earlier attempt wrote its intent but recorded no copy, adopt
 //      the copy that POST created (pickAdoptable) and stop, with no POST;
@@ -90,6 +92,9 @@ export const CHECK_UNSURE_REASON =
   "Couldn't confirm Discogs has no copy from this import. Retry the import instead.";
 
 type Mode = 'add' | 'check';
+
+/** How long an import waits on another import of its release (WR-05). */
+const SIBLING_WAIT_MS = 5_000;
 
 /** Spine states whose imports never spend a request. */
 const VANISHED_STATES = new Set(['superseded', 'dismissed']);
@@ -256,6 +261,33 @@ async function runImportJob(
   const pausedUntil = (deps.fetch?.gate ?? discogsGate()).pausedUntil();
   if (pausedUntil !== null) {
     throw new JobDeferredError(pausedUntil, 'Discogs rate limit pause');
+  }
+
+  // WR-05: an import that has not POSTed yet waits while another import of
+  // the same release has a POST that may have landed and a job that will
+  // still resolve it. Otherwise that copy reads as one no import records,
+  // and a local "Add another copy" the owner already confirmed is held. An
+  // import with an intent never waits, so two imports never wait on each
+  // other.
+  if (row.intent_at === null) {
+    const sibling = db
+      .prepare(
+        `SELECT MAX(j.run_after) AS run_after
+         FROM imports i JOIN jobs j ON j.id = i.job_id
+         WHERE i.release_id = @releaseId AND i.id <> @id
+           AND i.intent_at IS NOT NULL AND i.instance_id IS NULL
+           AND i.status IN ('pending', 'importing')
+           AND j.status IN ('queued', 'running')`,
+      )
+      .get({ releaseId: row.release_id, id: importId }) as {
+      run_after: number | null;
+    };
+    if (sibling.run_after !== null) {
+      throw new JobDeferredError(
+        Math.max(Date.now() + SIBLING_WAIT_MS, sibling.run_after + 1_000),
+        'Another import of this release is still being resolved',
+      );
+    }
   }
 
   // 1. The owner's copies of this release.

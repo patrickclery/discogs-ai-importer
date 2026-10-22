@@ -191,7 +191,8 @@ function duplicateOf(
  * is the owner's local "Add another copy" and does not set
  * imports.allow_duplicate: that flag stays the answer to a remote hold
  * (A-04-17), and the other spine's copy is recorded, so the handler does
- * not hold this one. One IMMEDIATE transaction, so two
+ * not hold this one; while the other spine's add is still unresolved, the
+ * handler waits for it first (WR-05). One IMMEDIATE transaction, so two
  * confirms sent at once cannot both pass; the partial unique index
  * imports_spine_open_idx is the race-proof backstop (D-08, Pitfall 8).
  */
