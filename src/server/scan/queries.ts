@@ -1,4 +1,6 @@
 import 'server-only';
+import type { ReviewStatus } from '@/lib/import-types';
+import { emptyByStatus, reviewStatusOf } from '@/lib/review-status';
 import {
   DENSITY_FLAGS,
   type DensityFlag,
@@ -263,6 +265,7 @@ export function loadSpineDtos(
       discogs: null,
       import: null,
       notOnDiscogs: r.not_on_discogs === 1,
+      reviewStatus: null,
     };
   });
 }
@@ -294,16 +297,19 @@ export function parseReviewParam(v: string | null | undefined): boolean {
 }
 
 /**
- * The /spines read model (REV-01, D-07): photos newest first (only `photoId`
- * when given; an unknown id yields no photos), their active spines in
- * detection order then their orphaned spines (D-16), and the counts the
- * filter bar shows. With `review`, only spines that need review are listed
- * (orphaned, or a non-empty unedited field below the threshold) and photos
- * without such spines are omitted. `counts` cover the photo filter and ignore
- * the review filter, so both toggle counts stay visible.
+ * The /spines read model (REV-01, D-07, D-10, D-11): photos newest first
+ * (only `photoId` when given; an unknown id yields no photos), their active
+ * spines in detection order then their orphaned spines (D-16), and the
+ * counts the filter bar shows. Every listed spine gets one review status.
+ * `status` keeps only spines with that status and `review` only spines that
+ * need review (orphaned, or a non-empty unedited field below the threshold);
+ * both must hold, listed order is kept, and photos without a shown spine are
+ * omitted while either is set. `counts`, `statusById` and `photoProgress`
+ * cover the photo filter and ignore the status and review filters, so every
+ * count stays visible while filtering.
  */
 export function getSpines(
-  opts: { photoId?: string; review?: boolean } = {},
+  opts: { photoId?: string; review?: boolean; status?: ReviewStatus } = {},
 ): SpinesResponse {
   const all = listPhotos();
   const photoOptions = all.map(({ id, filename, status }) => ({
@@ -314,31 +320,60 @@ export function getSpines(
   const scoped = opts.photoId ? all.filter((p) => p.id === opts.photoId) : all;
   const listed =
     scoped.length === 0 ? [] : listSpines({ photoId: opts.photoId });
-  // Search summaries cover every listed spine, so polling continues while a
-  // spine the review filter hides is still being looked up.
+  // Search and import summaries cover every listed spine, so polling
+  // continues while a spine the filters hide is still being looked up or
+  // added.
   const db = getDb().$client;
   const summaries = discogsForSpines(db, listed);
   const imports = importsForSpines(db, listed);
+  const byStatus = emptyByStatus();
+  const statusById: Record<string, ReviewStatus> = {};
+  const photoProgress: Record<string, { imported: number; total: number }> = {};
+  let importActive = false;
   for (const s of listed) {
     s.discogs = summaries.get(s.id) ?? null;
     s.import = imports.get(s.id) ?? null;
+    const status = reviewStatusOf({
+      importPhase: s.import?.phase ?? null,
+      importInstanceId: s.import?.instanceId ?? null,
+      notOnDiscogs: s.notOnDiscogs,
+      searchState: s.discogs?.state ?? null,
+      candidateCount: s.discogs?.candidateCount ?? 0,
+    });
+    s.reviewStatus = status;
+    byStatus[status] += 1;
+    statusById[s.id] = status;
+    const progress = photoProgress[s.photoId] ?? { imported: 0, total: 0 };
+    progress.total += 1;
+    if (status === 'imported') progress.imported += 1;
+    photoProgress[s.photoId] = progress;
+    if (s.import?.phase === 'waiting' || s.import?.phase === 'importing') {
+      importActive = true;
+    }
   }
   const confidenceThreshold = getConfidenceThreshold();
   const folderId = getCollectionFolderId();
-  const flagged = listed.filter((s) => needsReview(s, confidenceThreshold));
-  const spines = opts.review ? flagged : listed;
+  const flagged = new Set(
+    listed.filter((s) => needsReview(s, confidenceThreshold)).map((s) => s.id),
+  );
+  const spines = listed.filter(
+    (s) =>
+      (opts.status === undefined || s.reviewStatus === opts.status) &&
+      (!opts.review || flagged.has(s.id)),
+  );
+  const filtered = opts.review || opts.status !== undefined;
   const withSpines = new Set(spines.map((s) => s.photoId));
-  const photos = opts.review
-    ? scoped.filter((p) => withSpines.has(p.id))
-    : scoped;
+  const photos = filtered ? scoped.filter((p) => withSpines.has(p.id)) : scoped;
   return {
     photos,
     spines,
     photoOptions,
-    counts: { all: listed.length, needsReview: flagged.length },
+    counts: { all: listed.length, needsReview: flagged.size, byStatus },
+    statusById,
+    photoProgress,
     confidenceThreshold,
     densityMaxSpines: getDensityThresholds().maxSpines,
-    discogsActive: anyDiscogsActive(summaries.values()),
+    discogsActive: importActive || anyDiscogsActive(summaries.values()),
     discogs: {
       ...discogsConnection(),
       folder: { id: folderId, name: collectionFolderName(folderId) },

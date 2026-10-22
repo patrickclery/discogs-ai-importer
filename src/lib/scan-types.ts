@@ -1,7 +1,7 @@
 // Scan DTOs and constants shared by routes and client components.
 // Client-safe: no server-only import here.
 import type { SpineDiscogsDto } from './discogs-types';
-import type { ImportDto } from './import-types';
+import type { ImportDto, ReviewStatus } from './import-types';
 import type { Legibility, MediaKind, SpineField } from './vision-contract';
 
 /** Status of a photo = status of its latest vision run. */
@@ -104,6 +104,8 @@ export type SpineDto = {
   import: ImportDto | null;
   /** The owner marked the spine not on Discogs (REV-05). */
   notOnDiscogs: boolean;
+  /** One review status (D-10); null outside the /spines read model. */
+  reviewStatus: ReviewStatus | null;
 };
 
 export type PhotosResponse = { photos: PhotoDto[] };
@@ -117,11 +119,31 @@ export type SpinesResponse = {
   spines: SpineDto[];
   /** Every photo, newest first, for the photo Select and polling. */
   photoOptions: PhotoOption[];
-  /** Within the photo filter, ignoring the review filter. */
-  counts: { all: number; needsReview: number };
+  /**
+   * Within the photo filter, ignoring the status and review filters (D-11):
+   * active and orphaned spines only, so the six byStatus counts sum to all.
+   */
+  counts: {
+    all: number;
+    needsReview: number;
+    byStatus: Record<ReviewStatus, number>;
+  };
+  /**
+   * The review status of every spine under the photo filter, shown or not,
+   * so a spine that left the status filter can still be named (A-04-12).
+   */
+  statusById: Record<string, ReviewStatus>;
+  /**
+   * Per photo id under the photo filter: imported spines and all listed
+   * (active + orphaned) spines, regardless of the status and review filters.
+   */
+  photoProgress: Record<string, { imported: number; total: number }>;
   confidenceThreshold: number;
   densityMaxSpines: number;
-  /** A search for a listed spine is queued or running (poll while true). */
+  /**
+   * A search for a listed spine is queued or running, or a listed spine's
+   * import is waiting or importing (poll while true).
+   */
   discogsActive: boolean;
   /**
    * connected: signed in and not refused by Discogs (the search route's

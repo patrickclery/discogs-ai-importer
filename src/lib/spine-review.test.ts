@@ -244,6 +244,7 @@ describe('withSpineField (02-09)', () => {
     discogs: null,
     import: null,
     notOnDiscogs: false,
+    reviewStatus: null,
   };
   it('replaces one field of one spine and keeps the AI read it is given', () => {
     const next = withSpineField({ spines: [spine] }, 's1', {

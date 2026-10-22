@@ -10,6 +10,7 @@ import {
   type ImportUiValue,
 } from '@/components/import-ui-context';
 import { PhotoSection } from '@/components/photo-section';
+import { useStatusFilter } from '@/components/review-status-filter';
 import {
   SpinesFilterBar,
   usePhotoFilter,
@@ -26,16 +27,19 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { ReviewStatus } from '@/lib/import-types';
 import { pluralize, spinesRefetchInterval } from '@/lib/photo-status';
 import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
 async function fetchSpines(
   photo: string | null,
   review: boolean,
+  status: ReviewStatus | null,
 ): Promise<SpinesResponse> {
   const params = new URLSearchParams();
   if (photo) params.set('photo', photo);
   if (review) params.set('review', '1');
+  if (status) params.set('status', status);
   const qs = params.size > 0 ? `?${params}` : '';
   const res = await fetch(`/api/spines${qs}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`GET /api/spines returned ${res.status}`);
@@ -143,18 +147,23 @@ export function SpinesView({
   initialData,
   initialPhoto,
   initialReview,
+  initialStatus,
 }: {
   initialData: SpinesResponse;
   initialPhoto: string | null;
   initialReview: boolean;
+  initialStatus: ReviewStatus | null;
 }) {
   const [photo, setPhoto] = usePhotoFilter();
   const [review, setReview] = useReviewFilter();
+  const [status] = useStatusFilter();
   const query = useQuery({
-    queryKey: ['spines', { photo, review }],
-    queryFn: () => fetchSpines(photo, review),
+    queryKey: ['spines', { photo, review, status }],
+    queryFn: () => fetchSpines(photo, review, status),
     initialData:
-      photo === initialPhoto && review === initialReview
+      photo === initialPhoto &&
+      review === initialReview &&
+      status === initialStatus
         ? initialData
         : undefined,
     // Changing a filter keeps the last list and the filter bar on screen
@@ -162,7 +171,8 @@ export function SpinesView({
     placeholderData: keepPreviousData,
     // Every photo's status, so a scan finishing on a photo the filters hide
     // still refreshes the counts; and every 3 s while a listed spine's
-    // Discogs search is queued or running (Pitfall 4).
+    // Discogs search is queued or running or its import is waiting or
+    // importing (Pitfall 4, UI-SPEC E7).
     refetchInterval: (q) => spinesRefetchInterval(q.state.data, q.state.status),
   });
   const data = query.data;
