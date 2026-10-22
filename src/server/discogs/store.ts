@@ -52,8 +52,12 @@ export const UNSEARCHED_STATUSES = [
 
 /**
  * A spine's baseline search is its newest auto or again search whose status
- * is not in this list: UNSEARCHED_STATUSES plus auth_failed, which never
- * reached Discogs either but is only re-picked by a connect (T-03-17).
+ * is not in this list: UNSEARCHED_STATUSES plus auth_failed. An auth_failed
+ * search never reached Discogs, so it is never a baseline. It is re-picked
+ * only by enqueueMissingSearches with includeAuthFailed (finishing a connect,
+ * a passing Test connection), even when the baseline already covers the
+ * current inputs; that search's dedupe key carries the rejected search's id
+ * (CR-01). The lease-tick maintenance hook never re-picks it (T-03-17).
  */
 export const NON_BASELINE_STATUSES = [
   ...UNSEARCHED_STATUSES,

@@ -308,7 +308,9 @@ describe('discogs enqueue', () => {
       expect(autoSearches(sc.cd[0])).toHaveLength(1);
     });
 
-    it('an auth_failed search over a done one with the same inputs is not repeated', async () => {
+    // CR-01 (rule a): this reverses the 03-07 expectation. The rejected
+    // search is replayed, so the card stops saying Reconnect once connected.
+    it('a connect replays an auth_failed search even when a done one already searched the same inputs (CR-01)', async () => {
       const sc = await scanned();
       connect();
       const db = getDb().$client;
@@ -324,8 +326,16 @@ describe('discogs enqueue', () => {
       ).run({ spineId: sc.cd[0] });
       const before = discogsJobs();
       enqueueMissingSearches({ includeAuthFailed: true });
-      expect(autoSearches(sc.cd[0])).toHaveLength(1);
-      expect(discogsJobs()).toBe(before + 3);
+      const rows = autoSearches(sc.cd[0]);
+      expect(rows.map((r) => r.status)).toEqual(['done', 'queued']);
+      const { dedupe_key: key } = db
+        .prepare('SELECT dedupe_key FROM jobs WHERE id = ?')
+        .get(rows[1].job_id) as { dedupe_key: string };
+      expect(key.endsWith(':again-1')).toBe(true);
+      expect(discogsJobs()).toBe(before + 4);
+      expect(enqueueMissingSearches({ includeAuthFailed: true })).toBe(0);
+      expect(autoSearches(sc.cd[0])).toHaveLength(2);
+      expect(discogsJobs()).toBe(before + 4);
     });
   });
 

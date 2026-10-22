@@ -33,10 +33,10 @@ export function discogsReady(): boolean {
 
 /**
  * The spine's newest auto or again search that reached Discogs, or could
- * have. A not_connected, auth_failed or skipped search never ran against
+ * have. A search whose status is in NON_BASELINE_STATUSES never ran against
  * Discogs and released its dedupe key (Plan 03-05, CR-01), so it is no
- * baseline (A-03-27, NON_BASELINE_STATUSES_SQL): the backfill can search that
- * spine again with the same fields.
+ * baseline (A-03-27): the backfill can search that spine again with the same
+ * fields.
  */
 function baselineSearch(
   db: Database.Database,
@@ -54,20 +54,56 @@ function baselineSearch(
 }
 
 /**
+ * The spine's latest auto or again search, in the order the backfill
+ * selector and the card use (created_at, then ULID id).
+ */
+function latestSearch(
+  db: Database.Database,
+  spineId: string,
+): { id: string; status: string } | undefined {
+  return db
+    .prepare(
+      `SELECT id, status FROM discogs_searches
+       WHERE spine_id = @spineId AND kind IN ('auto', 'again')
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+    )
+    .get({ spineId }) as { id: string; status: string } | undefined;
+}
+
+/**
  * Creates an auto search row and its search_spine job, unless the spine's
- * latest auto or again search (ignoring ones that ended not_connected,
- * auth_failed or skipped) already used the same inputs. Returns whether a job was
- * created. Joins the caller's transaction when there is one.
+ * baseline (its newest auto or again search outside NON_BASELINE_STATUSES)
+ * already used the same inputs. Returns whether a job was created. Joins the
+ * caller's transaction when there is one.
+ *
+ * afterAuthFailed (CR-01): the id of a rejected search to replay. It is
+ * honored only when, inside this transaction, it is still the spine's latest
+ * auto or again search and ended auth_failed. Then the search runs even when
+ * the baseline already covers the current inputs, under a dedupe key that
+ * carries the rejected search's id, so it never collides with the
+ * baseline's key. Otherwise the baseline rule above applies.
  */
 export function enqueueAutoSearch(
   db: Database.Database,
   spineId: string,
+  opts: { afterAuthFailed?: string } = {},
 ): boolean {
   const tx = db.transaction((): boolean => {
     const inputs = loadSpineInputs(db, spineId);
     const hash = inputHash(inputs);
     const baseline = baselineSearch(db, spineId);
-    if (baseline?.input_hash === hash) return false;
+    let replay: string | null = null;
+    if (opts.afterAuthFailed) {
+      const latest = latestSearch(db, spineId);
+      if (
+        latest?.id === opts.afterAuthFailed &&
+        latest.status === 'auth_failed'
+      ) {
+        replay = opts.afterAuthFailed;
+      }
+    }
+    if (replay === null && baseline?.input_hash === hash) return false;
     const searchId = createSearch(db, {
       spineId,
       kind: 'auto',
@@ -75,12 +111,13 @@ export function enqueueAutoSearch(
       inputHash: hash,
     });
     // WR-01: the key carries the baseline it replaces, so returning to
-    // inputs searched before (A, then C, back to A) can search again.
+    // inputs searched before (A, then C, back to A) can search again. A
+    // replay carries the rejected search instead (CR-01).
     const job = enqueue({
       lane: 'discogs',
       type: SEARCH_JOB_TYPE,
       payload: { searchId },
-      dedupeKey: `search:auto:${spineId}:${hash}:${baseline?.id ?? 'none'}`,
+      dedupeKey: `search:auto:${spineId}:${hash}:${replay ?? baseline?.id ?? 'none'}`,
     });
     if (!job.created) {
       // A-03-11: these inputs were auto-searched before; keep no extra row.
@@ -124,13 +161,18 @@ export function enqueueAutoSearchesForPhoto(
 /**
  * The connect backfill and its safety net (D-08, RESEARCH Pattern 5): an
  * auto search for every active CD spine with no auto or again search yet, or
- * whose latest one never reached Discogs (the shared rule,
- * UNSEARCHED_STATUSES in store.ts: not_connected or skipped), and
- * auth_failed when includeAuthFailed. Only finishing a connect passes includeAuthFailed; the
- * lease-tick maintenance hook never does, so a revoked sign-in cannot loop
- * (T-03-17). A latest search that failed after its retries is never picked:
- * Retry is the owner's action (D-06). Idempotent: a second call finds every
- * spine already queued or searched. Returns the jobs created.
+ * whose latest one never reached Discogs (UNSEARCHED_STATUSES in store.ts),
+ * when its baseline does not already cover the current inputs.
+ *
+ * With includeAuthFailed, a spine whose latest search ended auth_failed (in
+ * NON_BASELINE_STATUSES, never a baseline) is replayed even when its
+ * baseline already covers the current inputs (CR-01), under a dedupe key
+ * that carries the rejected search's id. Finishing a connect and a passing
+ * Test connection pass includeAuthFailed; the lease-tick maintenance hook
+ * never does, so a revoked sign-in cannot loop (T-03-17). A latest search
+ * that failed after its retries is never picked: Retry is the owner's action
+ * (D-06). Idempotent: a second call finds every spine already queued or
+ * searched. Returns the jobs created.
  */
 export function enqueueMissingSearches(
   opts: { includeAuthFailed: boolean },
@@ -138,7 +180,8 @@ export function enqueueMissingSearches(
 ): number {
   if (!discogsReady()) return 0;
   const select = db.prepare(
-    `SELECT s.id FROM spines s
+    `SELECT s.id, ls.id AS latest_id, ls.status AS latest_status
+     FROM spines s
      JOIN spine_detections d ON d.id = s.current_detection_id
      LEFT JOIN discogs_searches ls ON ls.id = (
        SELECT x.id FROM discogs_searches x
@@ -150,20 +193,30 @@ export function enqueueMissingSearches(
          OR (@includeAuthFailed = 1 AND ls.status = 'auth_failed'))
      ORDER BY s.photo_id, d.idx, d.position, s.id`,
   );
+  type Row = {
+    id: string;
+    latest_id: string | null;
+    latest_status: string | null;
+  };
   const params = { includeAuthFailed: opts.includeAuthFailed ? 1 : 0 };
+  const isReplay = (r: Row): boolean =>
+    opts.includeAuthFailed && r.latest_status === 'auth_failed';
   // The cheap read runs every lease tick; the write lock only when needed:
   // a spine whose baseline already used its current inputs is a no-op
-  // (WR-01), so it never opens the transaction.
-  const due = (select.all(params) as { id: string }[]).some(
-    (s) =>
-      baselineSearch(db, s.id)?.input_hash !==
-      inputHash(loadSpineInputs(db, s.id)),
+  // (WR-01), so it never opens the transaction. A replay is always due.
+  const due = (select.all(params) as Row[]).some(
+    (r) =>
+      isReplay(r) ||
+      baselineSearch(db, r.id)?.input_hash !==
+        inputHash(loadSpineInputs(db, r.id)),
   );
   if (!due) return 0;
   const tx = db.transaction((): number => {
     let created = 0;
-    for (const s of select.all(params) as { id: string }[]) {
-      if (enqueueAutoSearch(db, s.id)) created += 1;
+    for (const r of select.all(params) as Row[]) {
+      const replay =
+        isReplay(r) && r.latest_id ? { afterAuthFailed: r.latest_id } : {};
+      if (enqueueAutoSearch(db, r.id, replay)) created += 1;
     }
     return created;
   });
