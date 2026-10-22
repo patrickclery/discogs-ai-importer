@@ -115,7 +115,7 @@ Plans:
   4. After editing a spine's fields, user can re-run its search and see updated candidates
   5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
 
-**Plans:** 13/14 plans executed (1 gap closure)
+**Plans:** 14/14 plans executed (1 gap closure)
 
 Plans:
 **Wave 1**
@@ -150,7 +150,7 @@ Plans:
 - [x] 03-13-PLAN.md — Owner connects the real Discogs account on port 3001 (blocking checkpoint) and a read-only live report settles A1, A2, A3, A5 (wave 9)
 
 **Gap closure (verification)** *(wave 1)*
-- [ ] 03-14-PLAN.md — CR-01/WR-01: re-activated spines are looked up again via the maintenance hook or show their real last result; one shared status rule; "waiting its turn" only when the spine will be queued
+- [x] 03-14-PLAN.md — CR-01/WR-01: re-activated spines are looked up again via the maintenance hook or show their real last result; one shared status rule; "waiting its turn" only when the spine will be queued
 
 **UI hint**: yes
 
@@ -179,7 +179,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
-| 3. Discogs Match | 13/13 | In Progress | - |
+| 3. Discogs Match | 14/14 | In Progress | - |
 | 4. Import & Review Queue | 0/TBD | Not started | - |
 
 ## Backlog

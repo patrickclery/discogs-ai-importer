@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Discogs Match
-status: executing
-stopped_at: Completed 03-13-PLAN.md
-last_updated: "2026-10-22T00:16:12.882Z"
-last_activity: 2026-10-20
-last_activity_desc: Phase 3 execution started
-state_head: 8e1ed5d997600a3b5ce5c952e3e4bdc8cb6ade3c
+status: verifying
+stopped_at: Completed 03-14-PLAN.md
+last_updated: "2026-10-22T00:22:06.307Z"
+last_activity: 2026-10-21
+last_activity_desc: Phase 03 execution started
+state_head: 9aefe9cf5d88e6724b05a97d2ac0ca936c1173a3
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 34
-  completed_plans: 33
+  completed_plans: 34
   percent: 50
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 3 — Discogs Match
+**Current focus:** Phase 03 — Discogs Match
 
 ## Current Position
 
-Phase: 03 (Discogs Match) — READY TO EXECUTE
-Plan: 13 of 13
-Status: Ready to execute
-Last activity: 2026-10-20 — Phase 3 execution started
+Phase: 03 (Discogs Match) — EXECUTING
+Plan: 14 of 14
+Status: Phase complete — ready for verification
+Last activity: 2026-10-21 — Phase 03 execution started
 
 Progress: [█████░░░░░] 50%
 
@@ -90,6 +90,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P11 | 8 min | 2 tasks | 16 files |
 | Phase 03 P12 | 8min | 2 tasks | 14 files |
 | Phase 03 P13 | 12h37m | 3 tasks | 1 files |
+| Phase 03 P14 | 4min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Dialog result covers resolve their URL from the search's stored results_json (manual and release searches only), never the request
 - [Phase 03]: The dialog's polite status announces only done ('{n} results') and no_match; not-found and failed are visible text
 - [Phase 03]: Live run: Discogs honours the per-request callback (A1) and the standard exchange signature (A2); 97% of real candidates carry covers (A5); A3 not exercised (no 429)
+- [Phase 03]: 03-14: an UNSEARCHED latest search over a baseline covering current inputs shows the baseline outcome (effectiveSearch)
+- [Phase 03]: 03-14: UNSEARCHED_STATUSES/NON_BASELINE_STATUSES in store.ts are the one shared status rule; SQL lists built from typed constants
 
 ### Pending Todos
 
@@ -203,6 +206,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-21T18:23:41.515Z
-Stopped at: Completed 03-13-PLAN.md
+Last session: 2026-10-22T00:22:06.154Z
+Stopped at: Completed 03-14-PLAN.md
 Resume file: None
