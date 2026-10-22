@@ -5,6 +5,7 @@ import { CircleX, Clock, PencilLine, RotateCw, Unplug } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 import { CandidateList } from '@/components/candidate-list';
+import { ConfirmedMatch } from '@/components/confirmed-match';
 import { DiscogsSearchDialog } from '@/components/discogs-search-dialog';
 import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import {
 } from '@/lib/candidate-format';
 import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
 import type { SpineDto } from '@/lib/scan-types';
+import { spineNumber } from '@/lib/spine-review';
 
 // The card footer's "Discogs matches" section (D-12, UI-SPEC Spine card:
 // Discogs matches). Header row, at most one notice line, then the body by
@@ -94,6 +96,11 @@ function NoticeLine({
 }) {
   const queued = connected && spine.discogs?.state === 'queued';
   const pausedSeconds = useSecondsUntil(pausedUntil, queued);
+  // UI-SPEC Notice line: an imported card shows none; a card with an open
+  // import keeps only not connected and the paused countdown (the panel's
+  // state line carries the countdown while the import waits).
+  const importPhase = spine.import?.phase ?? null;
+  if (importPhase === 'imported') return null;
   if (!connected) {
     return (
       <Line
@@ -111,7 +118,7 @@ function NoticeLine({
       </Line>
     );
   }
-  if (showsFieldsChanged(spine.discogs)) {
+  if (importPhase === null && showsFieldsChanged(spine.discogs)) {
     return (
       <Line
         icon={
@@ -134,7 +141,7 @@ function NoticeLine({
       </Line>
     );
   }
-  if (spine.discogs?.state === 'failed') {
+  if (importPhase === null && spine.discogs?.state === 'failed') {
     return (
       <Line
         className="text-destructive"
@@ -164,14 +171,30 @@ export function notSearchedLine(
   return NOT_SEARCHED_LINE;
 }
 
-/** The body by state (UI-SPEC table). Earlier candidates always stay. */
-function Body({ spine, connected }: { spine: SpineDto; connected: boolean }) {
+/**
+ * The body by state (UI-SPEC table). With an import (matched, failed import
+ * or imported) only the confirmed match shows, even when the latest search
+ * failed (A-04-09). Otherwise earlier candidates always stay.
+ */
+function Body({
+  spine,
+  connected,
+  pausedUntil,
+}: {
+  spine: SpineDto;
+  connected: boolean;
+  pausedUntil: number | null;
+}) {
+  if (spine.import) {
+    return <ConfirmedMatch spine={spine} pausedUntil={pausedUntil} />;
+  }
   const discogs = spine.discogs;
   const state = discogs?.state ?? 'not_searched';
   const candidates = discogs?.topCandidates ?? [];
   const list = (
     <CandidateList
       spineId={spine.id}
+      spineNumber={spineNumber(spine)}
       candidates={candidates}
       total={discogs?.candidateCount ?? candidates.length}
     />
@@ -294,14 +317,16 @@ export function DiscogsMatches({
   /** SpinesResponse.discogs.pausedUntil: the paused line while queued (D-06). */
   pausedUntil: number | null;
 }) {
-  const action = matchesAction(spine);
+  // A confirmed match hides the search actions until Change match (D-01).
+  const confirmed = spine.import !== null && spine.import !== undefined;
+  const action = confirmed ? null : matchesAction(spine);
   const again = useSearchAgain(spine.id);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-xs font-medium text-muted-foreground">
-            Discogs matches
+            {confirmed ? 'Confirmed match' : 'Discogs matches'}
           </h3>
           <div className="ml-auto flex flex-wrap justify-end gap-2">
             {action ? (
@@ -325,7 +350,9 @@ export function DiscogsMatches({
                 )}
               </Button>
             ) : null}
-            <DiscogsSearchDialog spine={spine} connected={connected} />
+            {confirmed ? null : (
+              <DiscogsSearchDialog spine={spine} connected={connected} />
+            )}
           </div>
         </div>
         {again.error ? (
@@ -340,7 +367,7 @@ export function DiscogsMatches({
           pausedUntil={pausedUntil}
         />
       </div>
-      <Body spine={spine} connected={connected} />
+      <Body spine={spine} connected={connected} pausedUntil={pausedUntil} />
     </div>
   );
 }

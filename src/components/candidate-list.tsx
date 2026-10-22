@@ -2,7 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
+import { AddToCollectionButton } from '@/components/add-to-collection-button';
 import { CandidateRow } from '@/components/candidate-row';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,8 +42,16 @@ async function fetchAllCandidates(spineId: string): Promise<CandidateDto[]> {
   return ((await res.json()) as CandidatesResponse).candidates;
 }
 
+type RowAction = (candidate: CandidateDto) => ReactNode;
+
 /** The rows beyond the inline ones, loaded when Show all opens. */
-function RestOfList({ spineId }: { spineId: string }) {
+function RestOfList({
+  spineId,
+  action,
+}: {
+  spineId: string;
+  action: RowAction;
+}) {
   const query = useQuery({
     queryKey: ['discogs-candidates', spineId],
     queryFn: () => fetchAllCandidates(spineId),
@@ -74,18 +83,34 @@ function RestOfList({ spineId }: { spineId: string }) {
   return (
     <ul className="flex flex-col divide-y border-t">
       {rest.map((c) => (
-        <CandidateRow key={c.id} candidate={c} />
+        <CandidateRow key={c.id} candidate={c} actions={action(c)} />
       ))}
     </ul>
   );
 }
 
+/**
+ * The card's inline Add error (UI-SPEC: under the candidate list,
+ * role alert, persistent until the next Add).
+ */
+function AddError({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="pt-2 text-xs break-words text-destructive">
+      {message}
+    </p>
+  );
+}
+
 export function CandidateList({
   spineId,
+  spineNumber,
   candidates,
   total,
 }: {
   spineId: string;
+  /** spineNumber(spine), for the owner-action event after Add. */
+  spineNumber: number;
   /** The inline candidates (SpineDiscogsDto.topCandidates). */
   candidates: readonly CandidateDto[];
   /** Every stored candidate, deduped (SpineDiscogsDto.candidateCount). */
@@ -93,15 +118,35 @@ export function CandidateList({
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  // One Add in flight per card disables every Add on it (Pitfall 8).
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   if (candidates.length === 0) return null;
+  const action: RowAction = (c) => (
+    <AddToCollectionButton
+      spineId={spineId}
+      spineNumber={spineNumber}
+      candidateId={c.id}
+      cardPendingId={pendingId}
+      onPendingChange={setPendingId}
+      onError={setError}
+    />
+  );
   const inline = (
     <ul className="flex flex-col divide-y">
       {candidates.slice(0, INLINE_CANDIDATES).map((c) => (
-        <CandidateRow key={c.id} candidate={c} />
+        <CandidateRow key={c.id} candidate={c} actions={action(c)} />
       ))}
     </ul>
   );
-  if (total <= INLINE_CANDIDATES) return inline;
+  if (total <= INLINE_CANDIDATES) {
+    return (
+      <div className="flex flex-col">
+        {inline}
+        <AddError message={error} />
+      </div>
+    );
+  }
   return (
     <Collapsible
       open={open}
@@ -114,7 +159,7 @@ export function CandidateList({
     >
       {inline}
       <CollapsibleContent>
-        {open ? <RestOfList spineId={spineId} /> : null}
+        {open ? <RestOfList spineId={spineId} action={action} /> : null}
       </CollapsibleContent>
       <CollapsibleTrigger asChild>
         <Button
@@ -137,6 +182,7 @@ export function CandidateList({
           )}
         </Button>
       </CollapsibleTrigger>
+      <AddError message={error} />
     </Collapsible>
   );
 }

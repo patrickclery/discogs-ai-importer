@@ -1,7 +1,7 @@
 'use client';
 
 import { Disc3, ExternalLink, Hash } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,11 +63,17 @@ export function CandidateRowContent({
   candidate,
   thumbSrc,
   alreadyListed = false,
+  actions,
 }: {
   candidate: CandidateDto;
   thumbSrc?: string;
   /** Dialog only: the release is already among the spine's candidates. */
   alreadyListed?: boolean;
+  /**
+   * The card's action row under the tags ("Add to {folder}", D-01). The
+   * Search Discogs dialog passes nothing: it only adds candidates.
+   */
+  actions?: ReactNode;
 }) {
   const hasTags =
     candidate.catnoMatch || candidate.source === 'manual' || alreadyListed;
@@ -100,6 +106,11 @@ export function CandidateRowContent({
             ) : null}
           </div>
         ) : null}
+        {actions ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {actions}
+          </div>
+        ) : null}
       </div>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -121,13 +132,19 @@ export function CandidateRowContent({
 }
 
 /**
- * One candidate row on the card. Listed only: no select or confirm
- * control, and the row is not clickable (Phase 4 adds the explicit confirm).
+ * One candidate row on the card. The row itself is not clickable: the only
+ * confirm is the explicit "Add to {folder}" button in its actions (IMP-01).
  */
-export function CandidateRow({ candidate }: { candidate: CandidateDto }) {
+export function CandidateRow({
+  candidate,
+  actions,
+}: {
+  candidate: CandidateDto;
+  actions?: ReactNode;
+}) {
   return (
     <li className="flex items-start gap-4 py-2">
-      <CandidateRowContent candidate={candidate} />
+      <CandidateRowContent candidate={candidate} actions={actions} />
     </li>
   );
 }
