@@ -1,6 +1,7 @@
 import 'server-only';
 import { enqueueMissingSearches } from '../../discogs/enqueue';
 import { discogsGate } from '../../discogs/gate';
+import { markInterruptedImports } from '../../imports/recovery';
 import { reconcileVisionRuns } from '../../scan/reconcile';
 import type { JobHandler, Lane } from '../types';
 import { runAddToCollection } from './add-to-collection';
@@ -44,6 +45,9 @@ export const maintenance: Array<() => unknown> = [
   // Crash safety net for the connect backfill (D-08): returns at once when
   // not connected, and never re-picks auth_failed spines (T-03-17).
   () => enqueueMissingSearches({ includeAuthFailed: false }),
+  // An import whose job the worker gave up on (failed or cancelled) never
+  // stays pending or importing (Pitfall 4). One UPDATE, no request.
+  () => markInterruptedImports(),
 ];
 
 /**

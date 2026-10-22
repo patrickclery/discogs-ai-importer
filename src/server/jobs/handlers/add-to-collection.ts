@@ -21,22 +21,40 @@ import { type JobContext, JobDeferredError } from '../types';
 // Adds one confirmed release to the owner's Discogs collection, exactly once
 // (D-05, D-07, D-08, IMP-04). Discogs makes the POST non-idempotent: every
 // POST creates a new copy. So every attempt runs the same algorithm
-// (RESEARCH Pattern 2):
+// (RESEARCH Pattern 2), in this order:
+//   0. pre-checks, no request: a finished or missing import returns; a
+//      superseded or dismissed spine fails removed; no sign-in, or one known
+//      to be invalid, fails auth; a paused gate defers;
 //   1. read the owner's copies of the release (GET collection/releases);
 //   2. when an earlier attempt wrote its intent but recorded no copy, adopt
 //      the copy that POST created (pickAdoptable) and stop, with no POST;
 //   3. when the release has a copy no import records and the owner did not
-//      ask for another copy, stop already_in_collection (D-05);
+//      ask for another copy, hold it already_in_collection (D-05);
 //   4. write the intent (status importing, intent_at, the copies seen,
 //      post_count + 1) in an IMMEDIATE transaction fenced on this claim;
-//   5. check the claim again, then POST to the import's folder;
+//   5. check the claim again (isCurrent), then POST to the import's folder;
 //   6. record the new copy's instance id and folder.
 // The intent is always written before the POST (Pitfall 7), so a crash,
 // timeout or 5xx after Discogs created the copy is adopted on the next
-// attempt instead of duplicated (Pitfall 1). A 429 defers without spending
-// an attempt; every other error is recorded on the row and rethrown for the
-// worker's retry, which reconciles first. Plan 04-02 adds the D-09 failure
-// classes and the interrupted hook.
+// attempt instead of duplicated (Pitfall 1).
+//
+// Failure classes (D-09), the same for the read and the add:
+//   429                         JobDeferredError, no attempt spent, the
+//                               row's status unchanged;
+//   401, 403, no sign-in        failed, auth ("Reconnect Discogs");
+//   404 on the add              failed, not_found (the release is gone;
+//                               the read answers 200 empty for it);
+//   422, any other 4xx          failed, rejected;
+//   network, timeout, 5xx       error_kind unavailable recorded, rethrown;
+//   anything else               error_kind other recorded, rethrown; this
+//                               includes a 201 without a usable
+//                               instance_id (RESEARCH A5), so the retry
+//                               adopts the copy instead of posting blind.
+// A rethrow goes to the worker's retry (up to 3 attempts), and every retry
+// reconciles first. Terminal endings write only while the claim is
+// current, and release the job's dedupe key so a Retry can enqueue again.
+// When the worker gives up, markInterruptedImports (imports/recovery.ts)
+// fails a row left pending or importing.
 
 export const AddToCollectionPayload = z.object({
   importId: z.string().min(1),
@@ -66,6 +84,17 @@ function message(err: unknown): string {
 function errName(err: unknown): string {
   const name = (err as { name?: unknown } | null)?.name;
   return typeof name === 'string' ? name : '';
+}
+
+/** True for a violation of imports_instance_idx. */
+function isInstanceTaken(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown } | null;
+  // SQLite names the columns of a violated index, not the index itself.
+  return (
+    e?.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
+    typeof e.message === 'string' &&
+    e.message.includes('imports.instance_id')
+  );
 }
 
 function parseIds(json: string | null): Set<number> {
@@ -118,8 +147,17 @@ export async function runAddToCollection(
       now: Date.now(),
     });
   };
-  /** Maps a request error: defer on 429, else record and rethrow. */
-  const onRequestError = (err: unknown): never => {
+  /** A terminal ending, written only while this run owns the job. */
+  const endWith = (errorKind: ImportErrorKind, err: unknown): void => {
+    if (!ctx.isCurrent()) throw err;
+    fail(errorKind, message(err));
+  };
+  /**
+   * Maps a request error (D-09). Throws to defer or retry; returns after a
+   * terminal ending, and the caller then returns too.
+   */
+  const onRequestError = (err: unknown, stage: 'read' | 'add'): void => {
+    const status = (err as { status?: unknown } | null)?.status;
     switch (errName(err)) {
       case 'NotCurrentError':
         throw err;
@@ -130,6 +168,16 @@ export async function runAddToCollection(
           message(err),
         );
       }
+      case 'DiscogsAuthError':
+        endWith('auth', err);
+        return;
+      case 'DiscogsNotFoundError':
+        endWith(stage === 'add' ? 'not_found' : 'rejected', err);
+        return;
+      case 'DiscogsRequestError':
+        // The client maps 403 here, not to DiscogsAuthError (A-04-08).
+        endWith(status === 403 ? 'auth' : 'rejected', err);
+        return;
       case 'DiscogsUnavailableError':
         recordError('unavailable', err);
         throw err;
@@ -176,7 +224,8 @@ export async function runAddToCollection(
     }
     instances = toInstances(parsed.data);
   } catch (err) {
-    return onRequestError(err);
+    onRequestError(err, 'read');
+    return;
   }
   if (!ctx.isCurrent()) throw new NotCurrentError();
 
@@ -275,7 +324,8 @@ export async function runAddToCollection(
     }
     instanceId = parsed.data.instance_id;
   } catch (err) {
-    return onRequestError(err);
+    onRequestError(err, 'add');
+    return;
   }
 
   // 6. Record the copy. Discogs created it, so this is recorded even if the
@@ -289,9 +339,9 @@ export async function runAddToCollection(
        WHERE id = @id`,
     ).run({ id: importId, instanceId, folderId: row.folder_id, now });
   } catch (err) {
-    // Another import already records this copy: something is badly wrong,
-    // and a retry could POST again. Stop here.
-    if ((err as { code?: unknown }).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    // Another import already records this copy (imports_instance_idx):
+    // something is badly wrong, and a retry could POST again. Stop here.
+    if (isInstanceTaken(err)) {
       fail('other', 'Discogs returned a copy another import already records');
       return;
     }
