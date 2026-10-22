@@ -63,8 +63,23 @@ function Line({
  * unmount).
  */
 /**
+ * D-14, WR-01: whether the card shows "Fields changed since last search."
+ * and may offer Search again. Never on a not-searched card: its body line
+ * already says what happens next. The maintenance hook queues an active,
+ * connected CD spine within one lease tick, and orphaned and unsure-media
+ * spines point to Search Discogs…. So such a card offers neither the notice
+ * nor Search again, and the button can no longer race the hook into a busy
+ * error.
+ */
+export function showsFieldsChanged(
+  discogs: SpineDto['discogs'] | undefined,
+): boolean {
+  return !!discogs && discogs.fieldsChanged && discogs.state !== 'not_searched';
+}
+
+/**
  * The not-connected, fields-changed, paused or failed line, at most one
- * (UI-SPEC order).
+ * (UI-SPEC order). Fields changed follows showsFieldsChanged (WR-01).
  */
 function NoticeLine({
   spine,
@@ -96,7 +111,7 @@ function NoticeLine({
       </Line>
     );
   }
-  if (spine.discogs?.fieldsChanged) {
+  if (showsFieldsChanged(spine.discogs)) {
     return (
       <Line
         icon={
@@ -206,8 +221,10 @@ function Body({ spine, connected }: { spine: SpineDto; connected: boolean }) {
 
 /**
  * Which header action the spine offers (UI-SPEC Header row): Retry search
- * when the latest search failed (D-06), else Search again when the fields
- * changed since it and it is not queued or running (D-14).
+ * when the latest search failed (D-06), else Search again when
+ * showsFieldsChanged and it is not queued or running (D-14). A not-searched
+ * card offers neither: its body line already says what happens next, and
+ * the button could race the maintenance hook into a busy error (WR-01).
  */
 export function matchesAction(
   spine: Pick<SpineDto, 'discogs'>,
@@ -215,7 +232,11 @@ export function matchesAction(
   const d = spine.discogs;
   if (!d) return null;
   if (d.state === 'failed') return 'retry';
-  if (d.fieldsChanged && d.state !== 'queued' && d.state !== 'searching') {
+  if (
+    showsFieldsChanged(d) &&
+    d.state !== 'queued' &&
+    d.state !== 'searching'
+  ) {
     return 'again';
   }
   return null;

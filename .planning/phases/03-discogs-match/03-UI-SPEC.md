@@ -315,7 +315,7 @@ Below 640px the status slot wraps under `#n` (existing `flex` behavior). The bad
 **Header row** (`flex flex-wrap items-center gap-2`):
 - Left: Caption 500 muted label `Discogs matches`.
 - Right (`ml-auto flex flex-wrap gap-2`), in this order when present:
-  - Outline "Search again" (`RotateCw`). Shown when `fieldsChanged` is true (D-14) and the latest search is not queued or running.
+  - Outline "Search again" (`RotateCw`). Shown when `fieldsChanged` is true (D-14) and the latest search is not queued or running. Not shown while the card reads Not searched: the body line already says what happens next (WR-01).
   - Outline "Retry search" (`RotateCw`). Shown instead of "Search again" when the latest search failed (D-06).
   - Outline "Search Discogs…" (`Search` icon). Always shown. Disabled when not connected, with a tooltip on a wrapping span.
   - Pending (request in flight): the clicked button shows `Spinner` + "Queuing…" and is disabled. A success needs no toast, because the badge flips to Queued. A failure shows an inline Caption `text-destructive` line under the header row (`role="alert"`).
@@ -323,7 +323,7 @@ Below 640px the status slot wraps under `#n` (existing `flex` behavior). The bad
 
 **Notice line** (under the header, Caption muted, `flex items-start gap-1`, 16px icon). At most one shows, in this priority:
 1. Not connected: `Unplug` icon, `Connect Discogs to find matches.` and an accent text link `Open Settings` (`/settings`).
-2. Fields changed (D-14): `PencilLine` icon (`text-warning`), `Fields changed since last search.`. The "Search again" button is in the header.
+2. Fields changed (D-14): `PencilLine` icon (`text-warning`), `Fields changed since last search.`. The "Search again" button is in the header. Not shown while the card reads Not searched (WR-01).
 3. Paused while queued: `Clock` icon, the paused copy with a client-side seconds countdown.
 4. Search failed: `CircleX` icon, Caption `text-destructive`, the mapped failure reason.
 
