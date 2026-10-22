@@ -184,8 +184,9 @@ export function effectiveSearch(
 
 /**
  * D-11 search state of a spine from its latest auto or again search (null
- * when it has none) and its stored candidate count. Not connected and
- * skipped searches read as not searched. Candidates already stored (a
+ * when it has none) and its stored candidate count. A search that never
+ * reached Discogs (UNSEARCHED_STATUSES, the shared rule) reads as not
+ * searched. Candidates already stored (a
  * manual add, or an earlier search) win over not searched and no matches.
  */
 export function searchStateOf(
@@ -194,10 +195,12 @@ export function searchStateOf(
 ): { state: SearchState; failure: SearchFailure | null } {
   let state: SearchState;
   let failure: SearchFailure | null = null;
-  switch (latest?.status ?? null) {
+  const status = latest?.status ?? null;
+  const unsearched =
+    status === null ||
+    (UNSEARCHED_STATUSES as readonly SearchStatus[]).includes(status);
+  switch (unsearched ? null : status) {
     case null:
-    case 'not_connected':
-    case 'skipped':
       state = 'not_searched';
       break;
     case 'queued':

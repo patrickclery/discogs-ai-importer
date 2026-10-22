@@ -132,6 +132,23 @@ function NoticeLine({
   return null;
 }
 
+/**
+ * The line a not-searched card body shows (UI-SPEC Body by state). Not
+ * connected: none, the notice line already says what to do. Orphaned and
+ * unsure-media spines are never looked up automatically. Only an active CD
+ * spine gets "waiting its turn", which the read model shows exactly when
+ * the maintenance hook will queue it (CR-01).
+ */
+export function notSearchedLine(
+  spine: Pick<SpineDto, 'state' | 'mediaKind'>,
+  connected: boolean,
+): string | null {
+  if (!connected) return null;
+  if (spine.state === 'orphaned') return ORPHANED_LINE;
+  if (spine.mediaKind !== 'cd') return UNSURE_MEDIA_LINE;
+  return NOT_SEARCHED_LINE;
+}
+
 /** The body by state (UI-SPEC table). Earlier candidates always stay. */
 function Body({ spine, connected }: { spine: SpineDto; connected: boolean }) {
   const discogs = spine.discogs;
@@ -176,12 +193,10 @@ function Body({ spine, connected }: { spine: SpineDto; connected: boolean }) {
           {list}
         </>
       );
-    case 'not_searched':
-      // Not connected: the notice line already says what to do.
-      if (!connected) return null;
-      if (spine.state === 'orphaned') return <Line>{ORPHANED_LINE}</Line>;
-      if (spine.mediaKind !== 'cd') return <Line>{UNSURE_MEDIA_LINE}</Line>;
-      return <Line>{NOT_SEARCHED_LINE}</Line>;
+    case 'not_searched': {
+      const line = notSearchedLine(spine, connected);
+      return line ? <Line>{line}</Line> : null;
+    }
     default:
       // done with nothing stored, or failed with no earlier candidates:
       // the badge and the notice line carry it.

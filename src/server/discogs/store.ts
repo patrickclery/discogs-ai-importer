@@ -37,10 +37,13 @@ export type SearchRowRaw = {
 const ERROR_MAX = 1000;
 
 /**
- * CR-01, WR-01: the shared status rule. Searches with these statuses never
- * reached Discogs and released their dedupe key: they read as not searched,
- * the backfill picks a spine whose latest search has one, and they are never
- * a baseline. NON_BASELINE_STATUSES extends it.
+ * CR-01, WR-01: the one shared status rule. Searches with these statuses
+ * never reached Discogs and released their dedupe key. They read as not
+ * searched (searchStateOf), the backfill selector picks a spine whose latest
+ * search has one, and they are never a baseline, so effectiveSearch shows the
+ * baseline's outcome over them. baselineSearch, the backfill selector,
+ * searchStateOf, effectiveSearch and fieldsChangedSince all use this rule
+ * (directly or through NON_BASELINE_STATUSES), so they cannot disagree.
  */
 export const UNSEARCHED_STATUSES = [
   'not_connected',
@@ -48,13 +51,28 @@ export const UNSEARCHED_STATUSES = [
 ] as const satisfies readonly SearchStatus[];
 
 /**
- * WR-01: the one baseline rule. A spine's baseline search is its newest auto
- * or again search whose status is NOT IN this list: those never reached
- * Discogs and released their dedupe key (A-03-27, CR-01). The enqueue, the
- * backfill and fieldsChanged all use it, so they cannot disagree.
+ * A spine's baseline search is its newest auto or again search whose status
+ * is not in this list: UNSEARCHED_STATUSES plus auth_failed, which never
+ * reached Discogs either but is only re-picked by a connect (T-03-17).
  */
-export const NON_BASELINE_STATUSES_SQL =
-  "('not_connected', 'auth_failed', 'skipped')";
+export const NON_BASELINE_STATUSES = [
+  ...UNSEARCHED_STATUSES,
+  'auth_failed',
+] as const satisfies readonly SearchStatus[];
+
+/**
+ * A parenthesized, single-quoted SQL list. Only SearchStatus constants can
+ * reach it, never request, field or Discogs data (T-03-45).
+ */
+function statusListSql(statuses: readonly SearchStatus[]): string {
+  return `(${statuses.map((s) => `'${s}'`).join(', ')})`;
+}
+
+/** UNSEARCHED_STATUSES as an SQL list, for the backfill selector. */
+export const UNSEARCHED_STATUSES_SQL = statusListSql(UNSEARCHED_STATUSES);
+
+/** NON_BASELINE_STATUSES as an SQL list (baselineSearch, LATEST_SQL). */
+export const NON_BASELINE_STATUSES_SQL = statusListSql(NON_BASELINE_STATUSES);
 
 export function createSearch(
   db: Database.Database,

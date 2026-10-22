@@ -4,7 +4,12 @@ import { getDb } from '../db/client';
 import { enqueue } from '../jobs/queue';
 import { getDiscogsAuth, isAuthInvalid } from './auth';
 import { inputHash, loadSpineInputs, type SearchInputs } from './inputs';
-import { createSearch, NON_BASELINE_STATUSES_SQL, setSearchJob } from './store';
+import {
+  createSearch,
+  NON_BASELINE_STATUSES_SQL,
+  setSearchJob,
+  UNSEARCHED_STATUSES_SQL,
+} from './store';
 
 // Automatic search enqueue points (D-08, RESEARCH Pattern 5). The dedupe key
 // search:auto:{spineId}:{inputHash} means one spine is never auto-searched
@@ -119,8 +124,9 @@ export function enqueueAutoSearchesForPhoto(
 /**
  * The connect backfill and its safety net (D-08, RESEARCH Pattern 5): an
  * auto search for every active CD spine with no auto or again search yet, or
- * whose latest one ended not_connected or skipped (and auth_failed when
- * includeAuthFailed). Only finishing a connect passes includeAuthFailed; the
+ * whose latest one never reached Discogs (the shared rule,
+ * UNSEARCHED_STATUSES in store.ts: not_connected or skipped), and
+ * auth_failed when includeAuthFailed. Only finishing a connect passes includeAuthFailed; the
  * lease-tick maintenance hook never does, so a revoked sign-in cannot loop
  * (T-03-17). A latest search that failed after its retries is never picked:
  * Retry is the owner's action (D-06). Idempotent: a second call finds every
@@ -140,7 +146,7 @@ export function enqueueMissingSearches(
        ORDER BY x.created_at DESC, x.id DESC
        LIMIT 1)
      WHERE s.state = 'active' AND d.media_kind = 'cd'
-       AND (ls.id IS NULL OR ls.status IN ('not_connected', 'skipped')
+       AND (ls.id IS NULL OR ls.status IN ${UNSEARCHED_STATUSES_SQL}
          OR (@includeAuthFailed = 1 AND ls.status = 'auth_failed'))
      ORDER BY s.photo_id, d.idx, d.position, s.id`,
   );
