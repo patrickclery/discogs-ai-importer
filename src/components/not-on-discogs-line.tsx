@@ -3,6 +3,7 @@
 import { CircleSlash, Undo2 } from 'lucide-react';
 import type { NotOnDiscogsControl } from '@/components/spine-action-menu';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 // The marked body (UI-SPEC Not on Discogs, D-14, REV-05): the marked copy
 // and an Unmark button. Candidates, Search again and Search Discogs… are
@@ -27,10 +28,20 @@ export function NotOnDiscogsLine({
         variant="outline"
         size="sm"
         data-unmark-button=""
-        onClick={() => void control.run(false)}
+        disabled={control.pending !== null}
+        onClick={() => void control.run(false, 'button')}
       >
-        <Undo2 aria-hidden="true" />
-        Unmark
+        {control.pending && !control.pending.flag ? (
+          <>
+            <Spinner aria-hidden="true" role="presentation" />
+            Unmarking…
+          </>
+        ) : (
+          <>
+            <Undo2 aria-hidden="true" />
+            Unmark
+          </>
+        )}
       </Button>
     </div>
   );

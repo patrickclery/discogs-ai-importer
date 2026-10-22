@@ -30,11 +30,18 @@ export function setNotOnDiscogs(
 ): SetNotOnDiscogsResult {
   const tx = db.transaction((): SetNotOnDiscogsResult => {
     const spine = db
-      .prepare('SELECT state FROM spines WHERE id = @spineId')
-      .get({ spineId }) as { state: string } | undefined;
+      .prepare('SELECT state, not_on_discogs FROM spines WHERE id = @spineId')
+      .get({ spineId }) as
+      | { state: string; not_on_discogs: number }
+      | undefined;
     if (!spine) return { status: 'not_found' };
     if (spine.state !== 'active' && spine.state !== 'orphaned') {
       return { status: 'not_markable' };
+    }
+    // A repeat (a double click, the toast's Undo after an Unmark) is a
+    // no-op: it answers ok and writes nothing.
+    if ((spine.not_on_discogs === 1) === flag) {
+      return { status: 'ok', notOnDiscogs: flag };
     }
     if (flag) {
       const latest = db

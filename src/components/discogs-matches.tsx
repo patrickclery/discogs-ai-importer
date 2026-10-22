@@ -255,10 +255,20 @@ function Body({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => void control.run(true)}
+                  disabled={control.pending !== null}
+                  onClick={() => void control.run(true, 'button')}
                 >
-                  <CircleSlash aria-hidden="true" />
-                  Mark not on Discogs
+                  {control.pending?.flag ? (
+                    <>
+                      <Spinner aria-hidden="true" role="presentation" />
+                      Marking…
+                    </>
+                  ) : (
+                    <>
+                      <CircleSlash aria-hidden="true" />
+                      Mark not on Discogs
+                    </>
+                  )}
                 </Button>
               </div>
             ) : null}
@@ -398,6 +408,11 @@ export function DiscogsMatches({
         {again.error ? (
           <p role="alert" className="text-xs text-destructive">
             Couldn't start the search: {again.error}.
+          </p>
+        ) : null}
+        {notOnDiscogs.error ? (
+          <p role="alert" className="text-xs text-destructive">
+            {notOnDiscogs.error}
           </p>
         ) : null}
         {marked ? null : (
