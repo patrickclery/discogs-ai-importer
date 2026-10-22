@@ -51,8 +51,9 @@ export async function POST(req: Request) {
   const db = getDb().$client;
   let retried = 0;
   for (const spine of failed) {
-    // A failed search beside a waiting or running import (A-04-09) is left
-    // as it is: the import is already in line.
+    // A waiting or running import is already in line and is left as it
+    // is. Such a spine no longer reads failed for an older failed search
+    // (WR-06); this guard stays as the bulk rule's own fence.
     const phase = spine.import?.phase;
     if (phase === 'waiting' || phase === 'importing') continue;
     if (retrySpine(db, spine.id).status === 'ok') retried += 1;

@@ -288,7 +288,8 @@ describe('POST /api/spines/retry-failed', () => {
     const { spineIds } = await orphanScenario();
     connect();
     const importId = failedImport(spineIds[0]);
-    // Put the import back in line, then fail a newer search (A-04-09).
+    // Put the import back in line, then fail a newer search: the spine
+    // reads matched (WR-06), so it is not even listed.
     const job = db()
       .prepare(`SELECT job_id FROM imports WHERE id = ?`)
       .get(importId) as { job_id: string };

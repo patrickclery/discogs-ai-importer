@@ -67,8 +67,15 @@ describe('reviewStatusOf (D-10 order)', () => {
     expect(status({ searchState: 'failed' })).toBe('failed');
   });
 
-  it('a failed search is failed even with an open import (A-04-09)', () => {
-    expect(status({ importPhase: 'waiting', searchState: 'failed' })).toBe(
+  it.each(['waiting', 'importing', 'already_in_collection'] as const)(
+    'an older failed search beside a %s import reads matched, not failed (WR-06)',
+    (importPhase) => {
+      expect(status({ importPhase, searchState: 'failed' })).toBe('matched');
+    },
+  );
+
+  it('a failed import with a failed search is failed', () => {
+    expect(status({ importPhase: 'failed', searchState: 'failed' })).toBe(
       'failed',
     );
   });

@@ -22,18 +22,24 @@ export type ReviewStatusInput = {
 /**
  * Exactly one status per spine, top-down in D-10 order: imported (an
  * instance id is recorded, a linked copy included), not_on_discogs (the
- * owner marked it), failed (the latest import failed, or the latest search
- * failed, also with an open import: A-04-09), matched (a release is
- * confirmed and the import is waiting, importing or held), not_found (the
- * search finished with no results and there is no manual candidate), and
- * pending for everything else.
+ * owner marked it), failed (the latest import failed, or, with no import,
+ * the latest search failed), matched (a release is confirmed and the import
+ * is waiting, importing or held), not_found (the search finished with no
+ * results and there is no manual candidate), and pending for everything
+ * else. An import replaces the search on the card, so an older failed
+ * search beside an open import reads matched (WR-06, revises A-04-09):
+ * the card shows no search failure and Retry all failed has nothing to
+ * clear.
  */
 export function reviewStatusOf(x: ReviewStatusInput): ReviewStatus {
   if (x.importInstanceId !== null || x.importPhase === 'imported') {
     return 'imported';
   }
   if (x.notOnDiscogs) return 'not_on_discogs';
-  if (x.importPhase === 'failed' || x.searchState === 'failed') {
+  if (
+    x.importPhase === 'failed' ||
+    (x.importPhase === null && x.searchState === 'failed')
+  ) {
     return 'failed';
   }
   if (
