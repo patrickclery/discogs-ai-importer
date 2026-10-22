@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { REVIEW_STATUSES, type ReviewStatus } from './import-types';
 import {
   leftCount,
+  movedOutOf,
   parseStatusParam,
   type ReviewStatusInput,
   reviewStatusOf,
@@ -149,5 +150,23 @@ describe('leftCount', () => {
         failed: 0,
       }),
     ).toBe(0);
+  });
+});
+
+describe('movedOutOf', () => {
+  it('names the new status when the spine left the active filter', () => {
+    expect(movedOutOf('pending', 'matched')).toBe('matched');
+  });
+
+  it('is null under All', () => {
+    expect(movedOutOf(null, 'matched')).toBeNull();
+  });
+
+  it('is null when the status is unchanged', () => {
+    expect(movedOutOf('failed', 'failed')).toBeNull();
+  });
+
+  it('is null when the new status is unknown', () => {
+    expect(movedOutOf('pending', undefined)).toBeNull();
   });
 });

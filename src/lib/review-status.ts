@@ -76,3 +76,10 @@ export function emptyByStatus(): Record<ReviewStatus, number> {
     number
   >;
 }
+
+export function movedOutOf(
+  _activeStatus: ReviewStatus | null,
+  _newStatus: ReviewStatus | null | undefined,
+): ReviewStatus | null {
+  return null;
+}
