@@ -168,7 +168,7 @@ Plans:
   4. User can filter the spine list by pending, matched, imported, not found, not on Discogs and failed, with a count for each status
   5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs"
 
-**Plans:** 1/14 plans executed
+**Plans:** 2/14 plans executed
 
 Plans:
 **Wave 1**
@@ -176,7 +176,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 04-10-PLAN.md — Import read model and card badge on /spines, shared import UI context, verify helpers and ImportFakeState in scripts/lib/import-flow.ts (wave 2)
-- [ ] 04-06-PLAN.md — Collection folder select on Settings: cached folder list, inline refresh, fallback to Uncategorized (wave 2)
+- [x] 04-06-PLAN.md — Collection folder select on Settings: cached folder list, inline refresh, fallback to Uncategorized (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 04-02-PLAN.md — Exactly-once: a kill mid-POST and a 502 after commit adopt the copy, already-in-collection hold, D-09 failure classes, interrupted-import hook (wave 3)
@@ -205,7 +205,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation | 6/6 | Complete    | 2026-10-19 |
 | 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
 | 3. Discogs Match | 15/15 | Complete    | 2026-10-22 |
-| 4. Import & Review Queue | 1/14 | In Progress | - |
+| 4. Import & Review Queue | 2/14 | In Progress | - |
 
 ## Backlog
 

@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-10-22T09:15:21.565Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-10-22T09:25:15.093Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: dd2dfbd2357bc1620b738935ff794e9b81d519da
+state_head: c8012fba286bc7b9006091440f75519e6ec64016
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 36
-  percent: 73
+  completed_plans: 37
+  percent: 75
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 4 (Import & Review Queue) — EXECUTING
-Plan: 2 of 14
+Plan: 3 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 — Phase 4 execution started
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -94,6 +94,7 @@ Progress: [███████░░░] 73%
 | Phase 03 P14 | 4min | 2 tasks | 6 files |
 | Phase 03 P15 | 4min | 3 tasks | 12 files |
 | Phase 04 P01 | 8min | 2 tasks | 14 files |
+| Phase 04 P06 | 7min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -196,6 +197,9 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-01: Until Plan 04-02, add_to_collection records every non-429 request error on the imports row and rethrows; terminal ends (removed, auth, already_in_collection) release the dedupe key
 - [Phase 04]: 04-01: A duplicate instance id when recording a POSTed copy fails the import instead of retrying
 - [Phase 04]: 04-01: enqueueImport opens its own IMMEDIATE transaction (a savepoint inside createImport's)
+- [Phase 04]: 04-06: setCollectionFolderId refuses any id when no folder list is cached, even 1
+- [Phase 04]: 04-06: a folder refresh 403 maps to rejected like a 401; a malformed folder list is a DiscogsRequestError with a safe reason
+- [Phase 04]: 04-06: saveCollectionFolder returns the bare reason; the field wraps it in the UI-SPEC Not saved sentence
 
 ### Pending Todos
 
@@ -215,6 +219,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T09:15:21.342Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-10-22T09:25:14.867Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None
