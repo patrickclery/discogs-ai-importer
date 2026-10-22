@@ -229,6 +229,57 @@ describe('mergeRunIntoSpines via persistRunResult (run_no > 1)', () => {
     expect(run1Rows.n).toBe(layout.spines.length);
   });
 
+  // RESEARCH Pitfall 5: a spine with a non-failed import or the not-on-Discogs
+  // mark is never retired, so its replacement can never be confirmed and
+  // added a second time.
+  function seedImport(spineId: string, status: string): void {
+    const now = Date.now();
+    getDb()
+      .$client.prepare(
+        `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
+           created_at, updated_at)
+         VALUES (@id, @spineId, 4242, 1, @status, @now, @now)`,
+      )
+      .run({ id: newId(), spineId, status, now });
+  }
+
+  it.each(['pending', 'importing', 'imported', 'already_in_collection'])(
+    'an unmatched old spine with an import in status %s is orphaned, never superseded',
+    async (status) => {
+      const { photoId, detections, spineIds } = await firstRun();
+      seedImport(spineIds[5], status);
+      persist(
+        parsingRun(photoId, 2),
+        rescanOutput((s) => (s.index === 5 ? null : s)),
+      );
+      const kept = spine(spineIds[5]);
+      expect(kept.state).toBe('orphaned');
+      expect(kept.current_detection_id).toBe(detections[5].id);
+    },
+  );
+
+  it('an unmatched old spine marked not on Discogs is orphaned', async () => {
+    const { photoId, spineIds } = await firstRun();
+    getDb()
+      .$client.prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+      .run(spineIds[5]);
+    persist(
+      parsingRun(photoId, 2),
+      rescanOutput((s) => (s.index === 5 ? null : s)),
+    );
+    expect(spine(spineIds[5]).state).toBe('orphaned');
+  });
+
+  it('an unmatched old spine whose only import failed is superseded (A-04-16)', async () => {
+    const { photoId, spineIds } = await firstRun();
+    seedImport(spineIds[5], 'failed');
+    persist(
+      parsingRun(photoId, 2),
+      rescanOutput((s) => (s.index === 5 ? null : s)),
+    );
+    expect(spine(spineIds[5]).state).toBe('superseded');
+  });
+
   it('a value that only trims the AI read is not an edit (CR-01)', async () => {
     const { photoId, spineIds } = await firstRun();
     // A field saved trimmed against a padded read, before CR-01.

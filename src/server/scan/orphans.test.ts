@@ -13,6 +13,7 @@ import {
 } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { getDb } from '../db/client';
+import { newId } from '../ids';
 import { updateSpineField } from './fields';
 import { dismissSpine, listReattachCandidates, reattachSpine } from './orphans';
 import { getSpines } from './queries';
@@ -20,6 +21,24 @@ import { getSpines } from './queries';
 // D-16 orphaned spines (T-02-25, T-02-27): re-attach only onto an unedited
 // spine the same photo's latest run newly found, dismiss only an orphan, and
 // never lose stored edits.
+
+/** An imports row for the spine, seeded with direct SQL. */
+function seedImport(spineId: string, status: string): void {
+  const now = Date.now();
+  getDb()
+    .$client.prepare(
+      `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
+         created_at, updated_at)
+       VALUES (@id, @spineId, 4242, 1, @status, @now, @now)`,
+    )
+    .run({ id: newId(), spineId, status, now });
+}
+
+function markNotOnDiscogs(spineId: string): void {
+  getDb()
+    .$client.prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+    .run(spineId);
+}
 
 describe('orphaned spines', () => {
   useTempDataDir();
@@ -197,5 +216,76 @@ describe('orphaned spines', () => {
 
   it('dismiss of an unknown spine is not_found', () => {
     expect(dismissSpine('no-such-spine')).toBe('not_found');
+  });
+
+  // RESEARCH Pitfall 5: a re-attach supersedes its target, so a target with a
+  // non-failed import or the mark is never offered or accepted.
+  it.each(['pending', 'importing', 'imported', 'already_in_collection'])(
+    'a target with an import in status %s is not a candidate and re-attach onto it is a conflict',
+    async (status) => {
+      const { orphanId, vId } = await orphanScenario();
+      seedImport(vId, status);
+      expect(listReattachCandidates(orphanId)).toEqual({
+        status: 'ok',
+        value: [],
+      });
+      const before = spineTables();
+      expect(reattachSpine(orphanId, vId)).toEqual({ status: 'conflict' });
+      expect(spineTables()).toBe(before);
+      expect(spineRow(vId).state).toBe('active');
+    },
+  );
+
+  it('a target marked not on Discogs is not a candidate and re-attach onto it is a conflict', async () => {
+    const { orphanId, vId } = await orphanScenario();
+    markNotOnDiscogs(vId);
+    expect(listReattachCandidates(orphanId)).toEqual({
+      status: 'ok',
+      value: [],
+    });
+    const before = spineTables();
+    expect(reattachSpine(orphanId, vId)).toEqual({ status: 'conflict' });
+    expect(spineTables()).toBe(before);
+  });
+
+  it('a target whose only import failed is still a candidate (A-04-16)', async () => {
+    const { orphanId, vId } = await orphanScenario();
+    seedImport(vId, 'failed');
+    const result = listReattachCandidates(orphanId);
+    expect(result.status).toBe('ok');
+    if (result.status !== 'ok') return;
+    expect(result.value.map((s) => s.id)).toEqual([vId]);
+  });
+
+  it.each(['pending', 'importing', 'imported', 'already_in_collection'])(
+    'dismiss of an orphan with an import in status %s is has_import and keeps it orphaned',
+    async (status) => {
+      const { orphanId } = await orphanScenario();
+      seedImport(orphanId, status);
+      const before = spineTables();
+      expect(dismissSpine(orphanId)).toBe('has_import');
+      expect(spineTables()).toBe(before);
+      expect(spineRow(orphanId).state).toBe('orphaned');
+    },
+  );
+
+  it('dismiss of an orphan whose only import failed dismisses it', async () => {
+    const { orphanId } = await orphanScenario();
+    seedImport(orphanId, 'failed');
+    expect(dismissSpine(orphanId)).toBe('ok');
+    expect(spineRow(orphanId).state).toBe('dismissed');
+  });
+
+  it('dismiss of a marked orphan without an import dismisses it', async () => {
+    const { orphanId } = await orphanScenario();
+    markNotOnDiscogs(orphanId);
+    expect(dismissSpine(orphanId)).toBe('ok');
+    expect(spineRow(orphanId).state).toBe('dismissed');
+  });
+
+  it('dismiss of an active spine with an import is still a conflict', async () => {
+    const { spineIds } = await orphanScenario();
+    seedImport(spineIds[0], 'imported');
+    expect(dismissSpine(spineIds[0])).toBe('conflict');
   });
 });
