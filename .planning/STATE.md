@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Import & Review Queue
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-10-22T09:43:20.779Z"
+stopped_at: Completed 04-12-PLAN.md
+last_updated: "2026-10-22T09:53:18.442Z"
 last_activity: 2026-10-22
 last_activity_desc: Phase 4 execution started
-state_head: 10e9957c70d6a602eceddde982710ed5e22196e9
+state_head: 25c8c5d5d9541f798b1fd6ff8a5e8a18a5cc28d1
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 49
-  completed_plans: 39
+  completed_plans: 40
   percent: 75
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-22)
 ## Current Position
 
 Phase: 4 (Import & Review Queue) — EXECUTING
-Plan: 5 of 14
+Plan: 6 of 14
 Status: Ready to execute
 Last activity: 2026-10-22 — Phase 4 execution started
 
@@ -97,6 +97,7 @@ Progress: [████████░░] 75%
 | Phase 04 P06 | 7min | 2 tasks | 8 files |
 | Phase 04 P10 | 5min | 2 tasks | 11 files |
 | Phase 04 P02 | 8min | 3 tasks | 12 files |
+| Phase 04 P12 | 8min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Phase 4 verify helpers and ImportFakeState live in scripts/lib/import-flow.ts; new fake-state fields go there
 - [Phase 04]: 04-02: a 404 on the collection read ends an import rejected; only a 404 on the add is not_found (the read answers 200 empty for an unknown release)
 - [Phase 04]: 04-02: markInterruptedImports runs as a maintenance hook and keeps an earlier error_kind/error via COALESCE, else stores interrupted with the UI-SPEC line
+- [Phase 04]: 04-12: retrySpine returns the same job for a waiting import (idempotent Retry); only a running or importing import answers busy
+- [Phase 04]: 04-12: retrySpine answers nothing_to_retry for imported or already_in_collection imports, superseded or dismissed spines, and spines marked not on Discogs
 
 ### Pending Todos
 
@@ -226,6 +229,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T09:43:20.552Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-10-22T09:53:18.219Z
+Stopped at: Completed 04-12-PLAN.md
 Resume file: None
