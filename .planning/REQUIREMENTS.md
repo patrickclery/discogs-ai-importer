@@ -47,7 +47,7 @@
 ### Import
 
 - [x] **IMP-01**: User must explicitly confirm a candidate before anything is added to their Discogs collection (no auto-add)
-- [ ] **IMP-02**: Confirmed releases are added to the user's chosen collection folder (default Uncategorized)
+- [x] **IMP-02**: Confirmed releases are added to the user's chosen collection folder (default Uncategorized)
 - [ ] **IMP-03**: User is warned if a release is already in their Discogs collection or already imported from another photo
 - [ ] **IMP-04**: Collection adds are never duplicated by retries or crashes; the Discogs instance ID is recorded for each import
 
@@ -114,7 +114,7 @@
 | DISC-05 | Phase 3 | Complete |
 | DISC-06 | Phase 3 | Complete |
 | IMP-01 | Phase 4 | Complete |
-| IMP-02 | Phase 4 | Pending |
+| IMP-02 | Phase 4 | Complete |
 | IMP-03 | Phase 4 | Pending |
 | IMP-04 | Phase 4 | Pending |
 
