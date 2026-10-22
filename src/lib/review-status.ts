@@ -111,3 +111,17 @@ export function nextShownId(
   }
   return null;
 }
+
+/** The empty state an empty filtered /spines list shows (D-11, UI-SPEC E11). */
+export type FilterEmpty =
+  | { kind: 'status'; status: ReviewStatus }
+  | { kind: 'combined' }
+  | { kind: 'review' };
+
+export function filterEmptyOf(
+  _status: ReviewStatus | null,
+  _review: boolean,
+  _shown: number,
+): FilterEmpty | null {
+  return null;
+}

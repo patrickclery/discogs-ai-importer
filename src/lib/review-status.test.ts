@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { REVIEW_STATUSES, type ReviewStatus } from './import-types';
 import {
+  filterEmptyOf,
   leftCount,
   movedOutOf,
   nextShownId,
@@ -193,5 +194,27 @@ describe('nextShownId', () => {
 
   it('an unknown spine gives the first shown card', () => {
     expect(nextShownId(order, 'z', new Set(['c', 'd']))).toBe('c');
+  });
+});
+
+describe('filterEmptyOf (D-11, UI-SPEC E11)', () => {
+  it('names the status when a status filter shows no spine', () => {
+    for (const s of REVIEW_STATUSES) {
+      expect(filterEmptyOf(s, false, 0)).toEqual({ kind: 'status', status: s });
+    }
+  });
+
+  it('uses the combined state when Needs review is also on', () => {
+    expect(filterEmptyOf('pending', true, 0)).toEqual({ kind: 'combined' });
+  });
+
+  it('keeps the Needs review state under All', () => {
+    expect(filterEmptyOf(null, true, 0)).toEqual({ kind: 'review' });
+  });
+
+  it('is null while spines are shown or no filter is on', () => {
+    expect(filterEmptyOf('failed', true, 1)).toBeNull();
+    expect(filterEmptyOf('failed', false, 3)).toBeNull();
+    expect(filterEmptyOf(null, false, 0)).toBeNull();
   });
 });

@@ -183,3 +183,66 @@ describe('getSpines counts', () => {
     });
   });
 });
+
+describe('getSpines order, empty and polling', () => {
+  useTempDataDir();
+
+  it('keeps listed order under a status filter', async () => {
+    const { spineIds, orphanId } = await orphanScenario();
+    const otherSpineId = await foreignCandidate();
+    seedImport(spineIds[1], 'imported', { instanceId: 9101 });
+    const listed = getSpines().spines.map((s) => s.id);
+    const pending = getSpines({ status: 'pending' }).spines.map((s) => s.id);
+    expect(pending).toEqual(listed.filter((id) => id !== spineIds[1]));
+    // Newest photo first, then active by detection index, then the orphan.
+    const scanPhoto = pending.filter((id) => id !== otherSpineId);
+    expect(scanPhoto[scanPhoto.length - 1]).toBe(orphanId);
+    expect(scanPhoto.slice(0, 3)).toEqual([
+      spineIds[0],
+      spineIds[2],
+      spineIds[3],
+    ]);
+    expect(pending.indexOf(otherSpineId)).toBe(
+      listed.indexOf(otherSpineId) === 0 ? 0 : pending.length - 1,
+    );
+  });
+
+  it('gives every count 0 and no statuses without photos', () => {
+    for (const opts of [{}, { status: 'failed' as const, review: true }]) {
+      const data = getSpines(opts);
+      expect(data.photos).toEqual([]);
+      expect(data.spines).toEqual([]);
+      expect(data.counts.all).toBe(0);
+      expect(data.counts.needsReview).toBe(0);
+      expect(Object.values(data.counts.byStatus)).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(data.statusById).toEqual({});
+      expect(data.photoProgress).toEqual({});
+      expect(data.discogsActive).toBe(false);
+    }
+  });
+
+  it('discogsActive is true while an import job is queued or running', async () => {
+    const { spineIds } = await orphanScenario();
+    seedImport(spineIds[0], 'pending', { jobStatus: 'queued' });
+    expect(getSpines().discogsActive).toBe(true);
+    db()
+      .prepare(
+        `UPDATE jobs SET status = 'running'
+         WHERE id = (SELECT job_id FROM imports WHERE spine_id = ?)`,
+      )
+      .run(spineIds[0]);
+    expect(getSpines().discogsActive).toBe(true);
+    // A filter hiding the spine keeps polling alive.
+    expect(getSpines({ status: 'failed' }).discogsActive).toBe(true);
+  });
+
+  it('discogsActive is false with only held or failed imports and no active search', async () => {
+    const { spineIds } = await orphanScenario();
+    seedImport(spineIds[0], 'already_in_collection', {
+      jobStatus: 'succeeded',
+    });
+    seedImport(spineIds[1], 'failed', { jobStatus: 'failed' });
+    seedImport(spineIds[2], 'imported', { instanceId: 9201 });
+    expect(getSpines().discogsActive).toBe(false);
+  });
+});
