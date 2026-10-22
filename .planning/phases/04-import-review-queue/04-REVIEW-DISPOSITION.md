@@ -5,15 +5,15 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "Change match on a failed-with-intent import is reachable only through a Retry that POSTs the release the owner wants to drop"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Re-scan merge, Dismiss and re-attach treat a failed import with a written intent as closed, which hides a copy that may be on Discogs"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "retrySpine retries an import on a spine the owner marked \"not on Discogs\""
   - id: WR-03
     severity: warning
@@ -21,15 +21,15 @@ findings:
     title: "Marking \"not on Discogs\" is allowed while a failed import may already be on Discogs"
   - id: WR-04
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The adopt rule's time guard produces false negatives, and for allow_duplicate imports that means a second POST"
   - id: WR-05
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "A local \"Add another copy\" is held as already_in_collection while the other spine's add is still unresolved"
   - id: WR-06
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "A spine with a held or waiting import and an older failed search reads \"Failed\", and Retry all failed cannot clear it"
   - id: IN-01
     severity: info
@@ -51,22 +51,22 @@ findings:
     severity: info
     disposition: open
     title: "Silent fallbacks in the folder list and Retry all failed"
-open: 11
+open: 5
 total: 12
-recorded: 2026-10-22T20:51:55.928Z
+recorded: 2026-10-22T20:52:04.239Z
 ---
 
 # Phase 04: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
+| CR-01 | critical | fixed | 04-REVIEW-FIX.md |
+| WR-01 | warning | fixed | 04-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 04-REVIEW-FIX.md |
 | WR-03 | warning | fixed | 04-REVIEW-FIX.md |
-| WR-04 | warning | open | - |
-| WR-05 | warning | open | - |
-| WR-06 | warning | open | - |
+| WR-04 | warning | fixed | 04-REVIEW-FIX.md |
+| WR-05 | warning | fixed | 04-REVIEW-FIX.md |
+| WR-06 | warning | fixed | 04-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
