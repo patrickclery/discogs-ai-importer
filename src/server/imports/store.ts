@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import type { CandidateFormat } from '@/lib/discogs-types';
 import {
   canChangeMatchOf,
+  type ExistingInstance,
   type ImportCandidateSnapshot,
   type ImportPhase,
   type ImportStatus,
@@ -19,7 +20,9 @@ import { fileUrl } from '../scan/queries';
 // path that creates an import; enqueueImport, reached from createImport and
 // retryImport, is the only place add_to_collection is enqueued (IMP-01,
 // guarded by the enqueue-site scan in store.test.ts). cancelImport (Change
-// match) and retrySpine (Retry) are the owner's other import actions.
+// match), retrySpine (Retry), linkExisting and addAnotherCopy (the
+// already-in-collection decision, D-05) are the owner's other import
+// actions.
 // The release id always comes from the spine's own candidate row, never from
 // the request (T-04-02). Raw SQL with @named parameters; better-sqlite3 is
 // built with DQS=0, so string literals are single-quoted.
@@ -499,12 +502,73 @@ export type LinkExistingResult =
   | { status: 'not_held' }
   | { status: 'no_existing' };
 
-/** Link existing copy (D-05). Stub until Plan 04-04 Task 2 GREEN. */
+/** existing_json as written by the handler; anything unreadable is empty. */
+function existingCopies(json: string | null): ExistingInstance[] {
+  if (!json) return [];
+  const out: ExistingInstance[] = [];
+  for (const e of jsonArray(json)) {
+    if (!e || typeof e !== 'object') continue;
+    const o = e as Record<string, unknown>;
+    if (
+      !Number.isSafeInteger(o.instanceId) ||
+      !Number.isSafeInteger(o.folderId)
+    ) {
+      continue;
+    }
+    out.push({
+      instanceId: o.instanceId as number,
+      folderId: o.folderId as number,
+      dateAdded: typeof o.dateAdded === 'string' ? o.dateAdded : '',
+    });
+  }
+  return out;
+}
+
+/**
+ * Link existing copy (D-05, T-04-30): the spine's latest import must be
+ * held already_in_collection (else not_held). It takes the first copy in
+ * existing_json (ascending instance_id) that no imports row records and
+ * marks the import imported with that copy's instance and folder, linked 1.
+ * No Discogs request. One IMMEDIATE transaction; imports_instance_idx is the
+ * backstop, so one copy is linked to at most one spine (no_existing).
+ */
 export function linkExisting(
-  _db: Database.Database,
-  _spineId: string,
+  db: Database.Database,
+  spineId: string,
 ): LinkExistingResult {
-  return { status: 'not_found' };
+  const tx = db.transaction((): LinkExistingResult => {
+    const row = latestImport(db, spineId);
+    if (!row) return { status: 'not_found' };
+    if (row.status !== 'already_in_collection') return { status: 'not_held' };
+    const recorded = db.prepare(
+      'SELECT 1 FROM imports WHERE instance_id = @instanceId',
+    );
+    const copy = existingCopies(row.existing_json).find(
+      (c) => !recorded.get({ instanceId: c.instanceId }),
+    );
+    if (!copy) return { status: 'no_existing' };
+    const now = Date.now();
+    db.prepare(
+      `UPDATE imports SET status = 'imported', instance_id = @instanceId,
+         folder_id = @folderId, linked = 1, imported_at = @now,
+         error = NULL, error_kind = NULL, updated_at = @now
+       WHERE id = @id`,
+    ).run({
+      id: row.id,
+      instanceId: copy.instanceId,
+      folderId: copy.folderId,
+      now,
+    });
+    return { status: 'ok', importId: row.id, instanceId: copy.instanceId };
+  });
+  try {
+    return tx.immediate();
+  } catch (err) {
+    if (isUniqueViolation(err, 'imports.instance_id')) {
+      return { status: 'no_existing' };
+    }
+    throw err;
+  }
 }
 
 export type AddAnotherCopyResult =
@@ -512,10 +576,38 @@ export type AddAnotherCopyResult =
   | { status: 'not_found' }
   | { status: 'not_held' };
 
-/** Add another copy (D-05, remote). Stub until Plan 04-04 Task 2 GREEN. */
+/**
+ * Add another copy (D-05, the remote decision; T-04-31): the owner owns
+ * two, so the held import (already_in_collection) gets allow_duplicate 1,
+ * goes back to pending with its error cleared and is re-enqueued on the
+ * same row; that attempt skips the hold and adds once. A second call while
+ * that job is still queued returns the same job; anything else is not_held.
+ * One IMMEDIATE transaction.
+ */
 export function addAnotherCopy(
-  _db: Database.Database,
-  _spineId: string,
+  db: Database.Database,
+  spineId: string,
 ): AddAnotherCopyResult {
-  return { status: 'not_found' };
+  const tx = db.transaction((): AddAnotherCopyResult => {
+    const row = latestImport(db, spineId);
+    if (!row) return { status: 'not_found' };
+    if (row.status !== 'already_in_collection') {
+      if (
+        row.allow_duplicate === 1 &&
+        row.job_id &&
+        phaseOf(row) === 'waiting'
+      ) {
+        return { status: 'ok', importId: row.id, jobId: row.job_id };
+      }
+      return { status: 'not_held' };
+    }
+    db.prepare(
+      `UPDATE imports SET allow_duplicate = 1, status = 'pending',
+         error = NULL, error_kind = NULL, updated_at = @now
+       WHERE id = @id`,
+    ).run({ id: row.id, now: Date.now() });
+    const job = enqueueImport(db, row.id);
+    return { status: 'ok', importId: row.id, jobId: job.id };
+  });
+  return tx.immediate();
 }

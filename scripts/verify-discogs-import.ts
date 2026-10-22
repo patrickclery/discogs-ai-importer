@@ -27,7 +27,12 @@
 // confirm of 1001 on its second TR-200 spine answers 409 duplicate naming
 // the first (done, #1) and writes nothing; resent with allowDuplicate it
 // is added as a second copy with its own instance id, never held as already
-// in the collection (the first spine's copy is the app's own).
+// in the collection (the first spine's copy is the app's own). (h) Link
+// existing copy on the first shelf's held 1002 spine (from f) records the
+// seeded copy, linked, with no add POST and no Discogs write. (i) a copy of
+// 1033 is seeded; the second shelf's Juniper Vale 1033 import is held
+// already in the collection; Add another copy re-enqueues it with
+// allow_duplicate and it adds exactly one more copy.
 // Later plans add their own named steps; step letters are stable.
 // Run: node scripts/verify-discogs-import.ts   (VERIFY_SKIP_BUILD=1 reuses
 // the build). It builds and starts from NEXT_DIST_DIR, default .next/verify,
@@ -820,17 +825,185 @@ async function stepLocalDuplicate(ctx: ImportCtx): Promise<string> {
   return photoId;
 }
 
+/** POST an owner decision route from the app's own origin (empty body). */
+async function postDecision(
+  ctx: ImportCtx,
+  spineId: string,
+  route: 'link-existing' | 'another',
+): Promise<ConfirmAnswer> {
+  const res = await fetch(
+    `${ctx.baseUrl}/api/spines/${encodeURIComponent(spineId)}/import/${route}`,
+    {
+      method: 'POST',
+      headers: { origin: ctx.origin, 'content-type': 'application/json' },
+      body: '{}',
+    },
+  );
+  const text = await res.text();
+  let body: Record<string, unknown>;
+  try {
+    body = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    body = { raw: text };
+  }
+  return { status: res.status, body };
+}
+
+function addJobCount(ctx: ImportCtx): number {
+  return withDb(
+    ctx,
+    (db) =>
+      (
+        db
+          .prepare(
+            `SELECT COUNT(*) AS n FROM jobs WHERE type = 'add_to_collection'`,
+          )
+          .get() as { n: number }
+      ).n,
+  );
+}
+
+// (h) D-05, IMP-04: Link existing copy binds the held spine to the copy the
+// owner already has, with no write to Discogs.
+async function stepLinkExisting(
+  ctx: ImportCtx,
+  shelf1PhotoId: string,
+): Promise<void> {
+  step('(h) Link existing copy records the seeded 1002 copy with no add');
+  const [spineId] = spinesOnPhoto(
+    ctx,
+    shelf1PhotoId,
+    'catalog_number',
+    'TR-200',
+  );
+  assert(spineId, 'the first shelf has no TR-200 spine');
+  const held = importRow(ctx, spineId);
+  assert(
+    held?.status === 'already_in_collection' && held.release_id === 1002,
+    `the first shelf's TR-200 import is ${held?.status} ${held?.release_id}`,
+  );
+  const jobsBefore = addJobCount(ctx);
+  const logBefore = fakeLog(ctx).length;
+  const answer = await postDecision(ctx, spineId, 'link-existing');
+  assert(
+    answer.status === 200 &&
+      answer.body.importId === held.id &&
+      answer.body.instanceId === 4242,
+    `link-existing answered ${answer.status} ${JSON.stringify(answer.body)}`,
+  );
+  const row = importRow(ctx, spineId);
+  assert(
+    row?.id === held.id &&
+      row.status === 'imported' &&
+      row.linked === 1 &&
+      row.instance_id === 4242 &&
+      row.folder_id === 1 &&
+      row.post_count === 0 &&
+      row.adopted === 0,
+    `the linked row is ${JSON.stringify(row)}`,
+  );
+  const state = await fakeState(ctx);
+  const posted = state.postsByRelease['1002'] ?? 0;
+  assert(posted === 0, `${posted} add POSTs of 1002, expected 0`);
+  assert(
+    (state.collection['1002'] ?? []).length === 1,
+    'the fake collection of 1002 changed',
+  );
+  assert(addJobCount(ctx) === jobsBefore, 'linking enqueued a job');
+  const requests = fakeLog(ctx)
+    .slice(logBefore)
+    .filter((e) => e.surface === 'api' && e.path.includes('/collection/'));
+  assert(
+    requests.length === 0,
+    `linking made ${requests.length} collection requests`,
+  );
+  const res = await fetch(`${ctx.baseUrl}/api/spines`, { cache: 'no-store' });
+  const data = (await res.json()) as SpinesResponse;
+  const imp = data.spines.find((s) => s.id === spineId)?.import;
+  assert(
+    imp?.phase === 'imported' && imp.instanceId === 4242,
+    `the linked spine's import is ${JSON.stringify(imp)}`,
+  );
+  check(
+    'link-existing 200: the held 1002 row is imported, linked 1, instance 4242 in folder 1; no add POST, no collection request, no job; /api/spines reads imported',
+  );
+}
+
+// (i) D-05, IMP-03: the owner owns two, so Add another copy turns the hold
+// into exactly one more copy.
+async function stepAddAnotherCopy(
+  ctx: ImportCtx,
+  shelf2PhotoId: string,
+): Promise<void> {
+  step('(i) Add another copy turns a held 1033 import into one more copy');
+  const seeded = {
+    instance_id: 4343,
+    folder_id: 1,
+    date_added: '2016-02-01T09:00:00-08:00',
+  };
+  await ctx.fake.control({ collection: { 1033: [seeded] } });
+  const [spineId] = spinesOnPhoto(ctx, shelf2PhotoId, 'artist', 'Juniper Vale');
+  assert(spineId, 'the second shelf has no Juniper Vale spine');
+  const importId = await confirmRelease(ctx, spineId, 1033);
+  const held = await waitImport(ctx, spineId, [
+    'already_in_collection',
+    'imported',
+    'failed',
+  ]);
+  assert(
+    held.status === 'already_in_collection' && held.id === importId,
+    `the 1033 import ended ${held.status}: ${held.error_kind} ${held.error}`,
+  );
+  assert(
+    ((await fakeState(ctx)).postsByRelease['1033'] ?? 0) === 0,
+    'the held 1033 import posted',
+  );
+  const answer = await postDecision(ctx, spineId, 'another');
+  assert(
+    answer.status === 201 && answer.body.importId === importId,
+    `another answered ${answer.status} ${JSON.stringify(answer.body)}`,
+  );
+  const row = await waitImport(ctx, spineId, ['imported', 'failed'], 30_000);
+  assert(
+    row.status === 'imported' && row.id === importId,
+    `the 1033 import ended ${row.status}: ${row.error_kind} ${row.error}`,
+  );
+  assert(
+    row.allow_duplicate === 1 &&
+      row.post_count === 1 &&
+      row.adopted === 0 &&
+      row.linked === 0,
+    `the 1033 row is ${JSON.stringify(row)}`,
+  );
+  const state = await fakeState(ctx);
+  const copies = state.collection['1033'] ?? [];
+  assert(copies.length === 2, `${copies.length} copies of 1033, expected 2`);
+  assert(
+    row.instance_id !== null &&
+      row.instance_id !== seeded.instance_id &&
+      copies.some((c) => c.instance_id === row.instance_id),
+    `instance ${row.instance_id}, the fake holds ${JSON.stringify(copies)}`,
+  );
+  const posted = state.postsByRelease['1033'] ?? 0;
+  assert(posted === 1, `${posted} add POSTs of 1033, expected 1`);
+  check(
+    `held 1033 then another 201: one add POST, two 1033 copies (4343 and ${row.instance_id}), allow_duplicate 1, post_count 1, same row`,
+  );
+}
+
 runMain('verify-discogs-import', async (onCleanup) => {
   const ctx = await startImportStack('verify-discogs-import', onCleanup);
   stepSchema(ctx);
-  await stepConnectAndScan(ctx);
+  const shelf1PhotoId = await stepConnectAndScan(ctx);
   const importedSpineId = await stepConfirmImports(ctx);
   await stepConfirmRefusals(ctx, importedSpineId);
   await stepReadModel(ctx, importedSpineId);
   await stepKillMidPost(ctx);
   await stepBadGatewayAfterCommit(ctx);
   await stepAlreadyInCollection(ctx);
-  await stepLocalDuplicate(ctx);
+  const shelf2PhotoId = await stepLocalDuplicate(ctx);
+  await stepLinkExisting(ctx, shelf1PhotoId);
+  await stepAddAnotherCopy(ctx, shelf2PhotoId);
   // Later plans insert their steps here.
 
   step('stop');
