@@ -1,6 +1,12 @@
 # Demo site (D-01, D-19, D-20): build the static demo export, check it and
 # deploy it to GitHub Pages on every push to master. CI builds in place
 # (CI=true); local builds always go through a scratch copy instead.
+#
+# Least privilege (WR-02): the build job runs third-party install scripts,
+# `next build` and headless Chrome, so it gets contents:read only and no
+# persisted token. Only the deploy job, which runs no repo code, can write
+# to Pages or mint an OIDC token. Every action is pinned to a full commit
+# SHA (tag in the trailing comment).
 name: Demo site
 
 on:
@@ -10,8 +16,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -20,13 +24,17 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Reads packageManager (pnpm@12.14.0) from package.json.
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -35,9 +43,6 @@ jobs:
 
       - name: Demo unit tests
         run: pnpm exec vitest run src/demo
-
-      - id: pages
-        uses: actions/configure-pages@v6
 
       # NEXT_PUBLIC_DEMO=1 static export into ./out, then verify-export
       # (file allowlist, no family photos, no secret values).
@@ -51,7 +56,7 @@ jobs:
           --expect "spines/=cd-spines.heic"
           --expect "settings/=demo-user"
 
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: ./out
 
@@ -59,9 +64,15 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Fails early when Pages is not enabled for the repo.
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
