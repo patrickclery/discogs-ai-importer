@@ -7,9 +7,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "next dev -H 127.0.0.1",
-    "start": "next build && next start -H 127.0.0.1",
-    "serve": "next start -H 127.0.0.1",
+    "dev": "next dev -H 127.0.0.1 -p 3001",
+    "start": "next build && next start -H 127.0.0.1 -p 3001",
+    "serve": "next start -H 127.0.0.1 -p 3001",
     "build": "next build",
     "lint": "biome check",
     "format": "biome format --write",

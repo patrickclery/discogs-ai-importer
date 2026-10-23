@@ -4,6 +4,10 @@ trigger: "UAT Test 3 (G-04-3): I clicked the wrong match, but it added it. I don
 created: 2026-10-22T00:00:00Z
 updated: 2026-10-22T00:00:00Z
 goal: find_root_cause_only
+audit_acknowledged:
+  milestone: v1
+  at: 2026-10-23
+  status: diagnosed
 ---
 
 ## Current Focus

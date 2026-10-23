@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "UAT 04 test 7: duplicate-warning dialog with a 123-char photo file name 'really broke the UI'; photo filter dropdown hard-clips long names"
 created: 2026-10-22T00:00:00Z
 updated: 2026-10-22T00:00:00Z
+audit_acknowledged:
+  milestone: v1
+  at: 2026-10-23
+  status: diagnosed
 ---
 
 ## Current Focus

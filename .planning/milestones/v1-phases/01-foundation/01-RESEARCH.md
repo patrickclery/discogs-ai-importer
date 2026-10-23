@@ -347,7 +347,7 @@ Phase 1 runs concurrency 1 per lane. Phase 2/3 raise anthropic to 2 by running N
 
 ### Pattern 6: Bind + proxy guard (FOUND-01)
 - Scripts: `"dev": "next dev -H 127.0.0.1"`, `"start": "next build && next start -H 127.0.0.1"`. The port comes from the `PORT` env var, which `next dev`/`next start` read natively (default 3000) [CITED: next/dist/docs/01-app/03-api-reference/06-cli/next.md, "-p … Default: 3000, env: PORT"]. The default `-H` is **0.0.0.0** [CITED: same file], so the flag is mandatory.
-- Verified: `ss -ltnp` shows `127.0.0.1:3917` only, curl to the LAN IP `192.168.1.72:3917` was refused, and Next printed `Network: http://127.0.0.1:3917`. [VERIFIED: spike]
+- Verified: `ss -ltnp` shows `127.0.0.1:3917` only, curl to the LAN IP `<LAN-IP>:3917` was refused, and Next printed `Network: http://127.0.0.1:3917`. [VERIFIED: spike]
 - Binding to loopback does not stop a malicious web page in the user's own browser (DNS rebinding / cross-site form POST). Add `src/proxy.ts`. It checks that the `Host` header's hostname is `127.0.0.1` or `localhost`, and for non-GET/HEAD requests that any `Origin` is too. Verified: forged `Host` → 403, foreign `Origin` POST → 403, normal request → 200, and the worker and `register()` are unaffected. [VERIFIED: spike] Check the **hostname only**, not the port, so a `PORT` override cannot break it.
 ```ts
 // src/proxy.ts  (verified shape; hostname-only variant recommended)
@@ -539,7 +539,7 @@ export async function GET() {
 | mise | node/pnpm pinning | ✓ | `~/.local/bin/mise` | `.nvmrc` |
 | sqlite3 CLI | debugging only | not needed | — | `node -e` with better-sqlite3 |
 | git | `git status` check, commits | ✓ | — | — |
-| Network interfaces for the LAN test | criterion 1 | ✓ | wlan0 192.168.1.72, enp5s0 192.168.1.76, tailscale0 | — |
+| Network interfaces for the LAN test | criterion 1 | ✓ | wlan0 <LAN-IP>, enp5s0 <LAN-IP-2>, tailscale0 | — |
 
 **Missing dependencies with no fallback:** none.
 **Missing dependencies with fallback:** pnpm. Use `corepack pnpm` / `corepack enable pnpm`, and pin `"packageManager": "pnpm@12.14.0"`.

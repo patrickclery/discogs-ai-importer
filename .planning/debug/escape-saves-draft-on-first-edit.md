@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "UAT G-02-5: Escape restores the saved value (on an unedited field it cancels the draft without saving) — fails on first edit"
 created: 2026-10-20T08:10:00Z
 updated: 2026-10-20T08:40:00Z
+audit_acknowledged:
+  milestone: v1
+  at: 2026-10-23
+  status: diagnosed
 ---
 
 ## Current Focus

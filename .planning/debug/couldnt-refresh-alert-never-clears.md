@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "UAT G-02 test 3: Couldn't refresh alert never clears after server restart when all photos are Done"
 created: 2026-10-20T00:00:00Z
 updated: 2026-10-20T00:00:00Z
+audit_acknowledged:
+  milestone: v1
+  at: 2026-10-23
+  status: diagnosed
 ---
 
 ## Current Focus

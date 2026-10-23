@@ -50,3 +50,16 @@ next-env.d.ts
 
 # Phase 2 spike photos (owner-provided, not committed)
 fixtures/spike/
+
+# local tooling and agent state (never commit)
+/.gsd/
+.claude/settings.local.json
+.claude/worktrees/
+.planning/.gsd-allow-shrink
+.planning/milestone.lock
+*.local
+*.local.json
+
+# local scratch / logs
+*.log
+/tmp/

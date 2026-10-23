@@ -10,6 +10,7 @@ A local, portable web app that turns photos of CD shelves into Discogs collectio
 
 ### Constraints
 
+- **Port**: The app runs on **3001** (`pnpm dev`/`serve` pass `-p 3001`). Port 3000 is taken by Grafana on this machine; never start or point UAT at 3000.
 - **Tech stack**: Next.js (App Router, TypeScript) — user's choice for the UI
 - **Storage**: SQLite (preferred for portability); Postgres acceptable but not default
 - **Cost**: Exactly one Claude vision call per uploaded photo; no per-spine AI calls; cache by image hash
@@ -64,7 +65,7 @@ A local, portable web app that turns photos of CD shelves into Discogs collectio
 | Alternative: `@lionralfs/discogs-client` | 4.1.4 (Nov 2025) | Full typed Discogs v2 client with a `DiscogsOAuth` helper and 429 exponential backoff | Use it if you would rather not write the OAuth handshake. Caveats: it has a small user base (~40 stars), its backoff runs independently of your queue (two throttles fighting), and it pulls in `node-fetch@3`. | MEDIUM |
 - Rate limit: 60 req/min authenticated, measured as a **moving 60 s window**. Headers: `X-Discogs-Ratelimit`, `X-Discogs-Ratelimit-Used`, `X-Discogs-Ratelimit-Remaining`.
 - A descriptive `User-Agent` (e.g. `DiscogsAIImporter/0.1 +contact`) is required. Generic UAs get throttled or blocked.
-- OAuth endpoints: `GET https://api.discogs.com/oauth/request_token` -> user visits `https://www.discogs.com/oauth/authorize?oauth_token=...` -> `POST https://api.discogs.com/oauth/access_token` with the verifier. The callback must be `http://localhost:3000/api/discogs/callback`.
+- OAuth endpoints: `GET https://api.discogs.com/oauth/request_token` -> user visits `https://www.discogs.com/oauth/authorize?oauth_token=...` -> `POST https://api.discogs.com/oauth/access_token` with the verifier. The callback must be `http://127.0.0.1:3001/api/discogs/callback`.
 - Add to collection: `POST /users/{username}/collection/folders/{folder_id}/releases/{release_id}` (folder 1 = "Uncategorized"; folder 0 "All" is read-only).
 - Search params worth using: `q`, `artist`, `release_title`, `catno`, `label`, `barcode`, `format`, `type=release`.
 
