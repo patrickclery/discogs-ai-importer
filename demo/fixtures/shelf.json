@@ -1,0 +1,2703 @@
+{
+  "source": {
+    "read": "cd-spines.claude-opus-5-5.high",
+    "model": "claude-opus-5-5",
+    "effort": "high"
+  },
+  "photo": {
+    "filename": "cd-spines.heic",
+    "sentW": 1449,
+    "sentH": 2576,
+    "spineCountEstimate": 61,
+    "detectedCount": 61,
+    "densityFlags": [],
+    "vision": "vision.jpg",
+    "thumb": "thumb.webp"
+  },
+  "spines": [
+    {
+      "key": "00",
+      "index": 0,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/00.webp",
+        "width": 1200,
+        "height": 121
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "MASSIVE ATTACK",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "100TH WINDOW",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "724358132120",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "100TH WINDOW MASSIVE ATTACK 724358132120",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "key": "01",
+      "index": 1,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/01.webp",
+        "width": 1200,
+        "height": 116
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "VISION",
+          "confidence": 0.85
+        },
+        {
+          "field": "title",
+          "value": "JUST SHORT OF LIVING",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "KORI",
+          "confidence": 0.3
+        },
+        {
+          "field": "raw_text",
+          "value": "VISION JUST SHORT OF LIVING KORI",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "02",
+      "index": 2,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/02.webp",
+        "width": 1200,
+        "height": 108
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": "deep rock • labor day",
+          "confidence": 0.5
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "dox18",
+          "confidence": 0.3
+        },
+        {
+          "field": "raw_text",
+          "value": "deep rock • labor day dox18",
+          "confidence": 0.5
+        }
+      ]
+    },
+    {
+      "key": "03",
+      "index": 3,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/03.webp",
+        "width": 1200,
+        "height": 123
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "kid606",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "down with the scene",
+          "confidence": 0.95
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "tracer recordings",
+          "confidence": 0.4
+        },
+        {
+          "field": "catalog_number",
+          "value": "ipc-7",
+          "confidence": 0.7
+        },
+        {
+          "field": "raw_text",
+          "value": "tracer recordings kid606 \"down with the scene\" ipc-7",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "04",
+      "index": 4,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/04.webp",
+        "width": 1200,
+        "height": 115
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "DAEDELUS",
+          "confidence": 0.8
+        },
+        {
+          "field": "title",
+          "value": "EXQUISITE CORPSE",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "ZENCD102",
+          "confidence": 0.8
+        },
+        {
+          "field": "raw_text",
+          "value": "DAEDELUS EXQUISITE CORPSE ZENCD102",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "05",
+      "index": 5,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/05.webp",
+        "width": 1200,
+        "height": 121
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": "oldharper",
+          "confidence": 0.6
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "STCD 20122",
+          "confidence": 0.3
+        },
+        {
+          "field": "raw_text",
+          "value": "STCD 20122 oldharper",
+          "confidence": 0.5
+        }
+      ]
+    },
+    {
+      "key": "06",
+      "index": 6,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/06.webp",
+        "width": 1200,
+        "height": 114
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Belvedere",
+          "confidence": 0.5
+        },
+        {
+          "field": "title",
+          "value": "Angels Live In My Town",
+          "confidence": 0.75
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "HKGL-008",
+          "confidence": 0.3
+        },
+        {
+          "field": "raw_text",
+          "value": "Belvedere Angels Live In My Town HKGL-008",
+          "confidence": 0.5
+        }
+      ]
+    },
+    {
+      "key": "07",
+      "index": 7,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/07.webp",
+        "width": 1200,
+        "height": 115
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": "beat me silly",
+          "confidence": 0.8
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "Lobster",
+          "confidence": 0.6
+        },
+        {
+          "field": "catalog_number",
+          "value": "10003-2",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "...CK WILD beat me silly Lobster 10003-2",
+          "confidence": 0.6
+        }
+      ]
+    },
+    {
+      "key": "08",
+      "index": 8,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/08.webp",
+        "width": 1200,
+        "height": 119
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "ADAM SANDLER",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "SHHH...DON'T TELL",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "WARNER BROS.",
+          "confidence": 0.4
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "ADAM SANDLER SHHH...DON'T TELL WARNER BROS.",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "09",
+      "index": 9,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/09.webp",
+        "width": 1200,
+        "height": 107
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "nine inch nails",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "march of the pigs",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "INTDM-95938",
+          "confidence": 0.7
+        },
+        {
+          "field": "raw_text",
+          "value": "nine inch nails. march of the pigs INTDM-95938 / halo seven",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "10",
+      "index": 10,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/10.webp",
+        "width": 1200,
+        "height": 118
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "nine inch nails",
+          "confidence": 0.75
+        },
+        {
+          "field": "title",
+          "value": "further down the spiral",
+          "confidence": 0.7
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "INTDM-95811",
+          "confidence": 0.4
+        },
+        {
+          "field": "raw_text",
+          "value": "nine inch nails. further down the spiral INTDM-95811 halo ten",
+          "confidence": 0.55
+        }
+      ]
+    },
+    {
+      "key": "11",
+      "index": 11,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/11.webp",
+        "width": 1200,
+        "height": 90
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Nine Inch Nails",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "The Day The World Went Away",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "Nothing / Interscope",
+          "confidence": 0.75
+        },
+        {
+          "field": "catalog_number",
+          "value": "INTDS-97026",
+          "confidence": 0.75
+        },
+        {
+          "field": "raw_text",
+          "value": "Nine Inch Nails Halo Thirteen The Day The World Went Away Nothing / Interscope INTDS-97026",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "12",
+      "index": 12,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/12.webp",
+        "width": 1200,
+        "height": 78
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "NINEINCHNAILS",
+          "confidence": 0.7
+        },
+        {
+          "field": "title",
+          "value": "Sin Long, Dub & Short",
+          "confidence": 0.55
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "TVT RECORDS",
+          "confidence": 0.7
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "...2617-2 NIN HALO FOUR NINEINCHNAILS Sin Long, Dub & Short TVT RECORDS",
+          "confidence": 0.5
+        }
+      ]
+    },
+    {
+      "key": "13",
+      "index": 13,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/13.webp",
+        "width": 1200,
+        "height": 77
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "nine inch nails",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "fixed",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "IMCD 8005/514 321-2",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "nine inch nails fixed IMCD 8005/514 321-2 halo six",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "key": "14",
+      "index": 14,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/14.webp",
+        "width": 1200,
+        "height": 113
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "massive attack",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "blue lines",
+          "confidence": 0.95
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "virgin records",
+          "confidence": 0.75
+        },
+        {
+          "field": "catalog_number",
+          "value": "V2 0777 7 86228 2 6",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "V2 0777 7 86228 2 6 massive attack blue lines virgin records",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "key": "15",
+      "index": 15,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/15.webp",
+        "width": 1200,
+        "height": 91
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "PREFUSE 73",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "ONE WORD EXTINGUISHER",
+          "confidence": 0.95
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "WARPCD105",
+          "confidence": 0.85
+        },
+        {
+          "field": "raw_text",
+          "value": "PREFUSE 73 ONE WORD EXTINGUISHER WARPCD105",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "16",
+      "index": 16,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/16.webp",
+        "width": 1200,
+        "height": 99
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "KNIFEHANDCHOP",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "HOW I LEFT YOU",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "Tigerbeat6",
+          "confidence": 0.85
+        },
+        {
+          "field": "catalog_number",
+          "value": "meow104",
+          "confidence": 0.7
+        },
+        {
+          "field": "raw_text",
+          "value": "KNIFEHANDCHOP HOW I LEFT YOU Tigerbeat6 meow104",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "key": "17",
+      "index": 17,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/17.webp",
+        "width": 1200,
+        "height": 101
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Kid606",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "who still kill sound?",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "meow102",
+          "confidence": 0.8
+        },
+        {
+          "field": "raw_text",
+          "value": "Kid606 who still kill sound? meow102",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "18",
+      "index": 18,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/18.webp",
+        "width": 1200,
+        "height": 111
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "venetian snares",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "HUGE CHROME CYLINDER BOX UNFOLDING",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "ZIQ088CD",
+          "confidence": 0.8
+        },
+        {
+          "field": "raw_text",
+          "value": "venetian snares HUGE CHROME CYLINDER BOX UNFOLDING ZIQ088CD",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "key": "19",
+      "index": 19,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/19.webp",
+        "width": 1200,
+        "height": 111
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "SAGE FRANCIS",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "A HEALTHY DISTRUST",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "Epitaph",
+          "confidence": 0.5
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "SAGE FRANCIS A HEALTHY DISTRUST Epitaph",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "20",
+      "index": 20,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/20.webp",
+        "width": 1200,
+        "height": 112
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "kid606",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "GQ on the EQ++",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "kid606-GQ on the EQ++",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "21",
+      "index": 21,
+      "legibility": "illegible",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/21.webp",
+        "width": 1200,
+        "height": 128
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": null,
+          "confidence": 0
+        }
+      ]
+    },
+    {
+      "key": "22",
+      "index": 22,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/22.webp",
+        "width": 1200,
+        "height": 121
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Kid606",
+          "confidence": 0.85
+        },
+        {
+          "field": "title",
+          "value": "Kill Sound Before Sound Kills You",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "IPC-48",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "Kid606 Kill Sound Before Sound Kills You IPC-48",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "23",
+      "index": 23,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/23.webp",
+        "width": 1200,
+        "height": 176
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "nine inch nails",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "the downward spiral deluxe edition",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "B0003739-36",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "nine inch nails: the downward spiral deluxe edition B0003739-36 / halo eight DE",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "key": "24",
+      "index": 24,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/24.webp",
+        "width": 1200,
+        "height": 137
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "DR. OCTAGON",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "DR. OCTAGONECOLOGYST",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "DREAMWORKS",
+          "confidence": 0.85
+        },
+        {
+          "field": "catalog_number",
+          "value": "DRMD-50021",
+          "confidence": 0.8
+        },
+        {
+          "field": "raw_text",
+          "value": "DR. OCTAGON DR. OCTAGONECOLOGYST DRMD-50021 DREAMWORKS",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "25",
+      "index": 25,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/25.webp",
+        "width": 1200,
+        "height": 120
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Jay Smith & The Modes of Emotion",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "From Out Of Nowhere",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "Jay Smith & The Modes of Emotion From Out Of Nowhere",
+          "confidence": 0.9
+        }
+      ]
+    },
+    {
+      "key": "26",
+      "index": 26,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/26.webp",
+        "width": 1200,
+        "height": 143
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "prefuse/73",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "vocal studies + uprock narratives",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "WARPcd83",
+          "confidence": 0.85
+        },
+        {
+          "field": "raw_text",
+          "value": "prefuse/73 vocal studies + uprock narratives WARPcd83",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "27",
+      "index": 27,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "upside_down",
+      "crop": {
+        "file": "crops/27.webp",
+        "width": 1200,
+        "height": 159
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "THE HIVES",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "a.k.a I-D-I-O-T",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "BHR 072",
+          "confidence": 0.75
+        },
+        {
+          "field": "raw_text",
+          "value": "THE HIVES -- a.k.a I-D-I-O-T BHR 072",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "28",
+      "index": 28,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/28.webp",
+        "width": 1200,
+        "height": 122
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "BOARDS OF CANADA",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "the campfire headphase",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "warpcd123",
+          "confidence": 0.8
+        },
+        {
+          "field": "raw_text",
+          "value": "BOARDS OF CANADA the campfire headphase warpcd123",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "29",
+      "index": 29,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/29.webp",
+        "width": 1200,
+        "height": 114
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "atmosphere",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "godlovesugly",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "RSE / FAT BEATS RECORDS",
+          "confidence": 0.8
+        },
+        {
+          "field": "catalog_number",
+          "value": "6591235001-2",
+          "confidence": 0.5
+        },
+        {
+          "field": "raw_text",
+          "value": "RSE / FAT BEATS RECORDS atmosphere godlovesugly 6591235001-2",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "30",
+      "index": 30,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/30.webp",
+        "width": 1200,
+        "height": 130
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "cLOUDDEAD",
+          "confidence": 0.85
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "Big Dada",
+          "confidence": 0.35
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "Big Dada Recordings ... cLOUDDEAD",
+          "confidence": 0.5
+        }
+      ]
+    },
+    {
+      "key": "31",
+      "index": 31,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/31.webp",
+        "width": 1200,
+        "height": 122
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Atmosphere",
+          "confidence": 0.8
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "Atmosphere",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "key": "32",
+      "index": 32,
+      "legibility": "illegible",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/32.webp",
+        "width": 1200,
+        "height": 235
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": null,
+          "confidence": 0
+        }
+      ]
+    },
+    {
+      "key": "33",
+      "index": 33,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "upside_down",
+      "crop": {
+        "file": "crops/33.webp",
+        "width": 1200,
+        "height": 186
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "anticon.",
+          "confidence": 0.6
+        },
+        {
+          "field": "title",
+          "value": "1. deep puddle dynamics - more from june 2. anticon - we aint fessin' (double quotes)",
+          "confidence": 0.55
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "anticon.",
+          "confidence": 0.5
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "anticon. 1. deep puddle dynamics - more from june 2. anticon - we aint fessin' (double quotes)",
+          "confidence": 0.6
+        }
+      ]
+    },
+    {
+      "key": "34",
+      "index": 34,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/34.webp",
+        "width": 1200,
+        "height": 64
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Tommy Guerrero",
+          "confidence": 0.65
+        },
+        {
+          "field": "title",
+          "value": "Soul Food Taqueria",
+          "confidence": 0.65
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "Tommy Guerrero Soul Food Taqueria",
+          "confidence": 0.6
+        }
+      ]
+    },
+    {
+      "key": "35",
+      "index": 35,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/35.webp",
+        "width": 1200,
+        "height": 98
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": "Meanwhile",
+          "confidence": 0.4
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "Laboratory Instinct",
+          "confidence": 0.6
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "Meanwhile... Laboratory Instinct LI-005 Beefcake",
+          "confidence": 0.35
+        }
+      ]
+    },
+    {
+      "key": "36",
+      "index": 36,
+      "legibility": "illegible",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/36.webp",
+        "width": 1200,
+        "height": 59
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": null,
+          "confidence": 0
+        }
+      ]
+    },
+    {
+      "key": "37",
+      "index": 37,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/37.webp",
+        "width": 1200,
+        "height": 126
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "AUTOMATOR",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "A MUCH BETTER TOMORROW",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "75 ARK ENTERTAINMENT",
+          "confidence": 0.85
+        },
+        {
+          "field": "catalog_number",
+          "value": "75006",
+          "confidence": 0.8
+        },
+        {
+          "field": "raw_text",
+          "value": "75 ARK ENTERTAINMENT AUTOMATOR A MUCH BETTER TOMORROW CAT # 75006",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "38",
+      "index": 38,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/38.webp",
+        "width": 1200,
+        "height": 125
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Saul Williams",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "Amethyst Rock Star",
+          "confidence": 0.95
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "american",
+          "confidence": 0.8
+        },
+        {
+          "field": "catalog_number",
+          "value": "314-586 501-2",
+          "confidence": 0.55
+        },
+        {
+          "field": "raw_text",
+          "value": "american Saul Williams • Amethyst Rock Star 314-586 501-2",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "key": "39",
+      "index": 39,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/39.webp",
+        "width": 1200,
+        "height": 121
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Sage Francis",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "Personal Journals",
+          "confidence": 0.95
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "abr0021",
+          "confidence": 0.8
+        },
+        {
+          "field": "raw_text",
+          "value": "Sage Francis - Personal Journals abr0021",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "40",
+      "index": 40,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/40.webp",
+        "width": 1200,
+        "height": 110
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "AMON TOBIN",
+          "confidence": 0.75
+        },
+        {
+          "field": "title",
+          "value": "supermodified",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "zen CD48",
+          "confidence": 0.7
+        },
+        {
+          "field": "raw_text",
+          "value": "AMON TOBIN supermodified zen CD48",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "key": "41",
+      "index": 41,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "upside_down",
+      "crop": {
+        "file": "crops/41.webp",
+        "width": 1200,
+        "height": 121
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "SUMMERS END",
+          "confidence": 0.8
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "HOH004",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "SUMMERS END HOH004",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "key": "42",
+      "index": 42,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/42.webp",
+        "width": 1200,
+        "height": 122
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "NIRVANA",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "BLEACH",
+          "confidence": 0.95
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "SP34b",
+          "confidence": 0.5
+        },
+        {
+          "field": "raw_text",
+          "value": "NIRVANA \"BLEACH\" SP34b",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "43",
+      "index": 43,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/43.webp",
+        "width": 1200,
+        "height": 117
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": "CHECK THIS OUT TOO!",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": "Compilation",
+          "confidence": 0.6
+        },
+        {
+          "field": "label",
+          "value": "ONEFOOT Records",
+          "confidence": 0.85
+        },
+        {
+          "field": "catalog_number",
+          "value": "OFR20031",
+          "confidence": 0.85
+        },
+        {
+          "field": "raw_text",
+          "value": "CHECK THIS OUT TOO! • ONEFOOT Records Compilation OFR20031",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "44",
+      "index": 44,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/44.webp",
+        "width": 1200,
+        "height": 119
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "WIZO",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "UUAARRGH!",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "FAT 527-2",
+          "confidence": 0.85
+        },
+        {
+          "field": "raw_text",
+          "value": "WIZO UUAARRGH! FAT 527-2",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "45",
+      "index": 45,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/45.webp",
+        "width": 1200,
+        "height": 120
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "LaHaine",
+          "confidence": 0.7
+        },
+        {
+          "field": "title",
+          "value": "King of the Worms",
+          "confidence": 0.8
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "LaHaine \"King of the Worms\"",
+          "confidence": 0.7
+        }
+      ]
+    },
+    {
+      "key": "46",
+      "index": 46,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/46.webp",
+        "width": 1200,
+        "height": 121
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "BLACKLISTED",
+          "confidence": 0.85
+        },
+        {
+          "field": "title",
+          "value": "A TIME FOR CHANGE",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "BLACKLISTED A TIME FOR CHANGE",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "key": "47",
+      "index": 47,
+      "legibility": "illegible",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/47.webp",
+        "width": 1200,
+        "height": 139
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": null,
+          "confidence": 0
+        }
+      ]
+    },
+    {
+      "key": "48",
+      "index": 48,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/48.webp",
+        "width": 1200,
+        "height": 109
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Rabbit Junk",
+          "confidence": 0.8
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "Rabbit Junk",
+          "confidence": 0.8
+        }
+      ]
+    },
+    {
+      "key": "49",
+      "index": 49,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/49.webp",
+        "width": 1200,
+        "height": 118
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "alias",
+          "confidence": 0.85
+        },
+        {
+          "field": "title",
+          "value": "eyes closed ep",
+          "confidence": 0.85
+        },
+        {
+          "field": "format",
+          "value": "ep",
+          "confidence": 0.5
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "abr0033",
+          "confidence": 0.45
+        },
+        {
+          "field": "raw_text",
+          "value": "eyes closed ep - alias abr0033",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "50",
+      "index": 50,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/50.webp",
+        "width": 1200,
+        "height": 132
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "The Known Unsoldier",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "Sick Of Waging War...",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "The Known Unsoldier \"Sick Of Waging War...\"",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "51",
+      "index": 51,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/51.webp",
+        "width": 1200,
+        "height": 110
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "NIRVANA",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "UNPLUGGED IN NEW YORK",
+          "confidence": 0.95
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "DGC",
+          "confidence": 0.7
+        },
+        {
+          "field": "catalog_number",
+          "value": "CDGCD 24727",
+          "confidence": 0.75
+        },
+        {
+          "field": "raw_text",
+          "value": "*CDGCD 24727 NIRVANA MTV UNPLUGGED IN NEW YORK DGC",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "52",
+      "index": 52,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/52.webp",
+        "width": 1200,
+        "height": 134
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "COMBICHRIST",
+          "confidence": 0.85
+        },
+        {
+          "field": "title",
+          "value": "EVERYBODY HATES YOU",
+          "confidence": 0.65
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "MET 364",
+          "confidence": 0.7
+        },
+        {
+          "field": "raw_text",
+          "value": "COMBICHRIST EVERYBODY HATES YOU MET 364",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "53",
+      "index": 53,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/53.webp",
+        "width": 1200,
+        "height": 123
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "GUTTERMOUTH",
+          "confidence": 0.95
+        },
+        {
+          "field": "title",
+          "value": "LIVE FROM THE PHARMACY",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "GUTTERMOUTH - LIVE FROM THE PHARMACY",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "54",
+      "index": 54,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/54.webp",
+        "width": 1200,
+        "height": 131
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "THE CURE",
+          "confidence": 0.8
+        },
+        {
+          "field": "title",
+          "value": "GALORE",
+          "confidence": 0.6
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "E2 62117",
+          "confidence": 0.6
+        },
+        {
+          "field": "raw_text",
+          "value": "E2 62117 THE CURE GALORE",
+          "confidence": 0.6
+        }
+      ]
+    },
+    {
+      "key": "55",
+      "index": 55,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/55.webp",
+        "width": 1200,
+        "height": 154
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "Poser Disposer",
+          "confidence": 0.8
+        },
+        {
+          "field": "title",
+          "value": "Waiting to Inhale",
+          "confidence": 0.8
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "Poser Disposer Waiting to Inhale",
+          "confidence": 0.75
+        }
+      ]
+    },
+    {
+      "key": "56",
+      "index": 56,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/56.webp",
+        "width": 1200,
+        "height": 103
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "U A K",
+          "confidence": 0.3
+        }
+      ]
+    },
+    {
+      "key": "57",
+      "index": 57,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "upside_down",
+      "crop": {
+        "file": "crops/57.webp",
+        "width": 1200,
+        "height": 111
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "venetian snares",
+          "confidence": 0.35
+        },
+        {
+          "field": "title",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "ZIQ111CD",
+          "confidence": 0.4
+        },
+        {
+          "field": "raw_text",
+          "value": "ZIQ111CD venetian snares",
+          "confidence": 0.35
+        }
+      ]
+    },
+    {
+      "key": "58",
+      "index": 58,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/58.webp",
+        "width": 1200,
+        "height": 133
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": "selling live water",
+          "confidence": 0.8
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "raw_text",
+          "value": "selling live water",
+          "confidence": 0.85
+        }
+      ]
+    },
+    {
+      "key": "59",
+      "index": 59,
+      "legibility": "partial",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/59.webp",
+        "width": 1200,
+        "height": 132
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "title",
+          "value": "Zentertainment 2004",
+          "confidence": 0.6
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": "NINJATUNE",
+          "confidence": 0.7
+        },
+        {
+          "field": "catalog_number",
+          "value": "ZENCD004",
+          "confidence": 0.4
+        },
+        {
+          "field": "raw_text",
+          "value": "NINJATUNE Zentertainment 2004 ZENCD004",
+          "confidence": 0.55
+        }
+      ]
+    },
+    {
+      "key": "60",
+      "index": 60,
+      "legibility": "clear",
+      "mediaKind": "cd",
+      "textOrientation": "horizontal",
+      "crop": {
+        "file": "crops/60.webp",
+        "width": 1200,
+        "height": 139
+      },
+      "fields": [
+        {
+          "field": "artist",
+          "value": "venetian snares",
+          "confidence": 0.9
+        },
+        {
+          "field": "title",
+          "value": "songs about my cats",
+          "confidence": 0.9
+        },
+        {
+          "field": "format",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "label",
+          "value": null,
+          "confidence": 0
+        },
+        {
+          "field": "catalog_number",
+          "value": "ZIQ032",
+          "confidence": 0.75
+        },
+        {
+          "field": "raw_text",
+          "value": "venetian snares songs about my cats ZIQ032",
+          "confidence": 0.8
+        }
+      ]
+    }
+  ]
+}

@@ -16,7 +16,12 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "spike:vision": "vitest run --config vitest.spike.config.ts",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "demo:assets": "vitest run --config vitest.demo.config.ts scripts/demo/build-assets.demo.ts",
+    "demo:record": "DEMO_RECORD=1 vitest run --config vitest.demo.config.ts scripts/demo/record-discogs.demo.ts",
+    "demo:covers": "vitest run --config vitest.demo.config.ts scripts/demo/build-covers.demo.ts",
+    "demo:build": "node scripts/demo/build-demo.ts",
+    "demo:smoke": "node scripts/demo/smoke.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.2",

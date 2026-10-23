@@ -17,7 +17,8 @@
       "!.claude",
       "!drizzle",
       "!test/fixtures/vision/spike/*.json",
-      "!test/fixtures/vision/calibration/*.json"
+      "!test/fixtures/vision/calibration/*.json",
+      "!demo/fixtures/*.json"
     ]
   },
   "formatter": {
