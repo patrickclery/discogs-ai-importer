@@ -24,22 +24,23 @@ afterEach(() => {
 });
 
 describe('handle', () => {
-  it('answers GET /api/spines from a fresh store with no spines', async () => {
+  it('answers GET /api/spines from the seeded sample shelf', async () => {
     const res = await handle(req('GET', '/api/spines'));
     expect(res.status).toBe(200);
     const body = res.body as SpinesResponse;
-    expect(body.counts.all).toBe(0);
-    expect(body.spines).toEqual([]);
-    expect(body.photos).toEqual([]);
+    expect(body.counts.all).toBe(61);
+    expect(body.spines).toHaveLength(61);
+    expect(body.photos.map((p) => p.filename)).toEqual(['cd-spines.heic']);
     expect(body.discogsActive).toBe(false);
     expect(body.discogs.connected).toBe(true);
     expect(body.discogs.folder).toEqual({ id: 1, name: 'Uncategorized' });
   });
 
   it('answers GET /api/photos and GET /api/status', async () => {
-    expect((await handle(req('GET', '/api/photos'))).body).toEqual({
-      photos: [],
-    });
+    const photos = (await handle(req('GET', '/api/photos'))).body as {
+      photos: Array<{ id: string }>;
+    };
+    expect(photos.photos.map((p) => p.id)).toEqual(['demo-photo-1']);
     const status = await handle(req('GET', '/api/status'));
     expect(status.status).toBe(200);
     expect(status.body).toMatchObject({ worker: { bootId: 'demo' } });

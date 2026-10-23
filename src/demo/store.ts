@@ -1,6 +1,6 @@
 // In-memory demo state (D-03, D-04). Plain TS, no React, no persistence of
 // any kind: the state lives in page memory and a reload rebuilds it from
-// initialState(). Times are epoch ms from now(); every in-flight thing has a
+// the seed (buildSeed). Times are epoch ms from now(); every in-flight thing has a
 // readyAt-style timestamp so the read model derives its state lazily from
 // now() instead of timers (RESEARCH Pattern 3).
 import type {
@@ -17,6 +17,7 @@ import type {
 } from '@/lib/import-types';
 import type { DensityFlag, SpineState } from '@/lib/scan-types';
 import type { Legibility, MediaKind, SpineField } from '@/lib/vision-contract';
+import { buildSeed } from './seed';
 
 export type DemoPhotoRun = {
   runNo: number;
@@ -159,28 +160,9 @@ export function setClock(fn: (() => number) | null): void {
   clock = fn;
 }
 
+/** The seeded state (D-04, D-07, D-09) for a load at now(). */
 function initialState(): DemoState {
-  return {
-    initAt: now(),
-    photos: [],
-    spines: [],
-    candidates: [],
-    searches: [],
-    imports: [],
-    collection: {},
-    account: {
-      connected: true,
-      username: 'demo-user',
-      needsReconnect: false,
-      folderId: 1,
-      folders: [{ id: 1, name: 'Uncategorized', count: 0 }],
-      model: 'claude-opus-5-5',
-      consumerKeyTail: '••••demo',
-      consumerSecretTail: '••••demo',
-      pendingConnectAt: null,
-    },
-    seq: 0,
-  };
+  return buildSeed(now());
 }
 
 let state: DemoState = initialState();

@@ -2,8 +2,22 @@
 // listPhotos / getSpines / status responses (src/server/scan/queries.ts,
 // src/app/api/status/route.ts). Every rule that decides what a card shows
 // comes from the pure src/lib functions the real read model uses.
-import type { SearchState } from '@/lib/discogs-types';
-import type { ReviewStatus } from '@/lib/import-types';
+import {
+  type CandidateDto,
+  INLINE_CANDIDATES,
+  type SearchFailure,
+  type SearchState,
+  type SpineDiscogsDto,
+} from '@/lib/discogs-types';
+import {
+  canChangeMatchOf,
+  canRetryOf,
+  type ImportDto,
+  type ImportFailure,
+  type ImportStatus,
+  importPhaseOf,
+  type ReviewStatus,
+} from '@/lib/import-types';
 import { emptyByStatus, reviewStatusOf } from '@/lib/review-status';
 import type {
   PhotoDto,
@@ -25,7 +39,15 @@ import {
   DEFAULT_DENSITY_MAX_SPINES,
   SPINE_FIELDS,
 } from '@/lib/vision-contract';
-import type { DemoPhoto, DemoPhotoRun, DemoSpine, DemoState } from './store';
+import type {
+  DemoCandidate,
+  DemoImport,
+  DemoPhoto,
+  DemoPhotoRun,
+  DemoSearch,
+  DemoSpine,
+  DemoState,
+} from './store';
 
 const TRUNCATED_RATIO = 0.8;
 
@@ -116,6 +138,296 @@ export function buildPhotosResponse(
   return { photos: sortedPhotos(state).map((p) => toPhotoDto(state, p, now)) };
 }
 
+// ---------------------------------------------------------------------------
+// Discogs search summary (mirrors src/server/discogs/queries.ts
+// discogsForSpines: searchStateOf, orderCandidates, fieldsChangedSince).
+
+/** Longest search input in code points (src/server/discogs/inputs.ts). */
+const MAX_INPUT_CODE_POINTS = 200;
+/** Owner-facing failure reasons are cut to this many code points. */
+const REASON_MAX = 160;
+
+function capCodePoints(s: string, max: number): string {
+  const points = Array.from(s);
+  return points.length > max ? points.slice(0, max).join('') : s;
+}
+
+/** normalizeInput from inputs.ts: NFC, collapse whitespace, trim, cap. */
+function normalizeInput(v: string | null | undefined): string | null {
+  if (typeof v !== 'string') return null;
+  const collapsed = v.normalize('NFC').replace(/\s+/gu, ' ').trim();
+  if (!collapsed) return null;
+  const capped = capCodePoints(collapsed, MAX_INPUT_CODE_POINTS).trim();
+  return capped || null;
+}
+
+export type DemoSearchInputs = NonNullable<DemoSearch['inputs']>;
+
+/** A spine's current search inputs (searchInputs from inputs.ts). */
+export function searchInputsOf(spine: DemoSpine): DemoSearchInputs {
+  const value = (field: string) =>
+    spine.fields.find((f) => f.field === field)?.value ?? null;
+  return {
+    artist: normalizeInput(value('artist')),
+    title: normalizeInput(value('title')),
+    catno: normalizeInput(value('catalog_number')),
+    rawText: normalizeInput(value('raw_text')),
+  };
+}
+
+function sameInputs(a: DemoSearchInputs, b: DemoSearchInputs): boolean {
+  return (
+    normalizeInput(a.artist) === b.artist &&
+    normalizeInput(a.title) === b.title &&
+    normalizeInput(a.catno) === b.catno &&
+    normalizeInput(a.rawText) === b.rawText
+  );
+}
+
+const byNewest =
+  <T extends { id: string }>(at: (x: T) => number) =>
+  (a: T, b: T): number =>
+    at(b) - at(a) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+
+/** The spine's latest auto or again search that exists at `now`. */
+export function latestAutoSearch(
+  state: DemoState,
+  spineId: string,
+  now: number,
+): DemoSearch | null {
+  const list = state.searches
+    .filter(
+      (s) =>
+        s.spineId === spineId &&
+        (s.kind === 'auto' || s.kind === 'again') &&
+        s.queuedAt <= now,
+    )
+    .sort(byNewest((s) => s.queuedAt));
+  return list[0] ?? null;
+}
+
+/** A search's state at `now` from its timestamps and outcome. */
+export function searchStateAt(
+  search: DemoSearch | null,
+  now: number,
+): { state: SearchState; failure: SearchFailure | null } {
+  if (!search) return { state: 'not_searched', failure: null };
+  if (now < search.runningAt) return { state: 'queued', failure: null };
+  if (now < search.readyAt) return { state: 'searching', failure: null };
+  switch (search.outcome) {
+    case 'done':
+      return { state: 'done', failure: null };
+    case 'failed':
+      return {
+        state: 'failed',
+        failure: search.failure ?? { kind: 'other', reason: null },
+      };
+    default:
+      return { state: 'no_match', failure: null };
+  }
+}
+
+function toCandidateDto(c: DemoCandidate): CandidateDto {
+  return {
+    id: c.id,
+    releaseId: c.releaseId,
+    title: c.title,
+    year: c.year,
+    country: c.country,
+    labels: [...c.labels],
+    catno: c.catno,
+    formats: c.formats.map((f) => ({
+      ...f,
+      descriptions: [...f.descriptions],
+    })),
+    // Every recorded release has a generated cover (D-08).
+    hasThumb: true,
+    source: c.source,
+    catnoMatch: c.catnoMatch,
+    stage: c.stage,
+  };
+}
+
+/**
+ * A spine's stored candidates at `now` in D-10 order (orderCandidates):
+ * manual newest first, then exact-catno matches, then Discogs order;
+ * deduped by release id, a manual row winning.
+ */
+export function candidatesOf(
+  state: DemoState,
+  spineId: string,
+  now: number,
+): CandidateDto[] {
+  const rows = state.candidates.filter(
+    (c) => c.spineId === spineId && c.addedAt <= now,
+  );
+  const manual = rows
+    .filter((c) => c.source === 'manual')
+    .sort(byNewest((c) => c.addedAt));
+  const auto = rows
+    .filter((c) => c.source !== 'manual')
+    .sort(
+      (a, b) =>
+        Number(b.catnoMatch) - Number(a.catnoMatch) ||
+        a.rank - b.rank ||
+        (a.id < b.id ? -1 : 1),
+    );
+  const seen = new Set<number>();
+  const out: CandidateDto[] = [];
+  for (const c of [...manual, ...auto]) {
+    if (seen.has(c.releaseId)) continue;
+    seen.add(c.releaseId);
+    out.push(toCandidateDto(c));
+  }
+  return out;
+}
+
+/** The spine's search summary at `now` (discogsForSpines). */
+export function discogsOf(
+  state: DemoState,
+  spine: DemoSpine,
+  now: number,
+): SpineDiscogsDto {
+  const candidates = candidatesOf(state, spine.id, now);
+  const latest = latestAutoSearch(state, spine.id, now);
+  let { state: searchState, failure } = searchStateAt(latest, now);
+  if (
+    candidates.length > 0 &&
+    (searchState === 'not_searched' || searchState === 'no_match')
+  ) {
+    searchState = 'done';
+  }
+  if (candidates.length === 0 && searchState === 'done') {
+    searchState = 'no_match';
+  }
+  return {
+    state: searchState,
+    candidateCount: candidates.length,
+    topCandidates: candidates.slice(0, INLINE_CANDIDATES),
+    failure,
+    fieldsChanged:
+      latest?.inputs != null &&
+      !sameInputs(latest.inputs, searchInputsOf(spine)),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Import summary (mirrors src/server/imports/queries.ts toImportDto).
+
+/** The spine's latest import that exists at `now` (cancelled ones are gone). */
+export function latestImport(
+  state: DemoState,
+  spineId: string,
+  now: number,
+): DemoImport | null {
+  const list = state.imports
+    .filter(
+      (i) =>
+        i.spineId === spineId &&
+        i.outcome !== 'cancelled' &&
+        i.createdAt <= now,
+    )
+    .sort(byNewest((i) => i.createdAt));
+  return list[0] ?? null;
+}
+
+/** The imports row and its job as the real read model would see them. */
+function importRowAt(
+  imp: DemoImport,
+  now: number,
+): { status: ImportStatus; intentAt: number | null; jobStatus: string } {
+  if (imp.runningAt === null || now < imp.runningAt) {
+    return { status: 'pending', intentAt: null, jobStatus: 'queued' };
+  }
+  if (imp.readyAt === null || now < imp.readyAt) {
+    return {
+      status: 'importing',
+      intentAt: imp.intentAt ?? imp.runningAt,
+      jobStatus: 'running',
+    };
+  }
+  if (imp.outcome === 'cancelled') {
+    return { status: 'failed', intentAt: imp.intentAt, jobStatus: 'cancelled' };
+  }
+  return {
+    status: imp.outcome,
+    intentAt: imp.intentAt,
+    jobStatus: imp.outcome === 'failed' ? 'failed' : 'succeeded',
+  };
+}
+
+/** A folder's label (collectionFolderName). */
+export function folderNameOf(state: DemoState, id: number): string {
+  const f = state.account.folders.find((x) => x.id === id);
+  if (f) return f.name;
+  return id === 1 ? 'Uncategorized' : `Folder ${id}`;
+}
+
+function importFailureOf(imp: DemoImport, status: ImportStatus): ImportFailure {
+  const kind =
+    imp.errorKind ??
+    (status === 'pending' || status === 'importing' ? 'interrupted' : 'other');
+  const text = imp.error?.trim();
+  return {
+    kind,
+    reason: kind === 'other' && text ? capCodePoints(text, REASON_MAX) : null,
+  };
+}
+
+/** The spine's latest import as the card sees it at `now`, or null. */
+export function importOf(
+  state: DemoState,
+  spine: DemoSpine,
+  now: number,
+): ImportDto | null {
+  const imp = latestImport(state, spine.id, now);
+  if (!imp) return null;
+  const row = importRowAt(imp, now);
+  const phase = importPhaseOf(row);
+  const candidateExists =
+    imp.candidateId !== null &&
+    state.candidates.some(
+      (c) => c.id === imp.candidateId && c.spineId === spine.id,
+    );
+  const done = row.status === 'imported';
+  const copies = [...(state.collection[imp.releaseId] ?? [])].sort(
+    (a, b) => a.instanceId - b.instanceId,
+  );
+  const first = copies[0];
+  return {
+    id: imp.id,
+    phase,
+    releaseId: imp.releaseId,
+    candidateId: candidateExists ? imp.candidateId : null,
+    candidate: structuredClone(imp.snapshot),
+    hasThumb: candidateExists,
+    folderId: imp.folderId,
+    folderName: folderNameOf(state, imp.folderId),
+    instanceId: done ? imp.instanceId : null,
+    linked: done && imp.linked,
+    adopted: false,
+    importedAt: done ? imp.readyAt : null,
+    existing:
+      phase === 'already_in_collection' && first
+        ? {
+            count: copies.length,
+            folderId: first.folderId,
+            folderName: folderNameOf(state, first.folderId),
+            dateAdded: first.dateAdded,
+          }
+        : null,
+    failure: phase === 'failed' ? importFailureOf(imp, row.status) : null,
+    canChangeMatch: canChangeMatchOf({
+      phase,
+      intentAt: row.intentAt,
+      errorKind: imp.errorKind,
+      jobStatus: row.jobStatus,
+    }),
+    canRetry: canRetryOf(phase),
+    checking: false,
+  };
+}
+
 function toSpineDto(state: DemoState, s: DemoSpine, now: number): SpineDto {
   const byField = new Map(s.fields.map((f) => [f.field, f]));
   const fields: SpineFieldDto[] = SPINE_FIELDS.map((field) => {
@@ -156,9 +468,8 @@ function toSpineDto(state: DemoState, s: DemoSpine, now: number): SpineDto {
     createdRunId: `${s.photoId}-run-${s.createdRunNo}`,
     orphanedRunNo,
     mediaKind: s.mediaKind,
-    // Filled by the Discogs and import read model (plan 05-03).
-    discogs: null,
-    import: null,
+    discogs: discogsOf(state, s, now),
+    import: importOf(state, s, now),
     notOnDiscogs: s.notOnDiscogs,
     reviewStatus: null,
   };
@@ -277,7 +588,27 @@ function laneCounts(): Record<StatusJobStatus, number> {
   return { queued: 0, running: 0, succeeded: 0, failed: 0, cancelled: 0 };
 }
 
-/** Mirrors GET /api/status: a running simulated worker, scan lane counts. */
+/** A search's or import's job status at `now` (queued, running, ended). */
+function jobStatusAt(
+  start: number,
+  runningAt: number | null,
+  readyAt: number | null,
+  failed: boolean,
+  cancelled: boolean,
+  now: number,
+): StatusJobStatus | null {
+  if (now < start) return null;
+  if (cancelled) return 'cancelled';
+  if (runningAt === null || now < runningAt) return 'queued';
+  if (readyAt === null || now < readyAt) return 'running';
+  return failed ? 'failed' : 'succeeded';
+}
+
+/**
+ * Mirrors GET /api/status: a running simulated worker, the scan and
+ * Discogs lane job counts, and the Discogs part with discogsStatus()'s
+ * definitions (src/server/discogs/status.ts).
+ */
 export function buildStatusResponse(
   state: DemoState,
   now: number,
@@ -295,16 +626,57 @@ export function buildStatusResponse(
       else jobs.anthropic.running += 1;
     }
   }
+  let importsLeft = 0;
+  for (const s of state.searches) {
+    const job = jobStatusAt(
+      s.queuedAt,
+      s.runningAt,
+      s.readyAt,
+      s.outcome === 'failed',
+      false,
+      now,
+    );
+    if (job) jobs.discogs[job] += 1;
+  }
+  for (const i of state.imports) {
+    const job = jobStatusAt(
+      i.createdAt,
+      i.runningAt,
+      i.readyAt,
+      i.outcome === 'failed',
+      i.outcome === 'cancelled',
+      now,
+    );
+    if (job) jobs.discogs[job] += 1;
+    if (job === 'queued' || job === 'running') importsLeft += 1;
+  }
+  // Active or orphaned spines, as the real queries join on spines.state.
+  const photoIds = new Set(state.photos.map((p) => p.id));
+  const spines = state.spines.filter(
+    (s) =>
+      (s.state === 'active' || s.state === 'orphaned') &&
+      isVisible(s, now) &&
+      photoIds.has(s.photoId),
+  );
+  let failedSpines = 0;
+  let importsFailed = 0;
+  for (const s of spines) {
+    const latest = latestAutoSearch(state, s.id, now);
+    if (searchStateAt(latest, now).state === 'failed') failedSpines += 1;
+    if (!s.notOnDiscogs && importOf(state, s, now)?.phase === 'failed') {
+      importsFailed += 1;
+    }
+  }
   return {
     worker: { bootId: 'demo', startedAt: state.initAt, starts: 1, pid: 0 },
     jobs,
     lease: null,
     discogs: {
       connected: state.account.connected && !state.account.needsReconnect,
-      backlog: 0,
+      backlog: jobs.discogs.queued + jobs.discogs.running,
       pausedUntil: null,
-      failedSpines: 0,
-      imports: { left: 0, failed: 0 },
+      failedSpines,
+      imports: { left: importsLeft, failed: importsFailed },
     },
   };
 }
