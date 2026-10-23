@@ -51,11 +51,15 @@ Demo builds never run in the main checkout (D-20): `scripts/demo/build-demo.ts` 
 | 5-04-01 | 04 | 3 | DEMO-03, DEMO-08 (D-13, D-14) | T-05-18, T-05-19, T-05-20 | Review routes mirror real contracts; dialog searches only recordings; canned release for unknown ids; strict bodies | unit | `node_modules/.bin/vitest run src/demo/ops/review.test.ts src/demo && node_modules/.bin/tsc --noEmit` | ❌ created by task | ⬜ pending |
 | 5-04-02 | 04 | 3 | DEMO-08 (D-09, D-14) | T-05-19, T-05-21 | Import phases, duplicate 409, already-in-collection, change match, retry and retry-all mirror real rules; nothing stays in flight | unit + e2e | `node_modules/.bin/vitest run src/demo && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check && node scripts/demo/build-demo.ts && node scripts/demo/smoke.ts --expect "spines/=cd-spines.heic"` | ❌ created by task | ⬜ pending |
 | 5-05-01 | 05 | 3 | DEMO-08 (D-11, D-14, D-17) | T-05-22, T-05-27 | Dropped file never read (body readers spied); ~3 s run; second 61-spine copy; rescan per real route | unit | `node_modules/.bin/vitest run src/demo && node_modules/.bin/tsc --noEmit` | ❌ created by task | ⬜ pending |
-| 5-05-02 | 05 | 3 | DEMO-02 (D-03, D-12) | T-05-23, T-05-25, T-05-26 | Settings actions resolve to a client module; credentials kept only as masked tails; real Claude/settings tests unchanged | unit + type check | `node_modules/.bin/vitest run src/demo src/server/settings.test.ts src/app/settings/actions.test.ts src/server/claude && node_modules/.bin/tsc --noEmit` | ❌ created by task | ⬜ pending |
-| 5-05-03 | 05 | 3 | DEMO-08, DEMO-09 (D-05, D-12) | T-05-24, T-05-25 | Fixed same-site connect URL; all four pages export with the banner; no server-action ids in out/ | unit + e2e | `node_modules/.bin/vitest run && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check && node scripts/demo/build-demo.ts && node scripts/demo/smoke.ts --expect "/=Drop photos of your CD shelves" --expect "upload/=cd-spines.heic" --expect "spines/=cd-spines.heic" --expect "settings/=demo-user"` | ❌ created by task | ⬜ pending |
-| 5-06-01 | 06 | 4 | DEMO-03, DEMO-10 (D-01, D-03, D-19, D-20) | T-05-28, T-05-29 | Every real route and call site covered by the mock; workflow least-privilege, no secrets, CI builds in place | unit + YAML parse + e2e | `node_modules/.bin/vitest run && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check && python3 -c "import yaml; yaml.safe_load(open('.github/workflows/demo-pages.yml'))" && node scripts/demo/build-demo.ts && node scripts/demo/smoke.ts --expect "/=Drop photos of your CD shelves" --expect "upload/=cd-spines.heic" --expect "spines/=cd-spines.heic" --expect "settings/=demo-user"` | ❌ created by task | ⬜ pending |
-| 5-06-02 | 06 | 4 | DEMO-10 (D-06, D-19) | T-05-30 | Blocking-human publish decision with the exact asset list before any push | checkpoint:decision | — (human decision, gate="blocking-human") | n/a | ⬜ pending |
-| 5-06-03 | 06 | 4 | DEMO-10 (D-01, D-16, D-19) | T-05-30, T-05-31, T-05-32 | Pages source = Actions; CI run green; live site renders over the redirect with the shim | live check + human-check | `gh api repos/patrickclery/discogs-ai-importer/pages --jq .build_type \| grep -qx workflow && gh run list --workflow demo-pages.yml --branch master --limit 1 --json conclusion --jq '.[0].conclusion' \| grep -qx success && node scripts/demo/smoke.ts --url https://patrickclery.github.io/discogs-ai-importer/ --expect "/=Drop photos of your CD shelves" --expect "spines/=cd-spines.heic" --expect "settings/=demo-user"` | n/a (live) | ⬜ pending |
+| 5-05-02 | 05 | 3 | DEMO-08, DEMO-09 (D-05, D-11, D-12) | T-05-22 | Root lands on Upload; Upload and Spines export with the banner; zero /api requests to the host | e2e | `node_modules/.bin/vitest run && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check && node scripts/demo/build-demo.ts && node scripts/demo/smoke.ts --expect "/=Drop photos of your CD shelves" --expect "upload/=cd-spines.heic" --expect "spines/=cd-spines.heic"` | ❌ created by task | ⬜ pending |
+| 5-06-01 | 06 | 3 | DEMO-02 (D-12) | T-05-26 | Claude types moved verbatim to a client-safe module; real suite, types and lint unchanged | unit + type check | `node_modules/.bin/vitest run && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check` | ❌ created by task | ⬜ pending |
+| 5-06-02 | 06 | 3 | DEMO-02, DEMO-08 (D-03, D-04, D-12) | T-05-23, T-05-25 | Settings actions resolve to a client module; credentials kept only as masked tails; answers match the real actions | unit + type check | `node_modules/.bin/vitest run src/demo src/server/settings.test.ts src/app/settings/actions.test.ts src/server/claude && node_modules/.bin/tsc --noEmit` | ❌ created by task | ⬜ pending |
+| 5-07-01 | 07 | 4 | DEMO-08 (D-12) | T-05-24 | Account routes mirror the real contracts; fixed same-site connect URL; disconnect reflected in Spines and status | unit | `node_modules/.bin/vitest run src/demo && node_modules/.bin/tsc --noEmit` | ❌ created by task | ⬜ pending |
+| 5-07-02 | 07 | 4 | DEMO-08, DEMO-09 (D-03, D-05, D-12) | T-05-23, T-05-25 | All four pages export with the banner; no server-action ids in out/; Settings shows demo-user | e2e | `node_modules/.bin/vitest run && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check && node scripts/demo/build-demo.ts && node scripts/demo/smoke.ts --expect "/=Drop photos of your CD shelves" --expect "upload/=cd-spines.heic" --expect "spines/=cd-spines.heic" --expect "settings/=demo-user"` | ❌ created by task | ⬜ pending |
+| 5-08-01 | 08 | 5 | DEMO-03 (D-03) | T-05-30 | Every real route and call site covered by the mock; no phantom demo routes | unit | `node_modules/.bin/vitest run src/demo && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check` | ❌ created by task | ⬜ pending |
+| 5-08-02 | 08 | 5 | DEMO-10 (D-01, D-19, D-20) | T-05-28, T-05-29 | Workflow least-privilege, no secrets, CI builds in place; nothing pushed | YAML parse + e2e | `node_modules/.bin/vitest run && node_modules/.bin/tsc --noEmit && node_modules/.bin/biome check && python3 -c "import yaml; yaml.safe_load(open('.github/workflows/demo-pages.yml'))" && node scripts/demo/build-demo.ts && node scripts/demo/smoke.ts --expect "/=Drop photos of your CD shelves" --expect "upload/=cd-spines.heic" --expect "spines/=cd-spines.heic" --expect "settings/=demo-user"` | ❌ created by task | ⬜ pending |
+| 5-09-01 | 09 | 6 | DEMO-10 (D-06, D-19) | T-05-30 | Blocking-human publish decision with the exact asset list before any push | checkpoint:decision | — (human decision, gate="blocking-human") | n/a | ⬜ pending |
+| 5-09-02 | 09 | 6 | DEMO-10 (D-01, D-16, D-19) | T-05-30, T-05-31, T-05-32 | Pages source = Actions; CI run green; live site renders over the redirect with the shim | live check + human-check | `gh api repos/patrickclery/discogs-ai-importer/pages --jq .build_type \| grep -qx workflow && gh run list --workflow demo-pages.yml --branch master --limit 1 --json conclusion --jq '.[0].conclusion' \| grep -qx success && node scripts/demo/smoke.ts --url https://patrickclery.github.io/discogs-ai-importer/ --expect "/=Drop photos of your CD shelves" --expect "spines/=cd-spines.heic" --expect "settings/=demo-user"` | n/a (live) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -73,8 +77,10 @@ Vitest is already installed; no framework install. The phase's test and check fi
 - [ ] `src/demo/cover-svg.test.ts` — 05-02 Task 2
 - [ ] `src/demo/asset-urls.test.ts`, `src/demo/read-model.test.ts` — 05-03
 - [ ] `src/demo/ops/{review,imports}.test.ts` — 05-04
-- [ ] `src/demo/ops/{uploads,account}.test.ts`, `src/demo/settings-actions.test.ts` — 05-05
-- [ ] `src/demo/routes-coverage.test.ts` — 05-06 Task 1
+- [ ] `src/demo/ops/uploads.test.ts` — 05-05 Task 1
+- [ ] `src/demo/settings-actions.test.ts` — 05-06 Task 2
+- [ ] `src/demo/ops/account.test.ts` — 05-07 Task 1
+- [ ] `src/demo/routes-coverage.test.ts` — 05-08 Task 1
 
 ---
 
@@ -82,8 +88,8 @@ Vitest is already installed; no framework install. The phase's test and check fi
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Click-through of the live demo (upload animation, two shelf copies, add/import, link existing, duplicate warning, retry and retry all, not on Discogs, dialog search and pasted link, Settings disconnect, reload resets) | DEMO-08, DEMO-09, DEMO-10 | Real pointer interactions and visual states in a normal browser; smoke only dumps the rendered DOM | 05-06 Task 3 `<human-check>`: plain do/see steps, collected at end-of-phase UAT |
-| Publish approval of the exact sample-shelf assets | DEMO-10 (D-06, D-19) | Irreversible public exposure; only the owner can approve | 05-06 Task 2 checkpoint:decision (gate="blocking-human") |
+| Click-through of the live demo (upload animation, two shelf copies, add/import, link existing, duplicate warning, retry and retry all, not on Discogs, dialog search and pasted link, Settings disconnect, reload resets) | DEMO-08, DEMO-09, DEMO-10 | Real pointer interactions and visual states in a normal browser; smoke only dumps the rendered DOM | 05-09 Task 2 `<human-check>`: plain do/see steps, collected at end-of-phase UAT |
+| Publish approval of the exact sample-shelf assets | DEMO-10 (D-06, D-19) | Irreversible public exposure; only the owner can approve | 05-09 Task 1 checkpoint:decision (gate="blocking-human") |
 | Discogs recording run | DEMO-05 (D-10) | Live calls with the owner's Discogs sign-in, run once by the developer (DEMO_RECORD=1); the committed result is then checked automatically by `src/demo/fixtures.test.ts` | 05-02 Task 2 action step 2 |
 | Enforce HTTPS on patrickclery.com | D-16 | Owner's user-site setting, outside this repo; the demo is verified to work over the current http redirect | Owner toggles it in the patrickclery.github.io repo settings when ready |
 
@@ -91,7 +97,7 @@ Vitest is already installed; no framework install. The phase's test and check fi
 
 ## Validation Sign-Off
 
-- [x] All tasks have `<automated>` verify or Wave 0 dependencies (the one exception is the 05-06 publish checkpoint:decision)
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies (the one exception is the 05-09 publish checkpoint:decision)
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
 - [ ] No watch-mode flags
