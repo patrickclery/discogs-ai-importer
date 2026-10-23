@@ -61,9 +61,34 @@ describe('next.config', () => {
     expect(c.basePath).toBeUndefined();
   });
 
+  it('refuses a demo config outside scripts/demo/build-demo.ts (WR-05)', async () => {
+    for (const marker of [undefined, '', 'true']) {
+      await expect(
+        loadConfig({ NEXT_PUBLIC_DEMO: '1', DEMO_BUILD_VIA_SCRIPT: marker }),
+      ).rejects.toThrow(/not a scripts\/demo\/build-demo\.ts build/);
+    }
+    // CI=true alone is not enough: CI builds go through the script too.
+    await expect(
+      loadConfig({
+        NEXT_PUBLIC_DEMO: '1',
+        CI: 'true',
+        DEMO_BUILD_VIA_SCRIPT: undefined,
+      }),
+    ).rejects.toThrow(/pnpm demo:build/);
+  });
+
+  it('ignores the build marker without NEXT_PUBLIC_DEMO=1', async () => {
+    const c = await loadConfig({
+      NEXT_PUBLIC_DEMO: undefined,
+      DEMO_BUILD_VIA_SCRIPT: '1',
+    });
+    expect(c.output).toBeUndefined();
+  });
+
   it('returns the static-export demo config under NEXT_PUBLIC_DEMO=1', async () => {
     const c = await loadConfig({
       NEXT_PUBLIC_DEMO: '1',
+      DEMO_BUILD_VIA_SCRIPT: '1',
       NEXT_DIST_DIR: '.next/verify',
     });
     expect(c.output).toBe('export');

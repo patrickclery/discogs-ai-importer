@@ -58,4 +58,24 @@ const demoConfig: NextConfig = {
   },
 };
 
-export default process.env.NEXT_PUBLIC_DEMO === '1' ? demoConfig : nextConfig;
+// D-20 guard (WR-05): a demo config always builds into .next and writes out/,
+// so it would wipe the owner's real build if run in the checkout (directly,
+// via `pnpm build`, or through a stray NEXT_PUBLIC_DEMO=1 in a .env* file,
+// which Next loads before this file). Only scripts/demo/build-demo.ts sets
+// the marker, and it builds in a scratch copy (or in place only in CI).
+const DEMO_BUILD_MARKER = 'DEMO_BUILD_VIA_SCRIPT';
+
+function selectConfig(): NextConfig {
+  if (process.env.NEXT_PUBLIC_DEMO !== '1') return nextConfig;
+  if (process.env[DEMO_BUILD_MARKER] !== '1') {
+    throw new Error(
+      'NEXT_PUBLIC_DEMO=1 is set but this is not a scripts/demo/build-demo.ts ' +
+        "build. A demo build here would overwrite this checkout's .next. " +
+        'Run `pnpm demo:build` (scratch copy) instead, and remove ' +
+        'NEXT_PUBLIC_DEMO from any .env* file.',
+    );
+  }
+  return demoConfig;
+}
+
+export default selectConfig();

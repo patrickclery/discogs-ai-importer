@@ -15,7 +15,7 @@ pnpm demo:build   # static export, built in a scratch copy outside the checkout
 pnpm demo:smoke   # loads every demo page in headless Chrome
 ```
 
-**Never run a `NEXT_PUBLIC_DEMO=1` build directly in the checkout.** It replaces the real `.next` build with the demo export; `pnpm demo:build` avoids that by building in a scratch copy.
+**Never run a `NEXT_PUBLIC_DEMO=1` build directly in the checkout.** It replaces the real `.next` build with the demo export; `pnpm demo:build` avoids that by building in a scratch copy. `next.config.ts` refuses a demo config unless `build-demo.ts` started the build.
 
 ## Requirements
 

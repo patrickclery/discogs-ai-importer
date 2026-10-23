@@ -117,7 +117,8 @@ function syncCopy(scratch: string, copy: string): void {
 }
 
 /**
- * The env for the demo `next build`: no NEXT_DIST_DIR and no app secrets
+ * The env for the demo `next build`: the next.config.ts build marker, no
+ * NEXT_DIST_DIR and no app secrets
  * (DISCOGS_*, ANTHROPIC_*, SECRETS_FILE), so nothing secret can be inlined.
  */
 export function buildEnv(base: EnvMap): EnvMap {
@@ -125,6 +126,8 @@ export function buildEnv(base: EnvMap): EnvMap {
     ...base,
     NEXT_PUBLIC_DEMO: '1',
     NEXT_TELEMETRY_DISABLED: '1',
+    // next.config.ts refuses a demo config without this marker (WR-05).
+    DEMO_BUILD_VIA_SCRIPT: '1',
   };
   for (const name of Object.keys(env)) {
     if (/^(DISCOGS_|ANTHROPIC_)/.test(name) || name === 'SECRETS_FILE') {

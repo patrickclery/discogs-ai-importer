@@ -71,6 +71,8 @@ describe('demo asset-urls', () => {
 
 async function loadConfig(demoFlag: string | undefined): Promise<NextConfig> {
   vi.stubEnv('NEXT_PUBLIC_DEMO', demoFlag);
+  // next.config.ts only returns the demo config for build-demo.ts (WR-05).
+  vi.stubEnv('DEMO_BUILD_VIA_SCRIPT', '1');
   vi.resetModules();
   return (await import('../../next.config')).default as NextConfig;
 }

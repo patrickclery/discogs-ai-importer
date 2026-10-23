@@ -129,6 +129,7 @@ describe('secret sources', () => {
       PATH: '/bin',
       NEXT_PUBLIC_DEMO: '1',
       NEXT_TELEMETRY_DISABLED: '1',
+      DEMO_BUILD_VIA_SCRIPT: '1',
     });
     for (const k of [
       'DISCOGS_CONSUMER_KEY',
