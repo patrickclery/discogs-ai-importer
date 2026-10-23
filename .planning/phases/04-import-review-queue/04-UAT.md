@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 04-import-review-queue
 source: [04-VERIFICATION.md]
 started: 2026-10-22T11:51:59Z
-updated: 2026-10-22T23:58:10Z
+updated: 2026-10-23T00:48:59Z
 ---
 
 ## Current Test
@@ -31,8 +31,9 @@ result: pass
 
 ### 5. Card buttons at phone width. With the window phone-narrow, look at one card in each of these states: Waiting to import, Already in your collection, Import failed.
 expected: The buttons wrap onto a second line instead of running off the card. The small cover picture stays its normal size.
-result: skipped
-reason: "Owner skipped: Waiting/Already-in-collection/Import-failed states are fiddly to trigger by hand"
+result: pass
+source: override
+reason: "Owner accepted without a browser check (2026-10-22); recorded as an override in 04-VERIFICATION.md"
 
 ### 6. Already-in-collection message with a long folder name. Add a CD you already own on Discogs, held in the long-named folder. Wait for the 'Already in your collection' message, then view it at phone width.
 expected: The message ('You already have this release on Discogs: 1 copy in ...') wraps inside the card, and all of it is readable.
@@ -55,17 +56,19 @@ result: pass
 ## Summary
 
 total: 9
-passed: 6
+passed: 7
 issues: 1
 pending: 0
-skipped: 2
+skipped: 1
 blocked: 0
 
 ## Gaps
 
 - gap_id: G-04-7
   truth: "The duplicate-warning dialog stays inside its box with a very long photo file name: the title wraps (breaking inside the unspaced name), captions clamp to two lines with the full name on hover, both spine pictures fit, and Cancel/Add another copy stay visible. The photo filter dropdown truncates long names with an ellipsis and shows the full name on hover."
-  status: failed
+  status: resolved
+  resolved_by: 04-15-PLAN.md
+  resolved_at: 2026-10-23
   reason: "User reported: It showed up, but really broke the UI."
   severity: major
   test: 7

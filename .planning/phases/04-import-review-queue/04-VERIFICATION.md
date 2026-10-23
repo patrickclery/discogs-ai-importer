@@ -1,7 +1,7 @@
 ---
 phase: 04-import-review-queue
 verified: 2026-10-23T00:25:00Z
-status: human_needed
+status: passed
 score: 132/141 must-haves verified (5/5 roadmap success criteria, 127/136 plan truths; 9 await a browser check or an owner decision)
 covered_files:
   - ".planning/phases/04-import-review-queue/04-01-PLAN.md"
@@ -133,7 +133,7 @@ covered_files:
   - "test/helpers/radix-open.ts"
 covered_digest: "v3:sha256:04cc9237e4105d75b79076e104c72eb2934e0c572517a72627de1e333970ae49"
 behavior_unverified: 0
-overrides_applied: 0
+overrides_applied: 4
 re_verification:
   previous_status: human_needed
   previous_score: 129/135
@@ -143,6 +143,23 @@ re_verification:
     - "Previous human items 1, 2, 4, 6, 8, 9: passed in 04-UAT (tests 1, 2, 4, 6, 8, 9)"
   gaps_remaining: []
   regressions: []
+overrides:
+  - must_have: "reviewStatusOf gives exactly one status per spine in D-10 order: ... failed (the latest import failed, or the latest search failed or was refused) ..."
+    reason: "WR-06 revises A-04-09: an import replaces the search on the card, so an older failed search beside an open import reads matched"
+    accepted_by: "patrick"
+    accepted_at: "2026-10-23T00:48:59Z"
+  - must_have: "DELETE /api/spines/{id}/import (Change match) succeeds only while nothing can have reached Discogs ... otherwise it answers 409 started"
+    reason: "CR-01: a failed import with an intent answers 202 and runs check_import, which never POSTs and deletes only when a complete read proves nothing landed"
+    accepted_by: "patrick"
+    accepted_at: "2026-10-23T00:48:59Z"
+  - must_have: "UI-SPEC E7 error: ... Change match is enabled only when canChangeMatch, else disabled with the tooltip 'Retry first. Discogs may already have added it.'"
+    reason: "CR-01 replaced the lockout with the check-only Change match path"
+    accepted_by: "patrick"
+    accepted_at: "2026-10-23T00:48:59Z"
+  - must_have: "04-03 E7 overflow: card action buttons wrap at phone width in the Waiting, Already in your collection and Import failed states, and the cover thumbnail keeps its size (UAT test 5)"
+    reason: "Owner accepted without a browser check (UAT test 5 skipped); the same wrap classes passed the other phone-width UAT tests (4, 6, 8)"
+    accepted_by: "patrick"
+    accepted_at: "2026-10-23T00:48:59Z"
 human_verification:
   - test: "Long photo name, browser re-check (G-04-7, UAT test 7 rerun). Use a photo whose file name is about 120 characters with no spaces. (a) On /spines, click Add on a CD that another spine already imported. (b) Click Re-scan on that photo. (c) Open the 'Filter by photo' dropdown. Do each in a full-size window and again with the window phone-narrow."
     expected: "(a) The duplicate dialog's title wraps inside the box. Both spine pictures and the Cancel and Add another copy buttons are inside and clickable. Each caption stops after two lines, and hovering it shows the full name. (b) The Re-scan dialog's title wraps inside the box, and its buttons stay visible. (c) The long name ends with '…' inside the list, hovering it shows the full name, short names look as before, and picking it filters the list to that photo."
@@ -153,6 +170,7 @@ human_verification:
   - test: "UAT test 5, card buttons at phone width (owner skipped). With the window phone-narrow, look at one card that is Waiting to import, one that is Already in your collection, and one that says Import failed."
     expected: "The buttons wrap onto a second line instead of running off the card, and the small cover picture keeps its size. If you would rather not set these states up, accept the 04-03 E7 overflow truth with an override instead."
     why_human: "Visual wrap at 360 px. The owner skipped it, so it has no evidence yet."
+human_validated: "2026-10-23T00:48:59Z — owner: G-04-7 browser re-check passed (duplicate dialog, Re-scan dialog, photo filter); revisions and UAT 5 accepted via overrides"
 ---
 
 # Phase 4: Import & Review Queue Verification Report
