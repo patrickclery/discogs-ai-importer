@@ -1,7 +1,7 @@
 ---
 phase: 05-stubbed-demo-site
 verified: 2026-10-23T18:44:58Z
-status: human_needed
+status: passed
 score: 10/11 must-haves verified
 covered_files: [".github/workflows/demo-pages.yml",".planning/phases/05-stubbed-demo-site/05-01-PLAN.md",".planning/phases/05-stubbed-demo-site/05-01-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-02-PLAN.md",".planning/phases/05-stubbed-demo-site/05-02-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-03-PLAN.md",".planning/phases/05-stubbed-demo-site/05-03-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-04-PLAN.md",".planning/phases/05-stubbed-demo-site/05-04-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-05-PLAN.md",".planning/phases/05-stubbed-demo-site/05-05-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-06-PLAN.md",".planning/phases/05-stubbed-demo-site/05-06-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-07-PLAN.md",".planning/phases/05-stubbed-demo-site/05-07-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-08-PLAN.md",".planning/phases/05-stubbed-demo-site/05-08-SUMMARY.md",".planning/phases/05-stubbed-demo-site/05-09-PLAN.md",".planning/phases/05-stubbed-demo-site/05-09-SUMMARY.md","README.md","biome.json","demo/fixtures/discogs.json","demo/fixtures/shelf.json","next.config.ts","package.json","scripts/demo/build-assets.demo.ts","scripts/demo/build-covers.demo.ts","scripts/demo/build-demo.ts","scripts/demo/record-discogs.demo.ts","scripts/demo/smoke.ts","scripts/demo/verify-export.ts","src/app/error.demo.tsx","src/app/layout.demo.tsx","src/app/page.demo.tsx","src/app/settings/page.demo.tsx","src/app/spines/page.demo.tsx","src/app/upload/page.demo.tsx","src/components/candidate-row.tsx","src/components/claude-cli-card.tsx","src/components/discogs-search-dialog.tsx","src/components/duplicate-import-dialog.tsx","src/components/test-claude-button.tsx","src/demo/asset-urls.test.ts","src/demo/asset-urls.ts","src/demo/boundaries.test.ts","src/demo/cover-svg.test.ts","src/demo/cover-svg.ts","src/demo/demo-root.tsx","src/demo/dispatch.test.ts","src/demo/fetch-shim.ts","src/demo/fixtures.test.ts","src/demo/hooks.ts","src/demo/next-config.test.ts","src/demo/ops/account.test.ts","src/demo/ops/account.ts","src/demo/ops/imports.test.ts","src/demo/ops/imports.ts","src/demo/ops/review.test.ts","src/demo/ops/review.ts","src/demo/ops/uploads.test.ts","src/demo/ops/uploads.ts","src/demo/read-model.test.ts","src/demo/read-model.ts","src/demo/routes-coverage.test.ts","src/demo/routes.ts","src/demo/routes/account.ts","src/demo/routes/http.ts","src/demo/routes/imports.ts","src/demo/routes/read.ts","src/demo/routes/review.ts","src/demo/routes/uploads.ts","src/demo/seed.ts","src/demo/settings-actions.test.ts","src/demo/settings-actions.ts","src/demo/store.ts","src/lib/asset-urls.ts","src/lib/claude-types.ts","src/server/claude/cli.ts","src/server/settings.ts","vitest.demo.config.ts"]
 covered_digest: "v3:sha256:263a49a1cd4b7aff3fa2ed0dc108ddd9628123aef357b3db27702775b65a2380"
@@ -98,3 +98,7 @@ No gaps. All ten DEMO requirements are proven by code, by the full test suite, b
 
 _Verified: 2026-10-23T18:44:58Z_
 _Verifier: Claude (gsd-verifier)_
+
+## Human Verification
+
+- 2026-10-23: owner clicked through the live demo (steps 1–11) and replied "pass". Step 12 (https) waits on the owner enabling Enforce HTTPS.
