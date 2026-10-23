@@ -168,7 +168,7 @@ Plans:
   4. User can filter the spine list by pending, matched, imported, not found, not on Discogs and failed, with a count for each status
   5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs"
 
-**Plans:** 14/14 plans executed
+**Plans:** 14/15 plans executed (1 gap closure)
 
 Plans:
 **Wave 1**
@@ -192,6 +192,9 @@ Plans:
 - [x] 04-14-PLAN.md — Imported and left progress on the page and photo headers, per-status empty states, status-row skeleton (wave 4)
 - [x] 04-08-PLAN.md — Not on Discogs: card action menu, marked line, mark and unmark route (wave 4)
 - [x] 04-09-PLAN.md — Retry all failed, header import wording, read-only import report and the owner's real-account check (wave 4)
+
+**Gap closure (UAT)** *(wave 1)*
+- [ ] 04-15-PLAN.md — G-04-7: duplicate dialog stays inside its box with a 120+ char photo name (single overflow-wrap rule, minmax(0,1fr) column); photo filter dropdown ellipsizes long names with the full name on hover
 
 **UI hint**: yes
 
