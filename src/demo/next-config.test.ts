@@ -33,6 +33,7 @@ describe('next.config', () => {
       loaders: ['@tailwindcss/turbopack'],
       as: '*.css',
     });
+    expect(c.turbopack?.resolveAlias).toBeUndefined();
   });
 
   it('keeps the NEXT_DIST_DIR rule in the real config', async () => {
@@ -74,5 +75,9 @@ describe('next.config', () => {
     expect(c.env?.NEXT_PUBLIC_BASE_PATH).toBe('/discogs-ai-importer');
     expect(c.experimental?.proxyClientMaxBodySize).toBeUndefined();
     expect(c.turbopack?.rules?.['*.css']).toBeDefined();
+    // D-03: Settings server actions become an in-memory client module.
+    expect(c.turbopack?.resolveAlias).toMatchObject({
+      '@/app/settings/actions': './src/demo/settings-actions.ts',
+    });
   });
 });
