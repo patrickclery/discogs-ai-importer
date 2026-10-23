@@ -78,7 +78,7 @@ async function loadConfig(demoFlag: string | undefined): Promise<NextConfig> {
 describe('next.config alias', () => {
   it('aliases @/lib/asset-urls to the demo module only in the demo build', async () => {
     const demoConfig = await loadConfig('1');
-    expect(demoConfig.turbopack?.resolveAlias).toEqual({
+    expect(demoConfig.turbopack?.resolveAlias).toMatchObject({
       '@/lib/asset-urls': './src/demo/asset-urls.ts',
     });
     const realConfig = await loadConfig(undefined);

@@ -48,8 +48,13 @@ const demoConfig: NextConfig = {
   env: { NEXT_PUBLIC_BASE_PATH: DEMO_BASE_PATH },
   turbopack: {
     rules: cssRules,
-    // Image URLs (D-08): covers and crops become static basePath assets.
-    resolveAlias: { '@/lib/asset-urls': './src/demo/asset-urls.ts' },
+    resolveAlias: {
+      // Image URLs (D-08): covers and crops become static basePath assets.
+      '@/lib/asset-urls': './src/demo/asset-urls.ts',
+      // Settings (D-03, D-12): the server actions become an in-memory
+      // client module, so the export holds no server action.
+      '@/app/settings/actions': './src/demo/settings-actions.ts',
+    },
   },
 };
 
