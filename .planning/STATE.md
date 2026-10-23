@@ -19,10 +19,10 @@ current_phase: 04
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-22)
+See: .planning/PROJECT.md (updated 2026-10-23)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 04 — Import & Review Queue
+**Current focus:** Planning next milestone (v1 MVP shipped 2026-10-23)
 
 ## Current Position
 
