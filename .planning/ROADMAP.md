@@ -1,214 +1,22 @@
 # Roadmap: Discogs AI Importer
 
-## Overview
+## Milestones
 
-The build starts with a local, portable app shell: settings, a SQLite data folder and a durable job queue. Next comes the core value, a shelf photo turned into reviewable spine crops with editable AI-read text from one Claude call per photo. Discogs connect and candidate matching go on top of that, routed through a single throttled gate. The last phase adds explicit confirm-and-import (never a duplicate) and a status-driven review queue, so a whole shelf can be worked through to completion.
+- ✅ **v1 MVP** — Phases 1-4 (shipped 2026-10-23)
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+<details>
+<summary>✅ v1 MVP (Phases 1-4) — SHIPPED 2026-10-23</summary>
 
-Decimal phases appear between their surrounding integers in numeric order.
+- [x] Phase 1: Foundation (6/6 plans) — completed 2026-10-19
+- [x] Phase 2: Shelf Scan (14/14 plans) — completed 2026-10-20
+- [x] Phase 3: Discogs Match (15/15 plans) — completed 2026-10-22
+- [x] Phase 4: Import & Review Queue (15/15 plans) — completed 2026-10-23
 
-- [x] **Phase 1: Foundation** - Local one-command app with settings, a portable data folder and a restart-safe job queue (completed 2026-10-19)
-- [x] **Phase 2: Shelf Scan** - Drop photos, one Claude call each, review horizontal spine crops next to editable AI-read fields (completed 2026-10-20)
-- [x] **Phase 3: Discogs Match** - Connect Discogs via OAuth and get throttled candidate releases per spine, with manual search and paste-ID (completed 2026-10-22)
-- [x] **Phase 4: Import & Review Queue** - Confirm a candidate to add it to the collection exactly once; filter, retry and resolve every spine (completed 2026-10-22)
+Full details: [milestones/v1-ROADMAP.md](milestones/v1-ROADMAP.md)
 
-## Phase Details
-
-### Phase 1: Foundation
-
-**Goal**: The owner can launch the app locally with one command and save their credentials. All state lives in one portable data folder, and background work survives restarts and hot reloads.
-**Mode:** mvp
-**Depends on**: Nothing (first phase)
-**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04
-**Success Criteria** (what must be TRUE):
-  1. User runs one command and the app opens at `http://127.0.0.1:<port>`; it is not reachable from another device on the LAN
-  2. User can enter and save their Discogs app credentials on the settings page and confirm the local Claude CLI works on their subscription (no API key); after a reload saved values show masked, an env var overrides the saved value, and no secret appears unmasked in any API response or in `git status`
-  3. User can copy the data folder to another location or machine, start the app against it, and see the same state (database and stored files)
-  4. A job queued before the app is killed completes exactly once after restart, and a dev hot reload never starts a second worker
-
-**Plans:** 6/6 plans complete
-
-Plans:
-**Wave 1**
-- [x] 01-01-PLAN.md — Walking skeleton tracer: D-06 and package-legitimacy gates, then scaffold, 127.0.0.1 launch, boot migrations, jobs table, singleton worker, status and dev-job routes, verify-skeleton (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 01-05-PLAN.md — App shell on the tracer path: shadcn + UI-SPEC tokens, header nav and live status indicator, empty states, error page, Queue test job card (wave 2)
-- [x] 01-06-PLAN.md — Host/Origin guard, Vitest harness with queue tests, mise/.nvmrc pins, README and .env.example (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 01-02-PLAN.md — Restart-safe single worker and portable data folder: retry/backoff, crash recovery, worker lease, handler timeout, resolveData, kill -9 / HMR / copy-folder proofs (wave 3)
-- [x] 01-03-PLAN.md — Discogs credentials on the settings page: secrets.json outside DATA_DIR, masked SecretField, env override, Data folder card, canary leak proof (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-- [x] 01-04-PLAN.md — Claude CLI card (D-18): install/login detection, ANTHROPIC_API_KEY warning, vision model, Test Claude, child-process runner, Upload readiness (wave 4)
-
-**UI hint**: yes
-
-### Phase 2: Shelf Scan
-
-**Goal**: User drops shelf photos and sees every detected spine as a horizontal crop next to the AI-extracted fields, which they can correct. Each photo costs exactly one Claude call.
-**Mode:** mvp
-**Depends on**: Phase 1
-**Requirements**: INGEST-01, INGEST-02, INGEST-03, INGEST-04, INGEST-05, VIS-01, VIS-02, VIS-03, VIS-04, REV-01, REV-02
-**Success Criteria** (what must be TRUE):
-  1. User drags several shelf photos onto the upload page and watches each one move through queued, analyzing and done. A failure, including a truncated or refused Claude response, shows as an error with a reason and is never silently dropped
-  2. Every spine row shows its crop, rotated to horizontal and aligned with the real spine (portrait and EXIF-rotated phone photos included), next to artist, title, format, label, catalog number, raw text and per-field confidence
-  3. Each analyzed photo has exactly one recorded Claude call with its raw response persisted, and re-uploading an identical photo makes zero calls and shows the existing spines
-  4. User can edit any extracted field; the edit survives a reload and the original AI value is still kept
-  5. User can explicitly re-scan a photo. This is the only way a photo goes back to Claude, and the user's earlier edits survive on spines that still match
-
-**Plans:** 14/14 plans complete (2 gap closure)
-
-Plans:
-**Wave 1**
-- [x] 02-01-PLAN.md — D-01 spike tracer: package-legitimacy gate, production vision modules, one live call on a real HEIC with horizontal crops (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 02-02-PLAN.md — D-01 spike measurement: calibration grid, Opus/Sonnet x effort matrix, report.json, fixture-only geometry and parsing tests (wave 2)
-- [x] 02-03-PLAN.md — Ingest tracer: Phase 2 schema and migration, upload route with magic bytes and dedup, one queued non-retryable scan job per photo, photo list (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 02-04-PLAN.md — Freeze the vision contract and crop source (decision), then the scan tracer: ledgered single call, raw first, crops, file route, /spines list (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-- [x] 02-05-PLAN.md — Every scan failure shown with a reason, kill -9 never re-sends, zero-call reparse, D-03 density flags, upload-validation tests (wave 4)
-- [x] 02-06-PLAN.md — /upload Photos list: providers, polled statuses with timer, badges, CLI-not-ready alert, poll-error state (wave 4)
-
-**Wave 5** *(blocked on Wave 4 completion)*
-- [x] 02-07-PLAN.md — Drag-and-drop upload: dropzone, per-file queue, client errors and retries, duplicates, D-03 tip (wave 5)
-- [x] 02-08-PLAN.md — /spines polled list: sticky photo sections, spine cards with the crop on top, section states (wave 5)
-
-**Wave 6** *(blocked on Wave 5 completion)*
-- [x] 02-09-PLAN.md — Field editing: PATCH with ai_value kept, autosave on blur, revert, confidence warnings, polling guard (wave 6)
-
-**Wave 7** *(blocked on Wave 6 completion)*
-- [x] 02-10-PLAN.md — Explicit re-scan with D-14 matching and D-15/D-16 merge that keeps spine ids and edits; Re-scan on both pages (wave 7)
-
-**Wave 8** *(blocked on Wave 7 completion)*
-- [x] 02-11-PLAN.md — Orphaned spines: re-attach to a new spine or dismiss (wave 8)
-
-**Wave 9** *(blocked on Wave 8 completion)*
-- [x] 02-12-PLAN.md — Needs review / photo filter bar and the "Latest scan reads" hint (wave 9)
-
-**Gap closure (UAT)** *(wave 1, parallel)*
-- [x] 02-13-PLAN.md — G-02-3: error-aware refetch interval so the "Couldn't refresh" alert clears after a restart; UI-SPEC line 183 corrected
-- [x] 02-14-PLAN.md — G-02-5: SpineField Escape cancel independent of blur/keydown order; no stale skip flag, unmount flush
-
-**UI hint**: yes
-
-### Phase 3: Discogs Match
-
-**Goal**: User connects their Discogs account and, for each music spine, sees candidate releases they can recognize. Manual search and paste-ID cover the cases auto-search misses, and every request respects the rate limit.
-**Mode:** mvp
-**Depends on**: Phase 2
-**Requirements**: DISC-01, DISC-02, DISC-03, DISC-04, DISC-05, DISC-06
-**Success Criteria** (what must be TRUE):
-  1. User completes the Discogs OAuth 1.0a flow from the app and sees the connected Discogs username
-  2. Once a photo's spines are extracted, each music spine gets candidate releases automatically (catalog number first, then artist + title + format, then free text). Each candidate shows a cover thumbnail, year, country, label, catalog number and format
-  3. Searching a large batch of spines never loses work to Discogs rate limiting; requests are paced, and after a 429 they back off and resume on their own
-  4. After editing a spine's fields, user can re-run its search and see updated candidates
-  5. For any spine, user can run a manual Discogs search or paste a Discogs release URL or ID and get that release as a candidate
-
-**Plans:** 15/15 plans complete (2 gap closure)
-
-Plans:
-**Wave 1**
-- [x] 03-01-PLAN.md — Connect tracer through the API: PLAINTEXT signer, pacing gate, read-only in-house client, OAuth connect/callback, fake Discogs and verify-discogs (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 03-02-PLAN.md — Settings Discogs card: Connect button, Connected as, Test connection, Disconnect, Reconnect needed, clear-also-disconnects (wave 2)
-- [x] 03-03-PLAN.md — Auto search tracer [schema apply]: searches and candidates tables, catno/artist-title/text cascade, enqueue on scan, search_spine handler, fake data API (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 03-04-PLAN.md — Return from discogs.com: paste-code fallback, ?discogs= notices, callback URL, auth/connect/signer tests and canary sweep (wave 3)
-- [x] 03-05-PLAN.md — Rate limits never lose work: 429 deferral and lane gate, revoked and vanished-spine branches, pacing gate limits (wave 3)
-- [x] 03-06-PLAN.md — Cover cache in the data folder and the header's Discogs backlog and pause countdown (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-- [x] 03-07-PLAN.md — Connect backfill of already-scanned spines (verify-discogs-backfill) and cascade, mapping, pin and enqueue tests (wave 4)
-- [x] 03-08-PLAN.md — Candidates on the spine card: search-state badge, Discogs matches top 3, state lines (wave 4)
-
-**Wave 5** *(blocked on Wave 4 completion)*
-- [x] 03-09-PLAN.md — Show all, candidate details rules, /spines polling, not-connected notice, paused countdown (wave 5)
-
-**Wave 6** *(blocked on Wave 5 completion)*
-- [x] 03-10-PLAN.md — Fields changed since last search, Search again and Retry search (wave 6)
-
-**Wave 7** *(blocked on Wave 6 completion)*
-- [x] 03-11-PLAN.md — Search Discogs… dialog: pasted release link or number, master refusal, add as pinned manual candidate (wave 7)
-
-**Wave 8** *(blocked on Wave 7 completion)*
-- [x] 03-12-PLAN.md — Search Discogs… dialog: free-text search, result covers, error states, refusal tests, manual picks survive re-search (wave 8)
-
-**Wave 9** *(blocked on Wave 8 completion)*
-- [x] 03-13-PLAN.md — Owner connects the real Discogs account on port 3001 (blocking checkpoint) and a read-only live report settles A1, A2, A3, A5 (wave 9)
-
-**Gap closure (verification)** *(wave 1)*
-- [x] 03-14-PLAN.md — CR-01/WR-01: re-activated spines are looked up again via the maintenance hook or show their real last result; one shared status rule; "waiting its turn" only when the spine will be queued
-- [x] 03-15-PLAN.md — CR-01 auth_failed/WR-01: a reconnect or passing Test connection looks rejected spines up again even over a covering baseline; a "waiting its turn" card offers no Fields changed or Search again
-
-**UI hint**: yes
-
-### Phase 4: Import & Review Queue
-
-**Goal**: User confirms the right release for each spine and it lands in their Discogs collection exactly once. A status-driven list lets them work through the whole shelf to completion.
-**Mode:** mvp
-**Depends on**: Phase 3
-**Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, REV-03, REV-04, REV-05
-**Success Criteria** (what must be TRUE):
-  1. Nothing reaches Discogs until the user confirms a specific candidate. After confirming, the release is in the chosen collection folder on discogs.com (Uncategorized by default) and the spine shows as imported
-  2. Before confirming, user is warned if the release is already in their Discogs collection or was already imported from another photo
-  3. Killing the app mid-import or retrying a failed import never creates a duplicate collection entry, and every imported spine records its Discogs instance ID
-  4. User can filter the spine list by pending, matched, imported, not found, not on Discogs and failed, with a count for each status
-  5. User can retry any failed item without re-uploading its photo, and can mark a spine "not on Discogs"
-
-**Plans:** 15/15 plans complete (1 gap closure)
-
-Plans:
-**Wave 1**
-- [x] 04-01-PLAN.md — Import tracer [schema apply]: imports table, write gate widened by the one add POST, confirm route, add_to_collection job (read, adopt or hold, intent, POST, record), fake collection, verify-discogs-import incl. every confirm refusal (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 04-10-PLAN.md — Import read model and card badge on /spines, shared import UI context, verify helpers and ImportFakeState in scripts/lib/import-flow.ts (wave 2)
-- [x] 04-06-PLAN.md — Collection folder select on Settings: cached folder list, inline refresh, fallback to Uncategorized (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 04-02-PLAN.md — Exactly-once: a kill mid-POST and a 502 after commit adopt the copy, already-in-collection hold, D-09 failure classes, interrupted-import hook (wave 3)
-- [x] 04-03-PLAN.md — "Add to {folder}" on the card, confirmed-match panel, failed state with Change match and Retry import buttons (wave 3)
-- [x] 04-05-PLAN.md — Status filter: D-10 review status, counts per status, ?status=, standalone Needs review, moved-out toast (wave 3)
-- [x] 04-07-PLAN.md — Matched and imported spines survive re-scans: merge, re-attach and dismiss guards; no auto search for done or marked spines (wave 3)
-- [x] 04-11-PLAN.md — Tests pin the write gate, the username redaction and the import read-model rules (wave 3)
-- [x] 04-12-PLAN.md — Change match before start and Retry import or search: store functions, DELETE and retry routes, enqueue-site guard (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-- [x] 04-04-PLAN.md — Duplicate rules on the server: local duplicate 409 with allowDuplicate, Link existing copy and Add another copy routes (wave 4)
-- [x] 04-13-PLAN.md — Duplicate warnings on the card: dialog with both crops, Already in your collection panel (wave 4)
-- [x] 04-14-PLAN.md — Imported and left progress on the page and photo headers, per-status empty states, status-row skeleton (wave 4)
-- [x] 04-08-PLAN.md — Not on Discogs: card action menu, marked line, mark and unmark route (wave 4)
-- [x] 04-09-PLAN.md — Retry all failed, header import wording, read-only import report and the owner's real-account check (wave 4)
-
-**Gap closure (UAT)** *(wave 1)*
-- [x] 04-15-PLAN.md — G-04-7: duplicate dialog stays inside its box with a 120+ char photo name (single overflow-wrap rule, minmax(0,1fr) column); photo filter dropdown ellipsizes long names with the full name on hover
-
-**UI hint**: yes
-
-## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Foundation | 6/6 | Complete    | 2026-10-19 |
-| 2. Shelf Scan | 14/14 | Complete    | 2026-10-20 |
-| 3. Discogs Match | 15/15 | Complete    | 2026-10-22 |
-| 4. Import & Review Queue | 15/15 | Complete    | 2026-10-22 |
+</details>
 
 ## Backlog
 

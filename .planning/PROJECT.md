@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A local, portable web app that turns photos of CD shelves into Discogs collection entries. The user drags and drops photos of disc spines; Claude's vision API reads every spine in a photo in a single call; each detected spine is cropped, stored locally (SQLite), matched against the Discogs database, reviewed/corrected by the user, and added to their Discogs collection. Built for a single user (the owner) cataloguing their own physical media.
+A local, portable web app that turns photos of CD shelves into Discogs collection entries. The user drags and drops photos of disc spines; Claude (via the owner's subscription and the local Claude Code CLI) reads every spine in a photo in a single vision call; each detected spine is cropped, stored locally (SQLite), matched against the Discogs database, reviewed/corrected by the user, and added to their Discogs collection. Built for a single user (the owner) cataloguing their own physical media.
 
 ## Core Value
 
@@ -25,11 +25,16 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 - ✓ User can re-run the Discogs search for a spine after correcting it (field editing itself shipped in Phase 2) — Phase 3
 - ✓ User can configure their Discogs app credentials locally; Claude access uses their existing Claude subscription via the local Claude Code CLI (no API key) — Phase 3
 
+- ✓ User confirms a match and the release is added exactly once to their chosen Discogs collection folder (restart- and retry-safe, instance id recorded) — v1 (Phase 4)
+- ✓ User sees every spine with a status (pending, matched, imported, not found, not on Discogs, failed), filters by it with counts, and retries failures — v1 (Phase 4)
+- ✓ Items with no Discogs match can be flagged "not on Discogs" — v1 (Phase 4)
+- ✓ User is warned when a release is already in their collection or already imported from another spine — v1 (Phase 4)
+
 ### Active
 
-- [ ] User can confirm a match and add the release to their Discogs collection
-- [ ] User sees a list of all spines with status: pending, matched, imported, not found, failed
-- [ ] Items with no Discogs match can be flagged "not on Discogs"
+- [ ] Undo an import / change the match after a wrong add succeeded (remove the copy from Discogs and free the card) — deferred from v1 (D-02, DATA-01)
+- [ ] Rank artist + title + catalog-number matches above catalog-number-only matches
+- [ ] Phase 2 follow-ups (backlog 999.1–999.4): straighten tilted spine crops; reach the photo filter without scrolling up; browser checks of orphan re-attach/dismiss and failed-row re-scan
 
 ### Out of Scope
 
@@ -40,6 +45,8 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 - One Claude call per spine — explicitly rejected for cost; one call per photo
 
 ## Context
+
+**Current state (v1 shipped 2026-10-23):** about 25k lines of TypeScript app code plus 23k lines of tests (1606 Vitest tests) on Next.js 16, SQLite/Drizzle, sharp and the Claude Code CLI. The owner has run real imports against their Discogs account. Known debt is listed in `.planning/milestones/v1-MILESTONE-AUDIT.md`. Notable ops lesson: migrations run only at server boot, so a long-running dev server must be restarted after a schema change.
 
 - Physical CD collection, photographed as spines on shelves (many spines per photo).
 - Discogs API: search (`/database/search`) requires authentication; adding to collection is `POST /users/{username}/collection/folders/{folder_id}/releases/{release_id}`. Rate limit 60/min authenticated.
@@ -63,13 +70,16 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 | SQLite (via Drizzle) over Postgres | Portability; single-user local tool | ✓ Good (Phase 2) |
 | Claude vision, one call per photo returning all spines + bounding boxes | Avoid N calls per photo; cost control | ✓ Good (Phase 2) |
 | Local cropping with sharp from AI bounding boxes | Spine images for review without extra AI calls | ✓ Good (Phase 2) |
-| Human confirms Discogs match before adding to collection | OCR + search is fuzzy; avoid polluting collection | — Pending |
+| Human confirms Discogs match before adding to collection | OCR + search is fuzzy; avoid polluting collection | ✓ Good (v1) |
 | Use Claude subscription via headless `claude -p` CLI instead of API key | User doesn't want to pay for API credits | ✓ Good (Phase 2) |
 | Image-hash dedup; re-scan only on explicit action | Prevent accidental repeat API spend | ✓ Good (Phase 2) |
 | Re-scan merges into existing spines: edited values kept, unmatched edited spines become orphans (re-attach or dismiss), never deleted | Owner edits must survive a re-read | ✓ Good (Phase 2) |
 | CDs only — no DVD/film handling, no music/film `kind` field; Discogs search uses `format=CD` (supersedes research notes on DVDs) | User has no music DVDs; movie DVDs aren't on Discogs (2026-10-19) | ✓ Good (Phase 3) |
 | Thin in-house Discogs client (PLAINTEXT OAuth, one paced gate ~1 req/s, read-only until Phase 4) | Own the rate-limit queue; client refuses writes so nothing reaches the collection before review | ✓ Good (Phase 3) |
 | No automatic match preselect — owner always picks | Fuzzy search; avoid wrong collection entries | ✓ Good (Phase 3) |
+| Write an import intent before the Discogs POST and adopt a copy that already landed on retry | Exactly-once adds across crashes, timeouts and 5xx | ✓ Good (v1, UAT kill-mid-import passed) |
+| Undo after a successful import deferred (D-02) | Keep v1 scope; wrong adds are rare and fixable on discogs.com | ⚠️ Revisit (owner hit it in UAT) |
+| Failed import's Change match runs a check-only job instead of locking the card (CR-01) | Frees the card without risking a second copy | ✓ Good (v1) |
 
 ## Evolution
 
@@ -89,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-22 after Phase 3*
+*Last updated: 2026-10-23 after v1 milestone*
