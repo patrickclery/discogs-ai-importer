@@ -16,6 +16,22 @@ import type { PhotoOption, SpinesResponse } from '@/lib/scan-types';
 /** Select value meaning every photo (Radix Select items cannot be empty). */
 const ALL_PHOTOS = '__all__';
 
+/**
+ * SelectItem makes its ItemText span a flex box whose min-width:auto stops
+ * the inner truncate span from shrinking, so a long name was clipped with
+ * no ellipsis (G-04-7). min-w-0 lets it shrink.
+ */
+export const PHOTO_OPTION_ITEM_CLASS = '*:[span]:last:min-w-0';
+
+/** Props for one photo row: its value, the full name on hover, the shrink class. */
+export function photoOptionItemProps(p: Pick<PhotoOption, 'id' | 'filename'>) {
+  return {
+    value: p.id,
+    title: p.filename,
+    className: PHOTO_OPTION_ITEM_CLASS,
+  };
+}
+
 /** `?review=1` is Needs review; anything else is All (T-02-28). */
 export function useReviewFilter() {
   const [raw, setRaw] = useQueryState('review');
@@ -73,7 +89,7 @@ export function SpinesFilterBar({
           <SelectContent className="max-w-[min(24rem,calc(100vw-2rem))]">
             <SelectItem value={ALL_PHOTOS}>All photos</SelectItem>
             {photoOptions.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
+              <SelectItem key={p.id} {...photoOptionItemProps(p)}>
                 <span className="truncate">{p.filename}</span>
               </SelectItem>
             ))}
