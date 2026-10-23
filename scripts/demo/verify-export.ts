@@ -2,6 +2,7 @@
 // T-05-01..03, T-05-08). Every rule fails with a short message naming it and
 // never prints a secret value.
 //   node scripts/demo/verify-export.ts [--out ./out] [--next ./.next] [--secrets ./secrets.json]
+// The secrets file defaults to $SECRETS_FILE or ./secrets.json, like the app.
 // build-demo.ts calls verifyExport() after every build. Node built-ins only.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,7 +35,46 @@ const TEXT_EXT = new Set([
   '.xml',
   '.webmanifest',
 ]);
-const SECRET_MIN_LENGTH = 6;
+/** Same floor as the Discogs recorder's leak check (a short username). */
+export const SECRET_MIN_LENGTH = 4;
+/**
+ * Env vars whose values must never ship: SECRET_ENV_NAMES in
+ * src/server/secrets.ts plus the API key the Claude CLI wrapper strips.
+ */
+export const SECRET_ENV_VARS = [
+  'DISCOGS_CONSUMER_KEY',
+  'DISCOGS_CONSUMER_SECRET',
+  'ANTHROPIC_API_KEY',
+] as const;
+/**
+ * Well-known credential shapes (rule h). CI has no secrets file and no
+ * DISCOGS_* values, so these keep the published build's scan meaningful.
+ * Messages name the label only, never the match.
+ */
+export const SECRET_PATTERNS: ReadonlyArray<{ label: string; re: RegExp }> = [
+  { label: 'Anthropic API key', re: /sk-ant-[A-Za-z0-9_-]{20,}/ },
+  {
+    label: 'GitHub token',
+    re: /\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})/,
+  },
+  { label: 'AWS access key id', re: /\bAKIA[0-9A-Z]{16}\b/ },
+  { label: 'private key block', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
+  { label: 'Slack token', re: /\bxox[abprs]-[A-Za-z0-9-]{10,}/ },
+  {
+    label: 'Discogs OAuth PLAINTEXT signature',
+    re: /oauth_signature="?[A-Za-z0-9]{10,}(?:&|%26)[A-Za-z0-9]{10,}/,
+  },
+];
+
+export type EnvMap = Record<string, string | undefined>;
+
+/** The secrets file the app reads: $SECRETS_FILE or <cwd>/secrets.json. */
+export function resolveSecretsPath(
+  cwd: string,
+  env: EnvMap = process.env,
+): string {
+  return path.resolve(cwd, env.SECRETS_FILE || 'secrets.json');
+}
 
 /** Routes of every src/app/**\/page.demo.tsx: '/' for the root, else 'a/b/'. */
 export function demoPageRoutes(repoRoot: string): string[] {
@@ -97,13 +137,21 @@ function stringValues(v: unknown, at: string, out: Array<[string, string]>) {
   }
 }
 
-export type VerifyResult = { ok: boolean; failures: string[]; files: number };
+export type VerifyResult = {
+  ok: boolean;
+  failures: string[];
+  files: number;
+  /** Known secret values scanned for (0 in CI; the patterns still run). */
+  secretValues?: number;
+};
 
 export function verifyExport(opts: {
   outDir: string;
   nextDir: string;
   secretsPath: string | null;
   repoRoot?: string;
+  /** Source of SECRET_ENV_VARS values; defaults to process.env. */
+  env?: EnvMap;
 }): VerifyResult {
   const failures: string[] = [];
   const fail = (rule: string, msg: string) => failures.push(`[${rule}] ${msg}`);
@@ -158,14 +206,22 @@ export function verifyExport(opts: {
     fail('c', `middleware manifest missing or unreadable at ${mw}`);
   }
 
-  // h. secrets.json values (key names only in messages)
+  // h. secrets-file and env secret values (key names only in messages),
+  // plus secret-shaped patterns below
   const secrets: Array<[string, string]> = [];
   if (opts.secretsPath && fs.existsSync(opts.secretsPath)) {
     try {
-      stringValues(readJson(opts.secretsPath), '', secrets);
+      const found: Array<[string, string]> = [];
+      stringValues(readJson(opts.secretsPath), '', found);
+      for (const [k, v] of found) secrets.push([`key ${k}`, v]);
     } catch {
       fail('h', 'secrets file exists but is not readable JSON; cannot scan');
     }
+  }
+  const env = opts.env ?? process.env;
+  for (const name of SECRET_ENV_VARS) {
+    const v = env[name]?.trim();
+    if (v) secrets.push([`env ${name}`, v]);
   }
   const secretValues = secrets
     .filter(([, v]) => v.length >= SECRET_MIN_LENGTH)
@@ -214,10 +270,17 @@ export function verifyExport(opts: {
       fail('g', `out/${rel} mentions a family photo (IMG_35/img-35)`);
     }
 
-    // h. no secret value anywhere (binary files included)
+    // h. no secret value anywhere (binary files included), and no
+    // secret-shaped string in any text file
     for (const s of secretValues) {
       if (buf.includes(s.buf)) {
-        fail('h', `secret value of key ${s.key} found in out/${rel}`);
+        fail('h', `secret value of ${s.key} found in out/${rel}`);
+      }
+    }
+    if (text !== null) {
+      for (const p of SECRET_PATTERNS) {
+        if (p.re.test(text))
+          fail('h', `out/${rel} contains a secret-shaped string (${p.label})`);
       }
     }
   }
@@ -228,14 +291,23 @@ export function verifyExport(opts: {
     );
   }
 
-  return { ok: failures.length === 0, failures, files: files.length };
+  return {
+    ok: failures.length === 0,
+    failures,
+    files: files.length,
+    secretValues: secretValues.length,
+  };
 }
 
 /** Print the result; true when every rule passed. */
 export function reportVerify(r: VerifyResult): boolean {
   for (const f of r.failures) console.error(`[verify-export] FAIL ${f}`);
   if (r.ok) {
-    console.log(`[verify-export] PASS: ${r.files} files, rules a-h`);
+    const scanned =
+      r.secretValues === undefined
+        ? ''
+        : ` (${r.secretValues} known secret values, ${SECRET_PATTERNS.length} secret patterns)`;
+    console.log(`[verify-export] PASS: ${r.files} files, rules a-h${scanned}`);
   }
   return r.ok;
 }
@@ -244,7 +316,7 @@ function parseArgs(argv: string[]) {
   const opts = {
     outDir: path.resolve('out'),
     nextDir: path.resolve('.next'),
-    secretsPath: path.resolve('secrets.json') as string | null,
+    secretsPath: resolveSecretsPath(process.cwd()) as string | null,
   };
   for (let i = 0; i < argv.length; i++) {
     const v = argv[i + 1];

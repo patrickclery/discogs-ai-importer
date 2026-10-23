@@ -45,7 +45,8 @@ jobs:
         run: pnpm exec vitest run src/demo
 
       # NEXT_PUBLIC_DEMO=1 static export into ./out, then verify-export
-      # (file allowlist, no family photos, no secret values).
+      # (file allowlist, no family photos, no server code, no secret-shaped
+      # strings). No secrets exist in CI, so known-value scans are local-only.
       - name: Build demo export
         run: node scripts/demo/build-demo.ts --in-place
 

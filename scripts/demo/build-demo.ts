@@ -11,7 +11,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { reportVerify, verifyExport } from './verify-export.ts';
+import {
+  type EnvMap,
+  reportVerify,
+  resolveSecretsPath,
+  verifyExport,
+} from './verify-export.ts';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const LOCK_STALE_MS = 15 * 60 * 1000;
@@ -111,13 +116,27 @@ function syncCopy(scratch: string, copy: string): void {
   }
 }
 
-function runBuild(cwd: string): Promise<void> {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
+/**
+ * The env for the demo `next build`: no NEXT_DIST_DIR and no app secrets
+ * (DISCOGS_*, ANTHROPIC_*, SECRETS_FILE), so nothing secret can be inlined.
+ */
+export function buildEnv(base: EnvMap): EnvMap {
+  const env: EnvMap = {
+    ...base,
     NEXT_PUBLIC_DEMO: '1',
     NEXT_TELEMETRY_DISABLED: '1',
   };
+  for (const name of Object.keys(env)) {
+    if (/^(DISCOGS_|ANTHROPIC_)/.test(name) || name === 'SECRETS_FILE') {
+      delete env[name];
+    }
+  }
   delete env.NEXT_DIST_DIR;
+  return env;
+}
+
+function runBuild(cwd: string): Promise<void> {
+  const env = buildEnv(process.env) as NodeJS.ProcessEnv;
   return new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -145,8 +164,11 @@ function copyAssets(root: string, outDir: string): void {
 
 /**
  * After each build: copy the assets, then run every verify-export rule.
- * The secrets scan reads the ORIGINAL checkout's secrets.json (the scratch
- * copy never has one), so a leaked value fails the build (T-05-01).
+ * The secrets scan reads the ORIGINAL checkout's secrets file ($SECRETS_FILE
+ * or secrets.json, as the app resolves it; the scratch copy never has one)
+ * and the DISCOGS_* and ANTHROPIC_API_KEY env values, so a leaked value fails
+ * the build (T-05-01). In CI, where neither exists, the secret-shaped
+ * patterns still run.
  */
 async function afterBuild(root: string, outDir: string): Promise<void> {
   copyAssets(root, outDir);
@@ -154,7 +176,7 @@ async function afterBuild(root: string, outDir: string): Promise<void> {
     verifyExport({
       outDir,
       nextDir: path.join(root, '.next'),
-      secretsPath: path.join(REPO, 'secrets.json'),
+      secretsPath: resolveSecretsPath(REPO),
       repoRoot: root,
     }),
   );
