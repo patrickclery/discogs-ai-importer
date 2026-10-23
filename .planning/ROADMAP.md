@@ -30,29 +30,29 @@ Full details: [milestones/v1-ROADMAP.md](milestones/v1-ROADMAP.md)
 **Goal:** A demo build of the app that anyone can open and play with to see how it works end to end (upload a shelf photo, review spines, see Discogs matches, confirm and "import"), with no calls to Claude or Discogs and no real credentials. Every external call is replaced by canned stub data.
 **Requirements**: DEMO-01..DEMO-10 (proposed in 05-RESEARCH.md from the 05-CONTEXT.md decisions)
 **Depends on:** Phase 4
-**Plans:** 9 plans
+**Plans:** 9/9 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 05-01-PLAN.md — Tracer: NEXT_PUBLIC_DEMO static export of /spines answered by the in-browser fetch shim, scratch-copy build, export checks (wave 1)
-- [ ] 05-02-PLAN.md — Fixtures: sample shelf assets from the real pipeline, Discogs recordings (text only), generated covers (wave 1)
+- [x] 05-01-PLAN.md — Tracer: NEXT_PUBLIC_DEMO static export of /spines answered by the in-browser fetch shim, scratch-copy build, export checks (wave 1)
+- [x] 05-02-PLAN.md — Fixtures: sample shelf assets from the real pipeline, Discogs recordings (text only), generated covers (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 05-03-PLAN.md — Seeded shelf: image-URL seam, seed with every review state, full read model (wave 2)
+- [x] 05-03-PLAN.md — Seeded shelf: image-URL seam, seed with every review state, full read model (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 05-04-PLAN.md — Spines interactions in memory: edits, searches, dialog, imports, warnings, retries (wave 3)
-- [ ] 05-05-PLAN.md — Upload (fake analysis, second shelf copy), Re-scan, root redirect and error page (wave 3)
-- [ ] 05-06-PLAN.md — Client-safe Claude types and simulated Settings actions behind the demo alias (wave 3)
+- [x] 05-04-PLAN.md — Spines interactions in memory: edits, searches, dialog, imports, warnings, retries (wave 3)
+- [x] 05-05-PLAN.md — Upload (fake analysis, second shelf copy), Re-scan, root redirect and error page (wave 3)
+- [x] 05-06-PLAN.md — Client-safe Claude types and simulated Settings actions behind the demo alias (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 05-07-PLAN.md — Simulated Discogs account routes and the demo Settings page; full four-page export check (wave 4)
+- [x] 05-07-PLAN.md — Simulated Discogs account routes and the demo Settings page; full four-page export check (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 05-08-PLAN.md — Mock-coverage gate, Pages workflow, README link; committed locally, not pushed (wave 5)
+- [x] 05-08-PLAN.md — Mock-coverage gate, Pages workflow, README link; committed locally, not pushed (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 05-09-PLAN.md — Publish decision (blocking), enable Pages, push, live check (wave 6)
+- [x] 05-09-PLAN.md — Publish decision (blocking), enable Pages, push, live check (wave 6)
 
 ## Backlog
 

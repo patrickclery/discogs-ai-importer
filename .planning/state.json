@@ -4,30 +4,15 @@
   "milestone": null,
   "phases": [
     {
-      "number": "1",
-      "name": "Foundation",
-      "status": "complete"
-    },
-    {
-      "number": "2",
-      "name": "Shelf Scan",
-      "status": "complete"
-    },
-    {
-      "number": "3",
-      "name": "Discogs Match",
-      "status": "complete"
-    },
-    {
-      "number": "4",
-      "name": "Import & Review Queue",
-      "status": "complete"
+      "number": "5",
+      "name": "Stubbed Demo Site",
+      "status": "pending"
     }
   ],
   "next": {
-    "command": "/gsd-progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 1 of 1 · 100% · executing"
   },
-  "updated_at": "2026-10-23T06:42:05.098Z"
+  "updated_at": "2026-10-23T18:42:41.791Z"
 }

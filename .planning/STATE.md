@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: Stubbed Demo Site
-status: Awaiting next milestone
-stopped_at: Phase 04 complete — all phases complete
-last_updated: "2026-10-23T09:40:34.469Z"
+status: executing
+stopped_at: Completed 05-09-PLAN.md
+last_updated: "2026-10-23T18:42:42.355Z"
 last_activity: 2026-10-23
-last_activity_desc: Milestone v1 completed and archived
-state_head: 79af1008e9e2950f863e96a55d4df00e6693c919
+last_activity_desc: 05-09 demo published to GitHub Pages
+state_head: 95d6548223beceba5427da3f1763f0f8dfa0f5de
 progress:
   total_phases: 1
   completed_phases: 4
   total_plans: 9
   completed_plans: 50
-  percent: 0
+  percent: 100
 ---
 
 # Project State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-23)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Planning next milestone (v1 MVP shipped 2026-10-23)
+**Current focus:** Phase 05 — Stubbed Demo Site
 
 ## Current Position
 
-Phase: 05 (Stubbed Demo Site) — READY TO EXECUTE
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-23 — Milestone v1 completed and archived
+Phase: 05 (Stubbed Demo Site) — EXECUTING
+Plan: 9 of 9
+Status: All plans complete — awaiting end-of-phase UAT
+Last activity: 2026-10-23 — 05-09 demo published to GitHub Pages
 
 ## Performance Metrics
 
@@ -106,6 +106,7 @@ Last activity: 2026-10-23 — Milestone v1 completed and archived
 | Phase 04 P08 | 7min | 2 tasks | 9 files |
 | Phase 4 P14 | 7 min | 2 tasks | 7 files |
 | Phase 4 P09 | 12min | 3 tasks | 13 files |
+| Phase 05 P09 | 5 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -245,6 +246,7 @@ Recent decisions affecting current work:
 - [Phase 4]: 04-09: Retry all failed skips a failed spine whose import is already waiting or running and does not count it as retried
 - [Phase 4]: 04-09: imports.failed uses the card's importPhaseOf rule and leaves out spines marked not on Discogs, matching the Failed filter
 - [Phase 4]: 04-09: status SQL uses the add_to_collection literal; the IMP-01 one-enqueue-site guard forbids type: 'add_to_collection' outside imports/store.ts
+- [Phase 05]: Demo published: Pages build_type workflow, live at http://patrickclery.com/discogs-ai-importer/ (github.io 301s there); Enforce HTTPS left to owner
 
 ### Pending Todos
 
@@ -268,9 +270,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-22T11:52:06.500Z
-Stopped at: Phase 04 complete — all phases complete
-Resume file: .planning/phases/04-import-review-queue/04-UAT.md
+Last session: 2026-10-23T18:42:42.330Z
+Stopped at: Completed 05-09-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
