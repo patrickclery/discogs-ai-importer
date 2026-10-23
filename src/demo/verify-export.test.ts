@@ -7,6 +7,7 @@ import { buildEnv } from '../../scripts/demo/build-demo.ts';
 import {
   resolveSecretsPath,
   SECRET_ENV_VARS,
+  SERVER_ACTION_RE,
   verifyExport,
 } from '../../scripts/demo/verify-export.ts';
 
@@ -138,5 +139,64 @@ describe('secret sources', () => {
     ]) {
       expect(env).not.toHaveProperty(k);
     }
+  });
+});
+
+describe('verifyExport rules c and d (server code, WR-04)', () => {
+  it('fails when the server-reference manifest is missing', () => {
+    fs.rmSync(path.join(nextDir, 'server', 'server-reference-manifest.json'));
+    const r = run();
+    expect(r.ok).toBe(false);
+    expect(r.failures).toEqual([
+      expect.stringMatching(
+        /^\[c\] server-reference manifest missing or unreadable at /,
+      ),
+    ]);
+  });
+
+  it('fails when the server-reference manifest lists an action', () => {
+    write(
+      path.join(nextDir, 'server', 'server-reference-manifest.json'),
+      JSON.stringify({ node: { abc: {} }, edge: {} }),
+    );
+    expect(run().failures).toEqual([
+      '[c] server-reference manifest not empty (server actions in the build)',
+    ]);
+  });
+
+  it('flags server action calls in any minifier shape', () => {
+    for (const code of [
+      '(0,i.createServerReference)("405aa61632f785417f94a0fff395184c014029b196",i.callServer)',
+      "(0, u.createServerReference)( 'abc', u.callServer)",
+      'createServerReference(id,callServer,void 0,findSourceMapURL,"save")',
+      '(0,x.createServerReference) (actionId)',
+    ]) {
+      expect(SERVER_ACTION_RE.test(code), code).toBe(true);
+    }
+  });
+
+  it("ignores React's own definition and re-export of createServerReference", () => {
+    for (const code of [
+      'n.createServerReference=function(e,t){function n(){}}',
+      'createServerReference:function(){return l.createServerReference},findSourceMapURL',
+    ]) {
+      expect(SERVER_ACTION_RE.test(code), code).toBe(false);
+    }
+  });
+
+  it('fails a bundle with a server action call or server-only imports', () => {
+    write(
+      path.join(outDir, '_next', 'action.js'),
+      '(0,i.createServerReference)("405aa61632f785417f94a0fff395184c014029b196",i.callServer)',
+    );
+    write(path.join(outDir, '_next', 'server.js'), 'require("node:fs")');
+    write(path.join(outDir, '_next', 'only.js'), 'import "server-only"');
+    expect(run().failures.sort()).toEqual(
+      [
+        "[d] out/_next/only.js contains 'server-only'",
+        "[d] out/_next/server.js contains 'node:fs'",
+        '[d] out/_next/action.js contains a server action reference',
+      ].sort(),
+    );
   });
 });

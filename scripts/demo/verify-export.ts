@@ -15,8 +15,18 @@ const FORBIDDEN_STRINGS = [
   'drizzle-orm',
   'heic-decode',
   'child_process',
+  'server-only',
+  'node:fs',
+  'node:child_process',
 ];
-const SERVER_ACTION_RE = /createServerReference\)\("[0-9a-f]{20,}/;
+/**
+ * A server action call in a client bundle, whatever the id or minifier
+ * shape: `(0,x.createServerReference)("id",…)` or `createServerReference(…)`.
+ * React's own definition (`createServerReference=function`) and re-export
+ * getter (`createServerReference:function`) are not calls, so a clean demo
+ * bundle never matches (WR-04).
+ */
+export const SERVER_ACTION_RE = /createServerReference\s*\)?\s*\(/;
 const ASSET_ALLOW = [
   /^vision\.jpg$/,
   /^thumb\.webp$/,
@@ -182,19 +192,19 @@ export function verifyExport(opts: {
 
   // c. no server actions, no proxy/middleware (D-03)
   const serverDir = path.join(opts.nextDir, 'server');
+  // A missing manifest fails like the middleware one: without it the
+  // check would pass silently (WR-04).
   const srm = path.join(serverDir, 'server-reference-manifest.json');
-  if (fs.existsSync(srm)) {
-    try {
-      const m = readJson(srm) as Record<string, unknown>;
-      if (!isEmptyObject(m.node) || !isEmptyObject(m.edge)) {
-        fail(
-          'c',
-          'server-reference manifest not empty (server actions in the build)',
-        );
-      }
-    } catch {
-      fail('c', 'server-reference manifest unreadable');
+  try {
+    const m = readJson(srm) as Record<string, unknown>;
+    if (!isEmptyObject(m.node) || !isEmptyObject(m.edge)) {
+      fail(
+        'c',
+        'server-reference manifest not empty (server actions in the build)',
+      );
     }
+  } catch {
+    fail('c', `server-reference manifest missing or unreadable at ${srm}`);
   }
   const mw = path.join(serverDir, 'middleware-manifest.json');
   try {
