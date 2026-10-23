@@ -28,12 +28,17 @@ Full details: [milestones/v1-ROADMAP.md](milestones/v1-ROADMAP.md)
 ### Phase 5: Stubbed Demo Site
 
 **Goal:** A demo build of the app that anyone can open and play with to see how it works end to end (upload a shelf photo, review spines, see Discogs matches, confirm and "import"), with no calls to Claude or Discogs and no real credentials. Every external call is replaced by canned stub data.
-**Requirements**: TBD
+**Requirements**: DEMO-01..DEMO-10 (proposed in 05-RESEARCH.md from the 05-CONTEXT.md decisions)
 **Depends on:** Phase 4
-**Plans:** 0 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 5 to break down)
+- [ ] 05-01-PLAN.md — Tracer: NEXT_PUBLIC_DEMO static export of /spines answered by the in-browser fetch shim, scratch-copy build, export checks (wave 1)
+- [ ] 05-02-PLAN.md — Fixtures: sample shelf assets from the real pipeline, Discogs recordings (text only), generated covers (wave 1)
+- [ ] 05-03-PLAN.md — Seeded shelf: image-URL seam, seed with every review state, full read model (wave 2)
+- [ ] 05-04-PLAN.md — Spines interactions in memory: edits, searches, dialog, imports, warnings, retries (wave 3)
+- [ ] 05-05-PLAN.md — Upload (fake analysis, second shelf copy), Re-scan, root/error pages, simulated Settings (wave 3)
+- [ ] 05-06-PLAN.md — Mock-coverage gate, Pages workflow, README link, publish decision, enable Pages, live check (wave 4)
 
 ## Backlog
 
