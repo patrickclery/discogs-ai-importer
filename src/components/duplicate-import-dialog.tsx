@@ -58,7 +58,21 @@ export function parseDuplicateBody(raw: unknown): DuplicateBody | null {
   };
 }
 
-function CropWell({
+/**
+ * The title carries a single overflow-wrap rule. A second one (break-words)
+ * is emitted later by Tailwind, and its break-word value does not lower
+ * min-content, which let an unspaced file name widen the dialog's grid
+ * column (G-04-7). min-w-0 lets the title shrink inside the header.
+ */
+export const DUPLICATE_DIALOG_TITLE_CLASS = 'min-w-0 [overflow-wrap:anywhere]';
+
+/**
+ * The backstop (G-04-7): the content grid's one column can never grow past
+ * the box, so the body, both crops and the footer stay inside.
+ */
+export const DUPLICATE_DIALOG_CONTENT_CLASS = 'grid-cols-[minmax(0,1fr)]';
+
+export function CropWell({
   url,
   alt,
   caption,
@@ -138,9 +152,12 @@ export function DuplicateImportDialog({
         onCancel();
       }}
     >
-      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
+      <AlertDialogContent
+        className={DUPLICATE_DIALOG_CONTENT_CLASS}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <AlertDialogHeader>
-          <AlertDialogTitle className="break-words [overflow-wrap:anywhere]">
+          <AlertDialogTitle className={DUPLICATE_DIALOG_TITLE_CLASS}>
             {duplicate ? duplicateDialogTitle(duplicate) : ''}
           </AlertDialogTitle>
           <AlertDialogDescription>
