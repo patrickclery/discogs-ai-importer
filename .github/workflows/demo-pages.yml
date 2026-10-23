@@ -1,0 +1,67 @@
+# Demo site (D-01, D-19, D-20): build the static demo export, check it and
+# deploy it to GitHub Pages on every push to master. CI builds in place
+# (CI=true); local builds always go through a scratch copy instead.
+name: Demo site
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads packageManager (pnpm@12.14.0) from package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Demo unit tests
+        run: pnpm exec vitest run src/demo
+
+      - id: pages
+        uses: actions/configure-pages@v6
+
+      # NEXT_PUBLIC_DEMO=1 static export into ./out, then verify-export
+      # (file allowlist, no family photos, no secret values).
+      - name: Build demo export
+        run: node scripts/demo/build-demo.ts --in-place
+
+      # Headless Chrome (preinstalled on ubuntu runners) loads every page.
+      - name: Smoke-test demo export
+        run: >-
+          node scripts/demo/smoke.ts --out out
+          --expect "spines/=cd-spines.heic"
+          --expect "settings/=demo-user"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./out
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

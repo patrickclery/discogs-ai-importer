@@ -2,6 +2,21 @@
 
 A local web app that turns photos of DVD/CD shelves into Discogs collection entries. It runs on your own machine, listens on `127.0.0.1` only, and keeps all of its state in one data folder you can copy elsewhere.
 
+## Demo
+
+Try it in the browser: **https://patrickclery.github.io/discogs-ai-importer/**
+
+The demo is a static copy of the app with one sample shelf photo. Claude and Discogs are simulated in the browser, and any changes you make reset when you reload the page. It is rebuilt and redeployed on every push to `master`.
+
+To build and check the demo locally:
+
+```sh
+pnpm demo:build   # static export, built in a scratch copy outside the checkout
+pnpm demo:smoke   # loads every demo page in headless Chrome
+```
+
+**Never run a `NEXT_PUBLIC_DEMO=1` build directly in the checkout.** It replaces the real `.next` build with the demo export; `pnpm demo:build` avoids that by building in a scratch copy.
+
 ## Requirements
 
 - Node.js 24 (any Node >= 22 works)
