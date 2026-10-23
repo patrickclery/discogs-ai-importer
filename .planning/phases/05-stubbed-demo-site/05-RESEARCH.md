@@ -466,13 +466,13 @@ The structure follows Next's own Pages template [CITED: raw.githubusercontent.co
 
 ## Required changes to real code (behaviour-preserving, minimal)
 
-1. **`src/lib/asset-urls.ts` (new real seam).** The demo build aliases it to `src/demo/asset-urls.ts`.
+1. **`src/lib/asset-urls.ts` (new real seam).** The demo build aliases it to `src/demo/asset-urls.ts`. **→ RESOLVED (CONTEXT follow-up): the owner will enable Enforce HTTPS themselves; the demo must work over both http and https.**
    - `candidateThumbSrc(c: { id: string; releaseId: number }): string`. The real version returns `` `/api/discogs/thumb/${encodeURIComponent(c.id)}` ``, which is today's string from candidate-row.tsx:44 [VERIFIED, quoted: ``src={src ?? `/api/discogs/thumb/${encodeURIComponent(candidate.id)}`}``]. `CandidateThumb`'s `Pick` widens to include `releaseId`.
    - `searchThumbSrc(searchId: string, releaseId: number): string`. The real version returns `` `/api/discogs/searches/${encodeURIComponent(searchId)}/thumb/${releaseId}` `` (discogs-search-dialog.tsx:277) [VERIFIED].
    - `isAppFileUrl(url: string): boolean`. The real version is `url.startsWith('/api/files/')`, which replaces duplicate-import-dialog.tsx:33 [VERIFIED, quoted: `return typeof url === 'string' && url.startsWith('/api/files/') ? url : null;`]. The demo version accepts `${BASE}/demo-assets/`.
    - Demo versions return `${BASE}/demo-assets/covers/${releaseId}.svg`.
-2. **Move client-needed values out of server modules.** `claude-cli-card.tsx:16-17` imports values from server-only modules [VERIFIED, quoted: `import { type ClaudeCliStatus, isClaudeReady } from '@/server/claude/cli';` and `import { VISION_MODELS } from '@/server/settings';`]. Move `VISION_MODELS`/`VisionModelId`, `isClaudeReady` and the `ClaudeCliStatus`/`ClaudeAuthState`/`TestResult` types to `src/lib/claude-types.ts`, and re-export them from the server modules so no server import changes. Then the card can render inside the client demo settings page.
-3. **Optional:** extract the body of `RootLayout` into a shared `AppShell` so `layout.demo.tsx` does not duplicate the providers tree. Duplication of about 40 lines is also acceptable.
+2. **Move client-needed values out of server modules.** `claude-cli-card.tsx:16-17` imports values from server-only modules [VERIFIED, quoted: `import { type ClaudeCliStatus, isClaudeReady } from '@/server/claude/cli';` and `import { VISION_MODELS } from '@/server/settings';`]. Move `VISION_MODELS`/`VisionModelId`, `isClaudeReady` and the `ClaudeCliStatus`/`ClaudeAuthState`/`TestResult` types to `src/lib/claude-types.ts`, and re-export them from the server modules so no server import changes. Then the card can render inside the client demo settings page. **→ RESOLVED (CONTEXT follow-up): a dropped photo becomes a fresh second copy of the shelf with its own 61 spines.**
+3. **Optional:** extract the body of `RootLayout` into a shared `AppShell` so `layout.demo.tsx` does not duplicate the providers tree. Duplication of about 40 lines is also acceptable. **→ RESOLVED (CONTEXT follow-up, D-18): crops are DOWNSCALED for the demo — this supersedes the "recommend full" note above.**
 
 Nothing else in `src/components` needs to change. The settings server actions are swapped by alias. Demo DTOs carry static URLs for `crop.url`, `thumbUrl` and `visionUrl`, which plain `<img>`/`<a>` use as-is (`src/lib/scan-types.ts:82-83, 94`).
 
@@ -598,12 +598,12 @@ This is a ~30-line `node:http` server that maps `/discogs-ai-importer/*` to `out
 | A7 | The owner is OK with publishing 3.3 MB of full-resolution crops (or prefers downscaled ones) | Pattern 4 | Low: a size/fidelity choice |
 | A8 | The owner will enable Pages (or let the agent run the `gh api` POST) and decide on Enforce HTTPS for patrickclery.com | Pattern 6, Pitfall 2 | Medium: no site until Pages is enabled |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Enforce HTTPS on patrickclery.com?** Today the demo lands on `http://`. Recommendation: the owner toggles it on the user-site repo (outside this repo's scope). The demo works either way with the fetch shim.
 2. **What does a dropped photo become?** A second, pristine copy of the shelf (recommended: it shows scan → search → import end to end and naturally triggers the duplicate warning), or a `duplicate: true` response pointing at the sample? This needs the owner's nod, or the planner picks the recommended option.
 3. **Crop resolution:** full master crops (3.3 MB) or downscaled? Recommend full. It is what the real app shows.
-4. **Does the README link to the demo?** Suggested: a one-line link. Also, the README launch text still says port 3000 (stale; out of scope but cheap to fix).
+4. **Does the README link to the demo?** Suggested: a one-line link. Also, the README launch text still says port 3000 (stale; out of scope but cheap to fix). **→ RESOLVED: yes, the README gets a one-line demo link (plan 05-06).**
 
 ## Environment Availability
 
