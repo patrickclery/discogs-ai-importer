@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TestResult } from '@/server/claude/cli';
+import type { TestResult } from '@/lib/claude-types';
 
 /** "Test Claude" with its inline result (D-10, UI-SPEC Test key, D-18). */
 export function TestClaudeButton({ ready }: { ready: boolean }) {

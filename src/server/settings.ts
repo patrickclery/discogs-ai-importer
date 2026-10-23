@@ -1,6 +1,7 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import type { VisionModelId } from '@/lib/claude-types';
 import {
   DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_DENSITY_MAX_SPINES,
@@ -15,12 +16,9 @@ import { settings } from './db/schema';
 // Non-secret settings (D-08). Values are JSON in the settings table, so they
 // travel with the data folder. No secret is ever stored here.
 
-// Haiku is excluded: its 1568 px image cap makes spine text illegible.
-export const VISION_MODELS = [
-  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
-  { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
-] as const;
-export type VisionModelId = (typeof VISION_MODELS)[number]['id'];
+// The model list lives in @/lib/claude-types (client-safe, Phase 5) and is
+// re-exported here so server imports are unchanged.
+export { VISION_MODELS, type VisionModelId } from '@/lib/claude-types';
 export const DEFAULT_VISION_MODEL: VisionModelId = 'claude-opus-5-5';
 
 export const VisionModelSchema = z.enum([

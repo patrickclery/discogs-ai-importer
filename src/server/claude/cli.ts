@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
+import type { ClaudeCliStatus, TestResult } from '@/lib/claude-types';
 import { VISION_EFFORTS, type VisionEffort } from '@/lib/vision-contract';
 import { runProcess } from '../proc/run';
 import { SECRET_ENV_NAMES } from '../secrets';
@@ -22,6 +23,15 @@ import { SECRET_ENV_NAMES } from '../secrets';
 //     asks for Read scoped to given directories
 //   - uses the CLI's normal auth path; the minimal mode (API-key-only auth)
 //     is never used
+
+// Client-safe types and the readiness check live in @/lib/claude-types
+// (Phase 5); re-exported so server imports are unchanged.
+export {
+  type ClaudeAuthState,
+  type ClaudeCliStatus,
+  isClaudeReady,
+  type TestResult,
+} from '@/lib/claude-types';
 
 const STATUS_TIMEOUT_MS = 10_000;
 const REASON_MAX = 160;
@@ -76,28 +86,6 @@ export function buildClaudeEnv(
   }
   return env;
 }
-
-export type ClaudeAuthState =
-  | 'subscription'
-  | 'other'
-  | 'logged-out'
-  | 'unknown';
-
-export type ClaudeCliStatus = {
-  installed: boolean;
-  version: string | null;
-  auth: {
-    state: ClaudeAuthState;
-    authMethod: string | null;
-    subscriptionType: string | null;
-    reason: string | null;
-  };
-  /** True when any API_BILLING_ENV variable is set server-side. */
-  apiKeyInEnv: boolean;
-  /** Which of them (names only). */
-  apiBillingEnv: string[];
-  checkedAt: number;
-};
 
 // Only these fields survive parsing; email and org fields are dropped here.
 const AuthStatusSchema = z.object({
@@ -269,14 +257,6 @@ function readAuth(
   return { state: 'other', ...base };
 }
 
-/**
- * Installed and logged in with a Claude subscription. Any other login (API
- * key, console) would bill the API, which D-18 rules out (WR-06).
- */
-export function isClaudeReady(s: ClaudeCliStatus): boolean {
-  return s.installed && s.auth.state === 'subscription';
-}
-
 // ---------------------------------------------------------------------------
 // Test Claude (D-10): one tiny headless call through the subscription.
 
@@ -355,19 +335,6 @@ export function buildClaudeArgs(opts: ClaudeCallArgs): string[] {
 export function buildTestArgs(model: string): string[] {
   return buildClaudeArgs({ prompt: TEST_PROMPT, model });
 }
-
-export type TestResult =
-  | { ok: true; model: string; message: string }
-  | {
-      ok: false;
-      kind:
-        | 'not-installed'
-        | 'not-logged-in'
-        | 'not-subscription'
-        | 'timeout'
-        | 'failed';
-      message: string;
-    };
 
 const ResultSchema = z.object({
   type: z.string().optional(),

@@ -13,8 +13,11 @@ import {
 } from '@/components/ui/card';
 import { Field, FieldDescription, FieldTitle } from '@/components/ui/field';
 import { Separator } from '@/components/ui/separator';
-import { type ClaudeCliStatus, isClaudeReady } from '@/server/claude/cli';
-import { VISION_MODELS } from '@/server/settings';
+import {
+  type ClaudeCliStatus,
+  isClaudeReady,
+  VISION_MODELS,
+} from '@/lib/claude-types';
 
 // Claude CLI card (D-10, D-18). Server component; receives only the
 // sanitized status (no email, org or env values).
