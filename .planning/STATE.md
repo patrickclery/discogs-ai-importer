@@ -108,6 +108,10 @@ Last activity: 2026-10-23 — Milestone v1 completed and archived
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 5 added: Stubbed Demo Site — public demo with Claude and Discogs fully stubbed (2026-10-23)
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.

@@ -3,6 +3,7 @@
 ## Milestones
 
 - ✅ **v1 MVP** — Phases 1-4 (shipped 2026-10-23)
+- 🚧 **Next** — Phase 5 (planning)
 
 ## Phases
 
@@ -17,6 +18,22 @@
 Full details: [milestones/v1-ROADMAP.md](milestones/v1-ROADMAP.md)
 
 </details>
+
+### 🚧 Next (Phase 5)
+
+- [ ] **Phase 5: Stubbed Demo Site** - A public demo anyone can try, with Claude and Discogs fully stubbed
+
+## Phase Details
+
+### Phase 5: Stubbed Demo Site
+
+**Goal:** A demo build of the app that anyone can open and play with to see how it works end to end (upload a shelf photo, review spines, see Discogs matches, confirm and "import"), with no calls to Claude or Discogs and no real credentials. Every external call is replaced by canned stub data.
+**Requirements**: TBD
+**Depends on:** Phase 4
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 5 to break down)
 
 ## Backlog
 
