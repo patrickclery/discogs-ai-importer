@@ -62,6 +62,11 @@ findings:
   info: 6
   total: 12
 status: issues_found
+fix_status:
+  fixed_at: 2026-10-23
+  scope: warnings
+  fixed: [WR-01, WR-02, WR-03, WR-04, WR-05, WR-06]
+  open: [IN-01, IN-02, IN-03, IN-04, IN-05, IN-06]
 ---
 
 # Phase 5: Code Review Report
@@ -80,9 +85,26 @@ All four focus areas hold up, and no blocker was found.
 3. **The fetch shim matches the real API shapes closely.** Statuses, error codes and messages match the real routes checked (rescan, fields, spines, connect, test, folders, settings actions). The gaps are edge-case robustness (WR-01, IN-04).
 4. **The workflow is safe.** It runs only on push to master and workflow_dispatch, never on pull_request, so untrusted PR code cannot run with `pages: write`. The deploy is gated to master, and no secrets are referenced. Least-privilege and pinning can be tightened (WR-02).
 
+## Fix Status
+
+All six warnings are fixed, one commit each. The Info findings are still open.
+
+| Finding | Commit | Fix |
+|---------|--------|-----|
+| WR-01 | e0ae9d8 | `handle()` catches handler throws, emits, and returns 500 `{ error: 'failed', message }` |
+| WR-02 | af62006 | build job has contents:read only, no persisted token; deploy job has pages/id-token write; every action is SHA-pinned |
+| WR-03 | 8a088b4 | secret-shaped pattern scan (runs in CI), DISCOGS_*/ANTHROPIC_API_KEY env values, SECRETS_FILE path, min length 4; secrets stripped from the build env |
+| WR-04 | 74d4b5b | a missing server-reference manifest fails; call-shape `createServerReference` regex; more forbidden strings |
+| WR-05 | 952efb4 | `next.config.ts` throws for NEXT_PUBLIC_DEMO=1 unless build-demo.ts set DEMO_BUILD_VIA_SCRIPT=1 |
+| WR-06 | a9997fb | scratch root must carry the `.discogs-demo-scratch` marker (or be empty or an old build-demo layout) and must not overlap the repo |
+
+Verified with `vitest run`, `tsc --noEmit` and `biome check` in the main checkout, plus one `build-demo.ts` scratch build (verify-export PASS) and a smoke run of that export. No demo build ran in the main checkout.
+
 ## Warnings
 
 ### WR-01: A handler exception in the fetch shim becomes a rejected fetch ("couldn't reach the app") instead of a 500
+
+**Status:** fixed (e0ae9d8)
 
 **File:** `src/demo/fetch-shim.ts:46-48`, `src/demo/routes.ts:118-125`
 **Issue:** `handle()` calls `hit.route.handler(...)` synchronously without a try/catch, and the shim awaits it without a try/catch. If an op throws (for example on a malformed seed entry or an unexpected `undefined` in `structuredClone`), the `window.fetch` promise rejects. Every client treats a rejected fetch as a network failure ("Couldn't reach /api/status…", `UNREACHABLE`). The real app instead returns a 500 JSON body. A handler that throws midway can also leave state half-mutated with no `emit()`, so the UI never re-renders the partial change.
@@ -100,6 +122,8 @@ try {
 ```
 
 ### WR-02: Workflow grants `pages: write` and `id-token: write` to the build job, and actions are tag-pinned
+
+**Status:** fixed (af62006)
 
 **File:** `.github/workflows/demo-pages.yml:11-14, 24-55`
 **Issue:** The permissions are set at workflow level, so the `build` job gets the OIDC token request credentials and `pages: write`. That job runs `pnpm install` (third-party lifecycle scripts), `next build`, and headless Chrome against the build output. A compromised dependency could mint an OIDC token and publish to the Pages site. All actions are pinned to mutable major tags (`@v7`, `@v6`, `@v5`) rather than commit SHAs. `actions/checkout` also persists the `GITHUB_TOKEN` into `.git/config`, where install scripts can read it.
@@ -121,6 +145,8 @@ Pin each third-party action to a full commit SHA, with the tag in a comment.
 
 ### WR-03: The verify-export secret scan is a no-op in CI and misses env or relocated secrets locally
 
+**Status:** fixed (8a088b4)
+
 **File:** `scripts/demo/verify-export.ts:164-174`, `scripts/demo/build-demo.ts:162-170`
 **Issue:**
 - Rule h only scans string values of `REPO/secrets.json`. In CI that file never exists, so the only build that is actually published is never checked against real values. The workflow comment "no secret values" overstates this.
@@ -131,11 +157,15 @@ Pin each third-party action to a full commit SHA, with the tag in a comment.
 
 ### WR-04: The server-action check can pass silently
 
+**Status:** fixed (74d4b5b)
+
 **File:** `scripts/demo/verify-export.ts:15, 139-151, 188-190`
 **Issue:** Rule c only runs if `server-reference-manifest.json` exists, and a missing file passes silently. In contrast, a missing middleware manifest fails. The bundle fallback `SERVER_ACTION_RE = /createServerReference\)\("[0-9a-f]{20,}/` matches one specific minifier output shape. If the Turbopack output format changes, both guards can pass while a real server action, for example from a relative import that bypasses the `@/app/settings/actions` alias, ships in the export. `FORBIDDEN_STRINGS` also lacks `server-only` and `node:` specifiers.
 **Fix:** Treat a missing or unreadable server-reference manifest as a failure, the same as the middleware manifest. Loosen the regex to `/createServerReference\b/`, and add `'server-only'`, `'node:fs'` and `'node:child_process'` to `FORBIDDEN_STRINGS`.
 
 ### WR-05: The "never build the demo in the checkout" rule is enforced only by the wrapper script
+
+**Status:** fixed (952efb4)
 
 **File:** `next.config.ts:41-59`
 **Issue:** The demo config drops `distDir`. Any `NEXT_PUBLIC_DEMO=1 next build`, or a stray `NEXT_PUBLIC_DEMO=1` in a `.env*` file (Next loads `.env*` before evaluating `next.config.ts`), overwrites the owner's real `.next` in the main checkout and writes `out/`. The only guard is `buildInPlace()` in `build-demo.ts`. Running `next build` directly, or `pnpm build` with that env set, bypasses it. The project treats this as a hard rule (README, CLAUDE notes).
@@ -147,6 +177,8 @@ if (process.env.NEXT_PUBLIC_DEMO === '1' && process.env.CI !== 'true' && process
 ```
 
 ### WR-06: `DEMO_SCRATCH_DIR` drives recursive deletes with no ownership marker
+
+**Status:** fixed (a9997fb)
 
 **File:** `scripts/demo/build-demo.ts:20-25, 73-78, 152-161`
 **Issue:** `syncCopy` runs `rmSync(..., { recursive: true, force: true })` on every entry of `<scratch>/repo` except `node_modules`. `pruneOuts` deletes every `out-*` entry in `<scratch>`. The only check is that the scratch dir is not inside the repo. If `DEMO_SCRATCH_DIR` points at a broad existing directory (`$HOME`, a projects folder that already contains a `repo/`, or an ancestor of the checkout), unrelated data is deleted.
