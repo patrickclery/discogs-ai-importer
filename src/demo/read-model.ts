@@ -175,7 +175,8 @@ export function searchInputsOf(spine: DemoSpine): DemoSearchInputs {
   };
 }
 
-function sameInputs(a: DemoSearchInputs, b: DemoSearchInputs): boolean {
+/** Both inputs normalize to the same search (fieldsChangedSince). */
+export function sameInputs(a: DemoSearchInputs, b: DemoSearchInputs): boolean {
   return (
     normalizeInput(a.artist) === b.artist &&
     normalizeInput(a.title) === b.title &&
@@ -227,6 +228,11 @@ export function searchStateAt(
   }
 }
 
+/** The candidate row exists at `now`: added, and not yet replaced. */
+export function candidateListedAt(c: DemoCandidate, now: number): boolean {
+  return c.addedAt <= now && (c.removedAt == null || c.removedAt > now);
+}
+
 function toCandidateDto(c: DemoCandidate): CandidateDto {
   return {
     id: c.id,
@@ -259,7 +265,7 @@ export function candidatesOf(
   now: number,
 ): CandidateDto[] {
   const rows = state.candidates.filter(
-    (c) => c.spineId === spineId && c.addedAt <= now,
+    (c) => c.spineId === spineId && candidateListedAt(c, now),
   );
   const manual = rows
     .filter((c) => c.source === 'manual')
@@ -332,7 +338,7 @@ export function latestImport(
 }
 
 /** The imports row and its job as the real read model would see them. */
-function importRowAt(
+export function importRowAt(
   imp: DemoImport,
   now: number,
 ): { status: ImportStatus; intentAt: number | null; jobStatus: string } {
@@ -387,7 +393,10 @@ export function importOf(
   const candidateExists =
     imp.candidateId !== null &&
     state.candidates.some(
-      (c) => c.id === imp.candidateId && c.spineId === spine.id,
+      (c) =>
+        c.id === imp.candidateId &&
+        c.spineId === spine.id &&
+        candidateListedAt(c, now),
     );
   const done = row.status === 'imported';
   const copies = [...(state.collection[imp.releaseId] ?? [])].sort(

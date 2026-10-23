@@ -81,6 +81,8 @@ export type DemoCandidate = {
   stage: SearchStage | null;
   rank: number;
   addedAt: number;
+  /** A later search replaced it at this time (replaceAutoCandidates). */
+  removedAt?: number | null;
 };
 
 export type DemoSearch = {
@@ -88,6 +90,8 @@ export type DemoSearch = {
   spineId: string;
   kind: SearchKind;
   query: string | null;
+  /** The pasted release a 'release' search fetched (DialogSearchDto). */
+  releaseId?: number | null;
   inputs: {
     artist: string | null;
     title: string | null;

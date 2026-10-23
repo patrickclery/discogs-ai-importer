@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MASTER_REFUSAL } from '@/lib/discogs-ref';
 import {
-  type CandidatesResponse,
   type CandidateDto,
+  type CandidatesResponse,
   DIALOG_RESULTS_MAX,
   type DialogSearchDto,
 } from '@/lib/discogs-types';
@@ -159,9 +159,10 @@ describe('PATCH /api/spines/:id/fields', () => {
     });
     expect(long.status).toBe(400);
     expect(typeof (long.body as { error: unknown }).error).toBe('string');
-    expect(
-      await call('PATCH', path, undefined, { raw: '{nope' }),
-    ).toEqual({ status: 400, body: { error: 'invalid JSON body' } });
+    expect(await call('PATCH', path, undefined, { raw: '{nope' })).toEqual({
+      status: 400,
+      body: { error: 'invalid JSON body' },
+    });
     expect(
       (await call('PATCH', path, { field: 'colour', value: 'x' })).status,
     ).toBe(400);
@@ -399,7 +400,11 @@ describe('Search Discogs dialog (D-13)', () => {
     const searchId = await startDialog('00', 'text', '123');
     advance(5000);
     const dto = await searchDto(searchId);
-    expect(dto).toMatchObject({ kind: 'release', state: 'done', releaseId: 123 });
+    expect(dto).toMatchObject({
+      kind: 'release',
+      state: 'done',
+      releaseId: 123,
+    });
     expect(dto.results.map((r) => r.releaseId)).toEqual([
       cannedRelease().releaseId,
     ]);
@@ -474,7 +479,10 @@ describe('/api/spines/:id/candidates', () => {
     );
     advance(5000);
     const [a, b] = (await searchDto(searchId)).results;
-    const first = await call('POST', path, { searchId, releaseId: a.releaseId });
+    const first = await call('POST', path, {
+      searchId,
+      releaseId: a.releaseId,
+    });
     expect(first.status).toBe(201);
     const pinned = (first.body as { candidate: CandidateDto }).candidate;
     expect(pinned).toMatchObject({ releaseId: a.releaseId, source: 'manual' });
@@ -487,7 +495,10 @@ describe('/api/spines/:id/candidates', () => {
       a.releaseId,
     ]);
     advance(10);
-    const again = await call('POST', path, { searchId, releaseId: a.releaseId });
+    const again = await call('POST', path, {
+      searchId,
+      releaseId: a.releaseId,
+    });
     expect((again.body as { candidate: CandidateDto }).candidate.id).toBe(
       pinned.id,
     );
