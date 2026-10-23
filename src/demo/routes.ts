@@ -8,6 +8,7 @@ import { routes as importRoutes } from './routes/imports';
 import { routes as readRoutes } from './routes/read';
 import { routes as reviewRoutes } from './routes/review';
 import { routes as uploadRoutes } from './routes/uploads';
+import { emit } from './store';
 
 export type DemoRequest = {
   method: string;
@@ -104,7 +105,16 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Answer one /api request; unmatched paths get 501 demo_not_implemented. */
+/** The real routes' 500 shape ({ error: 'failed', message }). */
+export const DEMO_ERROR_BODY = {
+  error: 'failed',
+  message: 'The demo hit an error. Reload the page to reset it.',
+} as const;
+
+/**
+ * Answer one /api request; unmatched paths get 501 demo_not_implemented and
+ * a handler that throws gets a 500 { error: 'failed', message } (WR-01).
+ */
 export async function handle(req: {
   method: string;
   url: URL;
@@ -118,14 +128,24 @@ export async function handle(req: {
     console.warn(`[demo] no demo route for ${method} ${path}`);
     return { status: 501, body: { error: 'demo_not_implemented' } };
   }
-  const res = hit.route.handler({
-    method,
-    path,
-    query: req.url.searchParams,
-    headers: req.headers,
-    body: req.body,
-    params: hit.params,
-  });
+  let res: DemoResponse;
+  try {
+    res = hit.route.handler({
+      method,
+      path,
+      query: req.url.searchParams,
+      headers: req.headers,
+      body: req.body,
+      params: hit.params,
+    });
+  } catch (err) {
+    // WR-01: a throwing handler must not reject window.fetch (every client
+    // reads that as "couldn't reach the app"). Answer like a real route's
+    // 500 instead, and re-render any half-applied mutation.
+    console.error(`[demo] ${method} ${path} threw`, err);
+    emit();
+    return { status: 500, body: DEMO_ERROR_BODY };
+  }
   if (res.delayMs && res.delayMs > 0) await delay(res.delayMs);
   return res;
 }

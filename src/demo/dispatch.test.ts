@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SpinesResponse } from '@/lib/scan-types';
 import { toDemoRequest } from './fetch-shim';
-import { type DemoRoute, handle, matchRouteIn } from './routes';
-import { resetStore, setClock } from './store';
+import {
+  DEMO_ERROR_BODY,
+  type DemoRoute,
+  handle,
+  matchRoute,
+  matchRouteIn,
+} from './routes';
+import { resetStore, setClock, subscribe } from './store';
 
 // DEMO-03 / D-11 / D-15: the dispatcher and the fetch shim's request parsing.
 
@@ -56,6 +62,34 @@ describe('handle', () => {
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('POST /api/nope/123'),
     );
+  });
+
+  it('answers a throwing handler with the real 500 shape, not a rejection (WR-01)', async () => {
+    const route = matchRoute('GET', '/api/spines')?.route;
+    if (!route) throw new Error('GET /api/spines route missing');
+    vi.spyOn(route, 'handler').mockImplementation(() => {
+      throw new Error('boom');
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let emitted = 0;
+    const unsubscribe = subscribe(() => {
+      emitted += 1;
+    });
+    try {
+      const res = await handle(req('GET', '/api/spines'));
+      expect(res).toEqual({ status: 500, body: DEMO_ERROR_BODY });
+      expect(DEMO_ERROR_BODY).toMatchObject({
+        error: 'failed',
+        message: expect.any(String),
+      });
+      expect(emitted).toBe(1);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining('GET /api/spines threw'),
+        expect.any(Error),
+      );
+    } finally {
+      unsubscribe();
+    }
   });
 
   it('matches the method as well as the path', async () => {
