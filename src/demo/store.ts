@@ -133,6 +133,8 @@ export type DemoAccount = {
   needsReconnect: boolean;
   folderId: number;
   folders: Array<{ id: number; name: string; count: number }>;
+  /** When the folder list was last "read from Discogs"; null = at load. */
+  foldersFetchedAt: number | null;
   model: string;
   consumerKeyTail: string | null;
   consumerSecretTail: string | null;

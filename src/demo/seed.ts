@@ -160,7 +160,12 @@ export function defaultAccount(): DemoAccount {
     username: 'demo-user',
     needsReconnect: false,
     folderId: FOLDER_ID,
-    folders: [{ id: FOLDER_ID, name: 'Uncategorized', count: 0 }],
+    folders: [
+      { id: FOLDER_ID, name: 'Uncategorized', count: 0 },
+      { id: 2, name: 'Jazz', count: 0 },
+      { id: 3, name: 'Soundtracks', count: 0 },
+    ],
+    foldersFetchedAt: null,
     model: 'claude-opus-5-5',
     consumerKeyTail: '••••demo',
     consumerSecretTail: '••••demo',
