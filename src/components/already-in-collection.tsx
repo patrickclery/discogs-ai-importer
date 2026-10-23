@@ -103,7 +103,7 @@ export function AlreadyInCollection({
           aria-hidden="true"
           className="mt-px size-4 shrink-0 text-warning"
         />
-        <div className="flex min-w-0 flex-col break-words [overflow-wrap:anywhere]">
+        <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
           <p>{alreadyLine(existing)}</p>
           <p>{ALREADY_DECISION_LINE}</p>
         </div>
