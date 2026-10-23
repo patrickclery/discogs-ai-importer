@@ -33,6 +33,14 @@ A public, fully static demo of the real app that anyone can open on GitHub Pages
 - Search Discogs dialog: searches only within the recorded fixtures; pasting a release link/number returns a canned release.
 - Re-scan, retry, retry-all, change match, not on Discogs, link existing / add another copy: all simulated in memory with realistic short delays and the same status transitions as the real app.
 
+### Follow-up decisions (after research, 2026-10-23)
+- Mock mechanism: in-browser fetch shim (not Mock Service Worker) — works over http and https.
+- The owner will turn on "Enforce HTTPS" for patrickclery.com themselves; the demo must work either way.
+- A photo dropped on the demo Upload page becomes a fresh second copy of the sample shelf (its own 61 spines), after the fake ~3 s analyzing.
+- Spine crops are downscaled for the demo (keep them readable; total well under the 3.3 MB full-resolution size).
+- The agent enables GitHub Pages (source: GitHub Actions) with one `gh api` call at deploy time; the workflow triggers on `master`.
+- Demo builds run in CI only (a local demo build would wipe the real `.next` production build).
+
 ### Claude's Discretion
 - Mock mechanism (e.g. Mock Service Worker vs a fetch shim vs swapping TanStack Query fetchers), as long as the real local build is unaffected and the demo bundle contains no server code.
 - How server components / server actions (`/upload` server-renders `listPhotos()`, `/settings` uses server actions) get demo-safe client equivalents in the static export.
