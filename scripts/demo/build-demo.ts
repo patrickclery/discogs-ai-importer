@@ -4,6 +4,8 @@
 //   node scripts/demo/build-demo.ts            (scratch copy; prints DEMO_OUT=)
 //   CI=true node scripts/demo/build-demo.ts --in-place   (CI only: ./out)
 // DEMO_SCRATCH_DIR overrides the scratch root (default <tmp>/discogs-demo-build).
+// The script only deletes inside a scratch root it owns: one holding its
+// .discogs-demo-scratch marker, or an empty one it then marks (WR-06).
 // Node built-ins only. The copy holds only git-tracked or unignored files, so
 // secrets.json, data/, fixtures/spike/, .env*, .next and out never enter it.
 import { execFileSync, spawn } from 'node:child_process';
@@ -21,6 +23,11 @@ import {
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const LOCK_STALE_MS = 15 * 60 * 1000;
 const KEEP_OUTS = 3;
+export const SCRATCH_MARKER = '.discogs-demo-scratch';
+/** Entries build-demo.ts itself creates in its scratch root. */
+const SCRATCH_ENTRY =
+  /^(repo|lock|LATEST_OUT|node_modules\.sha256|out-\d+-\d+)$/;
+const OUT_ENTRY = /^out-\d+-\d+$/;
 
 export function scratchRoot(): string {
   return path.resolve(
@@ -36,6 +43,40 @@ function log(msg: string): void {
 function isInside(child: string, parent: string): boolean {
   const rel = path.relative(parent, child);
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+/**
+ * Make sure `scratch` is safe to delete inside (WR-06): not the repo, inside
+ * it or an ancestor of it, and either marked as ours, empty, or holding only
+ * the entries an older unmarked build-demo.ts run left behind. Writes the
+ * marker; throws (deleting nothing) otherwise.
+ */
+export function claimScratch(scratch: string, repo: string = REPO): void {
+  if (isInside(scratch, repo) || isInside(repo, scratch)) {
+    throw new Error(
+      `scratch dir ${scratch} overlaps the repo ${repo}; pick a separate one (D-20)`,
+    );
+  }
+  fs.mkdirSync(scratch, { recursive: true });
+  const marker = path.join(scratch, SCRATCH_MARKER);
+  const markerStat = fs.lstatSync(marker, { throwIfNoEntry: false });
+  if (markerStat?.isFile()) return;
+  const entries = fs.readdirSync(scratch);
+  const legacy =
+    entries.every((e) => SCRATCH_ENTRY.test(e)) &&
+    entries.some((e) => e === 'LATEST_OUT' || e === 'node_modules.sha256');
+  if (markerStat || (entries.length > 0 && !legacy)) {
+    throw new Error(
+      `refusing to use scratch dir ${scratch}: it is not empty and has no ` +
+        `${SCRATCH_MARKER} marker, so it may hold unrelated files. ` +
+        'Point DEMO_SCRATCH_DIR at a new or empty directory.',
+    );
+  }
+  fs.writeFileSync(
+    marker,
+    'Scratch root of scripts/demo/build-demo.ts. Everything here is ' +
+      'deleted and rebuilt on each demo build.\n',
+  );
 }
 
 function sleep(ms: number): Promise<void> {
@@ -77,6 +118,9 @@ function sha256File(file: string): string {
 
 /** Refresh <scratch>/repo from the checkout, keeping node_modules if current. */
 function syncCopy(scratch: string, copy: string): void {
+  if (fs.lstatSync(copy, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    throw new Error(`${copy} is a symlink; refusing to delete through it`);
+  }
   fs.mkdirSync(copy, { recursive: true });
   for (const entry of fs.readdirSync(copy)) {
     if (entry === 'node_modules') continue;
@@ -187,10 +231,10 @@ async function afterBuild(root: string, outDir: string): Promise<void> {
     throw new Error('verify-export failed; the export is not publishable');
 }
 
-function pruneOuts(scratch: string): void {
+export function pruneOuts(scratch: string): void {
   const outs = fs
     .readdirSync(scratch)
-    .filter((e) => e.startsWith('out-'))
+    .filter((e) => OUT_ENTRY.test(e))
     .map((e) => ({ e, t: fs.statSync(path.join(scratch, e)).mtimeMs }))
     .sort((a, b) => b.t - a.t);
   for (const { e } of outs.slice(KEEP_OUTS)) {
@@ -215,12 +259,7 @@ async function buildInPlace(): Promise<string> {
 
 async function buildInScratch(): Promise<string> {
   const scratch = scratchRoot();
-  if (isInside(scratch, REPO)) {
-    throw new Error(
-      `scratch dir ${scratch} is inside the repo; pick one outside it (D-20)`,
-    );
-  }
-  fs.mkdirSync(scratch, { recursive: true });
+  claimScratch(scratch);
   const release = await acquireLock(path.join(scratch, 'lock'));
   try {
     const copy = path.join(scratch, 'repo');
