@@ -45,13 +45,24 @@ function compile(route: DemoRoute): Compiled {
   return { route, regex: new RegExp(`^${source}$`), names };
 }
 
-const table: Compiled[] = [
+const ROUTES: DemoRoute[] = [
   ...readRoutes,
   ...reviewRoutes,
   ...importRoutes,
   ...uploadRoutes,
   ...accountRoutes,
-].map(compile);
+];
+
+const compiledCache = new WeakMap<readonly DemoRoute[], Compiled[]>();
+
+function compiled(routes: readonly DemoRoute[]): Compiled[] {
+  let c = compiledCache.get(routes);
+  if (!c) {
+    c = routes.map(compile);
+    compiledCache.set(routes, c);
+  }
+  return c;
+}
 
 function safeDecode(v: string): string {
   try {
@@ -61,13 +72,14 @@ function safeDecode(v: string): string {
   }
 }
 
-/** The first route matching method and path, with its decoded params. */
-export function matchRoute(
+/** The first route in `routes` matching method and path, with decoded params. */
+export function matchRouteIn(
+  routes: readonly DemoRoute[],
   method: string,
   path: string,
 ): { route: DemoRoute; params: Record<string, string> } | null {
   const m = method.toUpperCase();
-  for (const c of table) {
+  for (const c of compiled(routes)) {
     if (c.route.method !== m) continue;
     const hit = c.regex.exec(path);
     if (!hit) continue;
@@ -78,6 +90,14 @@ export function matchRoute(
     return { route: c.route, params };
   }
   return null;
+}
+
+/** The first demo route matching method and path, with decoded params. */
+export function matchRoute(
+  method: string,
+  path: string,
+): { route: DemoRoute; params: Record<string, string> } | null {
+  return matchRouteIn(ROUTES, method, path);
 }
 
 function delay(ms: number): Promise<void> {

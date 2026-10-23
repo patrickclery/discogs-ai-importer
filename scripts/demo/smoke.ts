@@ -14,6 +14,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { demoPageRoutes } from './verify-export.ts';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const BASE = '/discogs-ai-importer';
@@ -43,27 +44,6 @@ function scratchRoot(): string {
     process.env.DEMO_SCRATCH_DIR ||
       path.join(os.tmpdir(), 'discogs-demo-build'),
   );
-}
-
-/** Routes of every src/app/**\/page.demo.tsx: '/' for the root, else 'a/b/'. */
-function demoPageRoutes(repoRoot: string): string[] {
-  const appDir = path.join(repoRoot, 'src', 'app');
-  const routes: string[] = [];
-  const walk = (dir: string) => {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) walk(full);
-      else if (e.name === 'page.demo.tsx') {
-        const segs = path
-          .relative(appDir, dir)
-          .split(path.sep)
-          .filter((s) => s !== '' && !/^\(.*\)$/.test(s));
-        routes.push(segs.length === 0 ? '/' : `${segs.join('/')}/`);
-      }
-    }
-  };
-  walk(appDir);
-  return routes.sort();
 }
 
 function parseArgs(argv: string[]): {

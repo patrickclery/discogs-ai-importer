@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { reportVerify, verifyExport } from './verify-export.ts';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const LOCK_STALE_MS = 15 * 60 * 1000;
@@ -142,9 +143,23 @@ function copyAssets(root: string, outDir: string): void {
   log('copied demo/assets → out/demo-assets');
 }
 
-/** After each build: the post-build checks (verify-export, added in Task 2). */
+/**
+ * After each build: copy the assets, then run every verify-export rule.
+ * The secrets scan reads the ORIGINAL checkout's secrets.json (the scratch
+ * copy never has one), so a leaked value fails the build (T-05-01).
+ */
 async function afterBuild(root: string, outDir: string): Promise<void> {
   copyAssets(root, outDir);
+  const ok = reportVerify(
+    verifyExport({
+      outDir,
+      nextDir: path.join(root, '.next'),
+      secretsPath: path.join(REPO, 'secrets.json'),
+      repoRoot: root,
+    }),
+  );
+  if (!ok)
+    throw new Error('verify-export failed; the export is not publishable');
 }
 
 function pruneOuts(scratch: string): void {
