@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSecondsUntil } from '@/components/use-seconds-until';
+import { searchThumbSrc } from '@/lib/asset-urls';
 import {
   pausedLine,
   QUEUED_LINE,
@@ -274,7 +275,7 @@ function Results({
               />
               <CandidateRowContent
                 candidate={asCandidate(r, searchId)}
-                thumbSrc={`/api/discogs/searches/${encodeURIComponent(searchId)}/thumb/${r.releaseId}`}
+                thumbSrc={searchThumbSrc(searchId, r.releaseId)}
                 alreadyListed={r.alreadyListed}
               />
             </label>

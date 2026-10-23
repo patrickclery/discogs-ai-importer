@@ -48,6 +48,8 @@ const demoConfig: NextConfig = {
   env: { NEXT_PUBLIC_BASE_PATH: DEMO_BASE_PATH },
   turbopack: {
     rules: cssRules,
+    // Image URLs (D-08): covers and crops become static basePath assets.
+    resolveAlias: { '@/lib/asset-urls': './src/demo/asset-urls.ts' },
   },
 };
 

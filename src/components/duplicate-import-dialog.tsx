@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { isAppFileUrl } from '@/lib/asset-urls';
 import type { DuplicateBody } from '@/lib/import-types';
 import { duplicateDialogTitle } from '@/lib/import-view';
 
@@ -28,9 +29,9 @@ import { duplicateDialogTitle } from '@/lib/import-view';
 export const DUPLICATE_DIALOG_BODY =
   'This release is already going into your collection from another spine. If both photos show the same CD, cancel. Add another copy only if you own two.';
 
-/** Crop URLs only ever come from the /api/files allowlist (T-04-33). */
+/** Crop URLs only ever come from the app's file allowlist (T-04-33). */
 function safeCropUrl(url: string | null | undefined): string | null {
-  return typeof url === 'string' && url.startsWith('/api/files/') ? url : null;
+  return isAppFileUrl(url) ? url : null;
 }
 
 /**

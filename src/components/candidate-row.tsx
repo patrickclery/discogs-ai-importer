@@ -9,6 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { candidateThumbSrc } from '@/lib/asset-urls';
 import { detailsLine } from '@/lib/candidate-format';
 import type { CandidateDto } from '@/lib/discogs-types';
 
@@ -26,7 +27,7 @@ export function CandidateThumb({
   candidate,
   src,
 }: {
-  candidate: Pick<CandidateDto, 'id' | 'hasThumb'>;
+  candidate: Pick<CandidateDto, 'id' | 'releaseId' | 'hasThumb'>;
   /** Overrides the candidate cover route (the dialog's search results). */
   src?: string;
 }) {
@@ -41,7 +42,7 @@ export function CandidateThumb({
   return (
     // biome-ignore lint/performance/noImgElement: covers stream from a route handler; next/image would re-encode them
     <img
-      src={src ?? `/api/discogs/thumb/${encodeURIComponent(candidate.id)}`}
+      src={src ?? candidateThumbSrc(candidate)}
       alt=""
       width={64}
       height={64}
