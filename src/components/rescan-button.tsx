@@ -160,7 +160,7 @@ export function RescanButton({
         }}
       >
         <AlertDialogHeader>
-          <AlertDialogTitle className="break-words">
+          <AlertDialogTitle className="min-w-0 [overflow-wrap:anywhere]">
             {`Re-scan ${filename}?`}
           </AlertDialogTitle>
           <AlertDialogDescription>
