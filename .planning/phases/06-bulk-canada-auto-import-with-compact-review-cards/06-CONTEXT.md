@@ -38,6 +38,12 @@ After photographing a shelf, the owner can import every disc in bulk as the Cana
 - D-16: Low-confidence spines are selectable like any other, and select-all includes them. The worst-field badge stays visible on the compact card.
 - D-17: The demo site (Phase 5) stubs the versions endpoint and the bulk flow with canned data so the demo shows bulk import end to end. Zero real `/api` or Discogs calls still holds.
 
+### Post-research decisions (2026-10-23)
+- D-18: Bootleg ("Unofficial Release") versions rank below official ones. Pick one only when it is the only version in the preferred country.
+- D-19: A combined country such as "USA & Canada" counts as the preferred country. It ranks below exact-country versions and above the fallback.
+- D-20: Spines whose earlier import failed can be selected for a bulk run. A failed import that wrote an intent still goes through the Phase 4 D-07 reconcile/Retry rule; never POST blindly.
+- D-21: Unknown-master guard: a versions answer with more than 1,000 items, or whose chosen version's title does not match the top match, falls back to the top match (D-04). Do not add an extra GET /masters/{id}.
+
 ### Claude's Discretion
 - Job type naming, schema additions (for example the resolved release and fallback reason on the import or spine), the batch-tracking mechanism for the "batch finished" toast, and how the expanded card reuses the existing SpineCard and DiscogsMatches components.
 
