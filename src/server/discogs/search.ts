@@ -314,18 +314,52 @@ export type CascadeResult =
   | { stage: Stage['stage']; results: SearchResult[]; total: number }
   | { stage: null; results: []; total: 0 };
 
-/** Runs the stages in order and stops at the first with any result (D-09). */
+/**
+ * True when a catno stage's results agree with the spine: some result's
+ * title contains the spine's artist or title (letters and digits only, case
+ * folded). Discogs catno= is fuzzy, so a misread catalog number returns
+ * other labels' releases; those must not stop the cascade. A spine with
+ * neither artist nor title has nothing to compare, so its catno stage wins.
+ */
+export function catnoCorroborated(
+  inputs: SearchInputs,
+  results: readonly SearchResult[],
+): boolean {
+  const names = [inputs.artist, inputs.title]
+    .map(normalizeCatno)
+    .filter(Boolean);
+  if (names.length === 0) return true;
+  return results.some((r) => {
+    const t = normalizeCatno(r.title);
+    return names.some((n) => t.includes(n));
+  });
+}
+
+/**
+ * Runs the stages in order and stops at the first with any result (D-09),
+ * except that catno results which name neither the artist nor the title do
+ * not stop it; they are kept only when every later stage is empty.
+ */
 export async function runCascade(
   inputs: SearchInputs,
   api: CascadeSearch,
   signal?: AbortSignal,
 ): Promise<CascadeResult> {
+  let fallback: CascadeResult | null = null;
   for (const s of buildStages(inputs)) {
     if (signal?.aborted) throw signal.reason ?? new Error('aborted');
     const { results, total } = await api.search(s.params, signal);
-    if (results.length > 0) {
-      return { stage: s.stage, results: results.slice(0, PER_PAGE), total };
+    if (results.length === 0) continue;
+    const hit: CascadeResult = {
+      stage: s.stage,
+      results: results.slice(0, PER_PAGE),
+      total,
+    };
+    if (s.stage === 'catno' && !catnoCorroborated(inputs, results)) {
+      fallback ??= hit;
+      continue;
     }
+    return hit;
   }
-  return { stage: null, results: [], total: 0 };
+  return fallback ?? { stage: null, results: [], total: 0 };
 }

@@ -143,6 +143,126 @@ describe('runCascade', () => {
     expect(calls).toHaveLength(1);
   });
 
+  // The demo recording of spine 01: Discogs catno= is fuzzy, so a misread
+  // 'KORI' returns other labels' releases that never name the spine.
+  const KORI_NOISE: ParsedSearch = {
+    results: [
+      result(16154490, {
+        title: 'Evelyn Campos - Amor Loco Amor',
+        catno: 'KORI-0001-2',
+      }),
+      result(20663365, {
+        title: "L'Orchestre Empire Bakuba* - Dans Ces Origines Vol.2",
+        catno: 'KORIAZ CD 02',
+      }),
+    ],
+    total: 4,
+  };
+  const VISION = inputs({
+    artist: 'VISION',
+    title: 'JUST SHORT OF LIVING',
+    catno: 'KORI',
+    rawText: 'VISION JUST SHORT OF LIVING KORI',
+  });
+
+  it('catno results that name neither artist nor title fall through to artist_title', async () => {
+    const { api, calls } = stubApi((p) =>
+      p.catno
+        ? KORI_NOISE
+        : p.artist
+          ? {
+              results: [
+                result(1520531, {
+                  title: 'Vision (10) - Just Short Of Living',
+                }),
+              ],
+              total: 1,
+            }
+          : none,
+    );
+    const out = await runCascade(VISION, api);
+    expect(out.stage).toBe('artist_title');
+    expect(out.results.map((r) => r.id)).toEqual([1520531]);
+    expect(calls.map((c) => Object.keys(c)[0])).toEqual(['catno', 'artist']);
+  });
+
+  it('an exact catno of another artist does not win over artist and title', async () => {
+    const { api } = stubApi((p) =>
+      p.catno
+        ? {
+            results: [
+              result(1, {
+                title: 'Bohren & Der Club Of Gore - Black Earth',
+                catno: 'IPC 48',
+              }),
+            ],
+            total: 1,
+          }
+        : p.artist
+          ? {
+              results: [
+                result(2, {
+                  title: 'Kid606 - Kill Sound Before Sound Kills You',
+                }),
+              ],
+              total: 1,
+            }
+          : none,
+    );
+    const out = await runCascade(
+      inputs({
+        artist: 'Kid606',
+        title: 'Kill Sound Before Sound Kills You',
+        catno: 'IPC-48',
+      }),
+      api,
+    );
+    expect(out.stage).toBe('artist_title');
+    expect(out.results.map((r) => r.id)).toEqual([2]);
+  });
+
+  it('catno results naming the artist or title still win (punctuation and case ignored)', async () => {
+    const { api, calls } = stubApi((p) =>
+      p.catno
+        ? {
+            results: [
+              result(3, {
+                title: 'Massive Attack - Blue Lines',
+                catno: 'V2 86228',
+              }),
+            ],
+            total: 1,
+          }
+        : none,
+    );
+    const out = await runCascade(
+      inputs({
+        artist: 'massive attack',
+        title: 'blue lines',
+        catno: 'V2 0777 7 86228 2 6',
+      }),
+      api,
+    );
+    expect(out.stage).toBe('catno');
+    expect(calls).toHaveLength(1);
+  });
+
+  it('uncorroborated catno results are kept when every later stage is empty', async () => {
+    const { api, calls } = stubApi((p) => (p.catno ? KORI_NOISE : none));
+    const out = await runCascade(VISION, api);
+    expect(out.stage).toBe('catno');
+    expect(out.results.map((r) => r.id)).toEqual([16154490, 20663365]);
+    expect(out.total).toBe(4);
+    expect(calls).toHaveLength(3);
+  });
+
+  it('a catno-only spine keeps the catno stage (nothing to compare against)', async () => {
+    const { api, calls } = stubApi((p) => (p.catno ? KORI_NOISE : none));
+    const out = await runCascade(inputs({ catno: 'KORI' }), api);
+    expect(out.stage).toBe('catno');
+    expect(calls).toHaveLength(1);
+  });
+
   it('falls through to text when catno and artist_title return 0', async () => {
     const { api, calls } = stubApi((p) =>
       p.q ? { results: [result(7)], total: 1 } : none,
