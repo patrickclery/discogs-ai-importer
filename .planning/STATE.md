@@ -113,6 +113,7 @@ Last activity: 2026-10-23 — Phase 5 complete
 ### Roadmap Evolution
 
 - Phase 5 added: Stubbed Demo Site — public demo with Claude and Discogs fully stubbed (2026-10-23)
+- Phase 6 added: Bulk Canada auto-import with compact review cards (2026-10-23)
 
 ### Decisions
 
