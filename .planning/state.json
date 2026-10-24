@@ -6,13 +6,13 @@
     {
       "number": "5",
       "name": "Stubbed Demo Site",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 1 of 1 · 100% · executing"
+    "label": "Advance to the next step (plan phase 06)",
+    "reason": "Phase 2 of 2 — needs a plan"
   },
-  "updated_at": "2026-10-23T18:42:41.791Z"
+  "updated_at": "2026-10-24T00:54:44.202Z"
 }
