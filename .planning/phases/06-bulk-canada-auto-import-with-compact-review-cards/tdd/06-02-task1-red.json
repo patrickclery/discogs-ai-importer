@@ -1,0 +1,9 @@
+{
+  "command": "node_modules/.bin/vitest run src/server/db/migrations.test.ts --reporter=tap-flat -t \"upgrades a Phase 5 database copy\"",
+  "exitCode": 1,
+  "output": "TAP version 13\n1..2\nnot ok 1 - src/server/db/migrations.test.ts > migration 0004_bulk_import > upgrades a Phase 5 database copy without touching its rows # time=16.86ms\n    ---\n    error:\n        name: \"AssertionError\"\n        message: \"expected '' to be 'bulk_items,bulk_items_spine_open_idx,…' // Object.is equality\"\n    at: \"/home/patrick/github.com/patrickclery/discogs-ai-importer/src/server/db/migrations.test.ts:106:7\"\n    actual: \n    expected: \"bulk_items,bulk_items_spine_open_idx,bulk_runs\"\n    ...\nok 2 - src/server/db/migrations.test.ts > migration 0004_bulk_import > applies to a fresh data folder # SKIP",
+  "targetTest": "src/server/db/migrations.test.ts > migration 0004_bulk_import > upgrades a Phase 5 database copy without touching its rows",
+  "targetFile": "src/server/db/migrations.test.ts",
+  "expected": "bulk_runs, bulk_items and bulk_items_spine_open_idx exist after runMigrations",
+  "actual": "sqlite_master lists none of them (migration 0004 absent)"
+}
