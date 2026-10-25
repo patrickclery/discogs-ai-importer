@@ -1,5 +1,5 @@
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { createElement as h } from 'react';
+import { type FC, createElement as h, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { emptyByStatus } from '@/lib/review-status';
@@ -88,10 +88,16 @@ describe('SpinesFilterBar photo list', () => {
 // another country (?fallback=1). It sits after Needs review and before the
 // photo Select, and shows only once there is a fallback or the filter is on.
 
+// createElement's typing wants children in props; pass them as an argument.
+const Adapter = NuqsTestingAdapter as FC<{
+  searchParams: string;
+  children?: ReactNode;
+}>;
+
 function renderBar(fallbackCount: number, searchParams = '') {
   return renderToStaticMarkup(
     h(
-      NuqsTestingAdapter,
+      Adapter,
       { searchParams },
       h(SpinesFilterBar, {
         counts: {
@@ -118,9 +124,7 @@ function FallbackProbe() {
 }
 
 function probe(searchParams: string) {
-  return renderToStaticMarkup(
-    h(NuqsTestingAdapter, { searchParams }, h(FallbackProbe)),
-  );
+  return renderToStaticMarkup(h(Adapter, { searchParams }, h(FallbackProbe)));
 }
 
 describe('useFallbackFilter (T-06-26)', () => {

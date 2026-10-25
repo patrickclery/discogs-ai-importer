@@ -2,6 +2,10 @@
 
 import { useQueryState } from 'nuqs';
 import { CardLayoutToggle } from '@/components/card-layout-toggle';
+import {
+  FallbackFilterToggle,
+  useFallbackFilter,
+} from '@/components/fallback-filter-toggle';
 import { RetryAllFailedButton } from '@/components/retry-all-failed-button';
 import { Count, ReviewStatusFilter } from '@/components/review-status-filter';
 import {
@@ -52,7 +56,9 @@ export function usePhotoFilter() {
 /**
  * The /spines filter bar (D-07, D-11, UI-SPEC /spines filter bar), two rows.
  * Row 1: the status filter with a count per status. Row 2: the standalone
- * Needs review toggle (ANDs with the status), the photo Select, then a
+ * Needs review toggle (ANDs with the status), the Fallback toggle once a
+ * bulk import used another country or the filter is on (D-15), the photo
+ * Select, then a
  * right-aligned group: Retry all failed while any spine in view failed
  * (D-13) and the Compact / Detailed layout toggle, always last (Phase 6
  * D-13). The filters and the layout live in the URL through nuqs, so a
@@ -67,6 +73,7 @@ export function SpinesFilterBar({
 }) {
   const [review, setReview] = useReviewFilter();
   const [photo, setPhoto] = usePhotoFilter();
+  const [fallback] = useFallbackFilter();
 
   return (
     <div className="flex flex-col gap-2">
@@ -79,6 +86,9 @@ export function SpinesFilterBar({
         >
           Needs review <Count n={counts.needsReview} />
         </Toggle>
+        {counts.fallback > 0 || fallback ? (
+          <FallbackFilterToggle count={counts.fallback} />
+        ) : null}
         <Select
           value={photo ?? ALL_PHOTOS}
           onValueChange={(v) => void setPhoto(v === ALL_PHOTOS ? null : v)}

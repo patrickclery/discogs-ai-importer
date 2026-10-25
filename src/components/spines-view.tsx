@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { useCardLayout } from '@/components/card-layout-toggle';
 import { DiscogsNotConnectedAlert } from '@/components/discogs-not-connected-alert';
 import { ExpandedCardsProvider } from '@/components/expanded-cards';
+import { useFallbackFilter } from '@/components/fallback-filter-toggle';
 import {
   ImportUiProvider,
   type ImportUiValue,
@@ -66,20 +67,26 @@ export type SpinesFilters = {
   fallback: boolean;
 };
 
-/** RED stub: ignores fallback. */
+/** The GET /api/spines query string; Fallback sends `fallback=1` (D-15). */
 export function spinesSearch(f: SpinesFilters): string {
   const params = new URLSearchParams();
   if (f.photo) params.set('photo', f.photo);
   if (f.review) params.set('review', '1');
   if (f.status) params.set('status', f.status);
+  if (f.fallback) params.set('fallback', '1');
   return params.size > 0 ? `?${params}` : '';
 }
 
-/** RED stub: ignores fallback. */
+/** The list's query key: one cache entry per filter combination. */
 export function spinesQueryKey(f: SpinesFilters) {
   return [
     'spines',
-    { photo: f.photo, review: f.review, status: f.status },
+    {
+      photo: f.photo,
+      review: f.review,
+      status: f.status,
+      fallback: f.fallback,
+    },
   ] as const;
 }
 
@@ -317,28 +324,32 @@ export function SpinesView({
   initialPhoto,
   initialReview,
   initialStatus,
+  initialFallback = false,
 }: {
   initialData: SpinesResponse;
   initialPhoto: string | null;
   initialReview: boolean;
   initialStatus: ReviewStatus | null;
+  initialFallback?: boolean;
 }) {
   const [photo, setPhoto] = usePhotoFilter();
   const [review, setReview] = useReviewFilter();
   const [status, setStatus] = useStatusFilter();
+  const [fallback] = useFallbackFilter();
   const [layout] = useCardLayout();
   const queryClient = useQueryClient();
   const queryKey = useMemo(
-    () => spinesQueryKey({ photo, review, status, fallback: false }),
-    [photo, review, status],
+    () => spinesQueryKey({ photo, review, status, fallback }),
+    [photo, review, status, fallback],
   );
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchSpines({ photo, review, status, fallback: false }),
+    queryFn: () => fetchSpines({ photo, review, status, fallback }),
     initialData:
       photo === initialPhoto &&
       review === initialReview &&
-      status === initialStatus
+      status === initialStatus &&
+      fallback === initialFallback
         ? initialData
         : undefined,
     // Changing a filter keeps the last list and the filter bar on screen
