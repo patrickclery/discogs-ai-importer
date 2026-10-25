@@ -47,7 +47,8 @@ const LATEST_ITEMS_SQL = `
   )
   SELECT l.id, l.run_id, l.spine_id, l.status, l.outcome, l.skip_reason,
     l.release_id, l.country, l.import_id, l.error_kind, l.error,
-    l.created_at, r.country AS run_country, j.status AS job_status,
+    l.created_at, r.country AS run_country,
+    r.fallback_country AS run_fallback_country, j.status AS job_status,
     h.id AS holder_id, h.photo_id AS holder_photo_id,
     hp.original_name AS holder_photo_name, hd.idx AS holder_idx,
     li.id AS latest_import_id, li.created_at AS latest_import_created_at
@@ -74,6 +75,7 @@ type LatestItemRow = {
   error: string | null;
   created_at: number;
   run_country: string;
+  run_fallback_country: string | null;
   job_status: string | null;
   holder_id: string | null;
   holder_photo_id: string | null;
@@ -153,6 +155,7 @@ export function bulkForSpines(
       runId: r.run_id,
       phase,
       preferredCountry: r.run_country,
+      fallbackCountry: r.run_fallback_country,
       outcome: r.outcome,
       releaseId: r.release_id,
       country: r.country,

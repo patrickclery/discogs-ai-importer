@@ -4,7 +4,12 @@
 // follow the match slot.
 import type { BulkItemDto, BulkRunDto, EligibilityReason } from './bulk-types';
 import { type CountryBadge, countryBadgeOf } from './bulk-view';
-import { COUNTRY_DEMONYMS, canonicalCountry, pressingPhrase } from './pressing';
+import {
+  COUNTRY_DEMONYMS,
+  canonicalCountry,
+  distinctFallback,
+  pressingPhrase,
+} from './pressing';
 import type { SpineDto } from './scan-types';
 
 export type MatchSlotLabel = 'Top match' | 'Confirmed match';
@@ -148,15 +153,50 @@ function usedPart(country: string | null): string {
     : 'used the top match (no country listed)';
 }
 
+function demonymOf(country: string): string | undefined {
+  const canonical = canonicalCountry(country);
+  return canonical ? COUNTRY_DEMONYMS[canonical] : undefined;
+}
+
 /**
- * Why a fallback import used another country (D-04). The prefix follows
- * the outcome: no version in the country, no usable master, or a retry
- * that reused the release an earlier attempt chose.
+ * The pressing phrase for two countries (G-06-side-1): `Canadian or US
+ * pressing` when both have a demonym, else each phrase in full joined by
+ * `or` (`Canadian pressing or pressing from Hong Kong`).
+ */
+function pairPressingPhrase(first: string, second: string): string {
+  const a = demonymOf(first);
+  const b = demonymOf(second);
+  if (a && b) return `${a} or ${b} pressing`;
+  return `${pressingPhrase(first, false)} or ${pressingPhrase(second, false)}`;
+}
+
+/**
+ * The pressing(s) a run looked for: the pair phrase when it had a distinct
+ * fallback country (G-06-side-1), else the preferred one alone.
+ */
+function soughtPhrase(
+  item: Pick<BulkItemDto, 'preferredCountry' | 'fallbackCountry'>,
+): string {
+  const second = distinctFallback(item.preferredCountry, item.fallbackCountry);
+  return second === null
+    ? pressingPhrase(item.preferredCountry, false)
+    : pairPressingPhrase(item.preferredCountry, second);
+}
+
+/**
+ * Why a fallback import used another country (D-04, G-06-side-1). The
+ * prefix follows the outcome: the fallback country's pressing (no
+ * preferred one), no version in either country the run tried, no usable
+ * master, or a retry that reused the release an earlier attempt chose.
  */
 export function fallbackLine(item: BulkItemDto): string {
   const phrase = pressingPhrase(item.preferredCountry, false);
   const used = usedPart(item.country);
   switch (item.outcome) {
+    case 'fallback_country':
+      return `No ${phrase}, ${used}`;
+    case 'fallback_no_version':
+      return `No ${soughtPhrase(item)}, ${used}`;
     case 'fallback_no_master':
     case 'fallback_unusable_master':
       return `No ${phrase} listed for this release, ${used}`;
@@ -217,11 +257,11 @@ export function lookupFailureLine(failure: BulkItemDto['failure']): {
   }
 }
 
-/** The line while the pressing is being found. */
+/** The line while the pressing is being found, naming each country tried. */
 export function findingLine(
-  item: Pick<BulkItemDto, 'preferredCountry'>,
+  item: Pick<BulkItemDto, 'preferredCountry' | 'fallbackCountry'>,
 ): string {
-  return `Looking for the ${pressingPhrase(item.preferredCountry, false)}…`;
+  return `Looking for the ${soughtPhrase(item)}…`;
 }
 
 export type BulkStatusKind = 'failed' | 'fallback' | 'skipped' | 'finding';

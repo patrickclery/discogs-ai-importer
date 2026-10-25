@@ -21,6 +21,7 @@ import {
   importPhaseOf,
   type ReviewStatus,
 } from '@/lib/import-types';
+import { distinctFallback } from '@/lib/pressing';
 import { emptyByStatus, reviewStatusOf } from '@/lib/review-status';
 import type {
   PhotoDto,
@@ -520,6 +521,12 @@ function bulkItemOf(
     runId: item.runId,
     phase,
     preferredCountry: run?.country ?? state.account.preferredCountry,
+    fallbackCountry: run
+      ? run.fallbackCountry
+      : distinctFallback(
+          state.account.preferredCountry,
+          state.account.fallbackCountry,
+        ),
     outcome: resolved ? item.outcome : null,
     releaseId: resolved ? item.releaseId : null,
     country: resolved ? item.country : null,

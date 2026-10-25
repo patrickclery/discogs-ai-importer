@@ -83,6 +83,12 @@ export type BulkItemDto = {
   phase: BulkItemPhase;
   /** The run's preferred country when it started (D-14). */
   preferredCountry: string;
+  /**
+   * The run's fallback country when it started (G-06-side-1): null when it
+   * had none distinct from the preferred country, and for runs from before
+   * migration 0005.
+   */
+  fallbackCountry: string | null;
   outcome: PressingOutcome | null;
   /** The release the item imports, once chosen. */
   releaseId: number | null;
