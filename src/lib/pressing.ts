@@ -273,22 +273,65 @@ type PressingInput = {
 
 /**
  * The fallback tier, reached only when the master is usable and lists no
- * version from the preferred country.
+ * version from the preferred country. It mirrors the preferred tier: a top
+ * match exactly from the fallback country is used as is (D-02), and a top
+ * match whose combined country names it counts as from there (D-19), so
+ * every keep-the-top answer for it is fallback_country.
  */
 function chooseFallbackTier(input: PressingInput): PressingChoice {
+  const { top, fallbackVersions } = input;
   const second = distinctFallback(input.preferred, input.fallback);
-  const { fallbackVersions } = input;
-  if (second !== null && Array.isArray(fallbackVersions)) {
-    const tier = rankTier(input.top, second, fallbackVersions);
-    if (tier.kind === 'version') {
+  if (second === null) return { use: 'top', outcome: 'fallback_no_version' };
+  const topMatch = countryMatch(top.country, second);
+  if (topMatch === 'exact') return { use: 'top', outcome: 'fallback_country' };
+  const keep = (
+    outcome: PressingOutcome,
+  ): { use: 'top'; outcome: PressingOutcome } => ({
+    use: 'top',
+    outcome: topMatch === 'combined' ? 'fallback_country' : outcome,
+  });
+
+  if (fallbackVersions === undefined) return keep('fallback_no_version');
+  if (fallbackVersions === 'unusable') return keep('fallback_unusable_master');
+
+  const tier = rankTier(top, second, fallbackVersions);
+  switch (tier.kind) {
+    case 'empty':
+      return { use: 'top', outcome: 'fallback_no_version' };
+    case 'top':
+      return { use: 'top', outcome: 'fallback_country' };
+    case 'guard':
+      return keep('fallback_unusable_master');
+    case 'version':
       return {
         use: 'version',
         version: tier.version,
         outcome: 'fallback_country',
       };
-    }
   }
-  return { use: 'top', outcome: 'fallback_no_version' };
+}
+
+/**
+ * True only when a second versions request, filtered to the fallback
+ * country, could change the choice: there is a distinct fallback country,
+ * the preferred answer is usable yet its tier is empty (no version from the
+ * preferred country, and the top match does not name it), and the top match
+ * is not already exactly from the fallback country. The job (Plan 06-16)
+ * sends the second GET only when this is true, which keeps the extra Discogs
+ * request to spines where it can change the result.
+ */
+export function needsFallbackLookup(input: {
+  top: TopMatchLite;
+  preferred: string;
+  fallback?: string | null;
+  versions?: VersionLite[] | 'unusable';
+}): boolean {
+  const { top, preferred, versions } = input;
+  const second = distinctFallback(preferred, input.fallback);
+  if (second === null || !Array.isArray(versions)) return false;
+  if (!needsLookup(top, preferred)) return false;
+  if (countryMatch(top.country, second) === 'exact') return false;
+  return rankTier(top, preferred, versions).kind === 'empty';
 }
 
 /**
