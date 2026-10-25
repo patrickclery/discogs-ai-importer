@@ -339,11 +339,14 @@ export function importDisabledReason(x: {
   connected: boolean;
   needsReconnect: boolean;
   running: boolean;
+  /** The server refuses a new run (BulkRunDto.busy, WR-03). */
+  busy?: boolean;
 }): string | null {
   if (x.selected === 0) return 'Select spines to import first';
   if (x.needsReconnect) return 'Reconnect Discogs in Settings first';
   if (!x.connected) return 'Connect Discogs in Settings first';
   if (x.running) return 'Wait for the current bulk import to finish';
+  if (x.busy) return 'Wait for the retried lookup to finish';
   return null;
 }
 

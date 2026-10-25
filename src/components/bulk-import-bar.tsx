@@ -100,6 +100,7 @@ export function BulkImportBar({
     connected: data.discogs.connected,
     needsReconnect: data.discogs.needsReconnect,
     running: run?.running ?? false,
+    busy: run?.busy ?? false,
   });
 
   function focusSelectAll() {

@@ -30,14 +30,23 @@ export type RunItemSummary = {
  * done. A resolved item whose import row is gone counts as changed. A
  * resolved item whose release is not in the run's country counts as a
  * fallback (a combined country naming it is not, D-19), whatever its
- * import's phase.
+ * import's phase. busy is the one "a run is in progress" rule (WR-03): this
+ * run is still running, or openLookups (queued lookups in any run, a Retry
+ * import on an older run included) is above zero.
  */
 export function summarizeRun(
-  run: { id: string; country: string; folderName: string; createdAt: number },
+  run: {
+    id: string;
+    country: string;
+    folderName: string;
+    createdAt: number;
+    openLookups?: number;
+  },
   items: readonly RunItemSummary[],
 ): BulkRunDto {
+  const { openLookups = 0, ...rest } = run;
   const out: BulkRunDto = {
-    ...run,
+    ...rest,
     total: items.length,
     done: 0,
     added: 0,
@@ -47,6 +56,8 @@ export function summarizeRun(
     changed: 0,
     failed: 0,
     running: false,
+    openLookups,
+    busy: false,
   };
   for (const item of items) {
     if (item.phase === 'finding') continue;
@@ -75,6 +86,7 @@ export function summarizeRun(
     out.done += 1;
   }
   out.running = out.done < out.total;
+  out.busy = out.running || out.openLookups > 0;
   return out;
 }
 

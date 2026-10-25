@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { topMatchOf } from '@/lib/bulk-eligibility';
 import pressingsJson from '../../../demo/fixtures/pressings.json';
-import { buildSpinesResponse } from '../read-model';
+import { buildSpinesResponse, latestBulkRunAt } from '../read-model';
 import { recordingFor } from '../seed';
 import { type DemoBulkItem, getState, resetStore, setClock } from '../store';
 import {
@@ -188,7 +188,20 @@ describe('startBulk', () => {
     expect(startBulk(getState(), [pick('17')], T0 + 100)).toEqual({
       status: 'busy',
     });
-    const after = lastReadyAt();
+    // WR-03: the lookups are done but the run's adds are still going.
+    const ready = lastReadyAt();
+    expect(latestBulkRunAt(getState(), ready)?.busy).toBe(true);
+    expect(startBulk(getState(), [pick('17', ready)], ready)).toEqual({
+      status: 'busy',
+    });
+    let after = ready;
+    while (
+      latestBulkRunAt(getState(), after)?.busy &&
+      after < ready + 600_000
+    ) {
+      after += 100;
+    }
+    expect(latestBulkRunAt(getState(), after)?.busy).toBe(false);
     expect(startBulk(getState(), [pick('17', after)], after)).toMatchObject({
       status: 'ok',
       started: 1,

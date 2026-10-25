@@ -16,6 +16,7 @@ import {
   buildSpinesResponse,
   bulkItemPhaseAt,
   importRowAt,
+  latestBulkRunAt,
   latestImport,
 } from '../read-model';
 import {
@@ -236,7 +237,8 @@ function resolveAt(
 
 /**
  * Starts one demo bulk run at `now` (startBulkRun). One run at a time:
- * while any item is still finding the answer is busy and nothing changes.
+ * while any item is still finding, or the latest run is still running, the
+ * answer is busy and nothing changes.
  * Accepted pick i is looked up from now + i * BULK_STEP_MS for
  * BULK_LOOKUP_MS, in pick order.
  */
@@ -245,7 +247,12 @@ export function startBulk(
   items: readonly BulkPick[],
   now: number,
 ): StartBulkResult {
-  if (state.bulkItems.some((i) => bulkItemPhaseAt(i, now) === 'finding')) {
+  // The one busy rule (WR-03): any lookup finding, or the latest run's
+  // adds still going, as the Import button reads it.
+  if (
+    state.bulkItems.some((i) => bulkItemPhaseAt(i, now) === 'finding') ||
+    latestBulkRunAt(state, now)?.busy
+  ) {
     return { status: 'busy' };
   }
   const { accepted, skipped } = eligiblePicks(state, items, now);

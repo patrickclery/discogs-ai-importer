@@ -15,6 +15,7 @@ import { type ImportStatus, importPhaseOf } from '@/lib/import-types';
 import type { SpineDto } from '@/lib/scan-types';
 import { collectionFolderName } from '../discogs/folders';
 import { capCodePoints } from '../discogs/inputs';
+import { openBulkItemCount } from './store';
 
 // The bulk half of the /spines read model (D-06, D-09, D-15). One query per
 // page, whatever the spine count: each listed spine's latest bulk item with
@@ -192,7 +193,10 @@ const RUN_ITEMS_SQL = `
   LEFT JOIN jobs ij ON ij.id = i.job_id
   WHERE b.run_id = @runId`;
 
-/** The newest bulk run's progress and result counts, or null (D-15). */
+/**
+ * The newest bulk run's progress and result counts, or null (D-15). Its
+ * busy flag is the start route's refusal rule too (WR-03).
+ */
 export function latestBulkRun(db: Database.Database): BulkRunDto | null {
   const run = db
     .prepare(
@@ -208,6 +212,7 @@ export function latestBulkRun(db: Database.Database): BulkRunDto | null {
       country: run.country,
       folderName: collectionFolderName(run.folder_id),
       createdAt: run.created_at,
+      openLookups: openBulkItemCount(db),
     },
     rows.map((r) => ({
       phase: bulkItemPhaseOf({ status: r.status, jobStatus: r.job_status }),

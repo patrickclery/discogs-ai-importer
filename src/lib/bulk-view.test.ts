@@ -48,6 +48,8 @@ describe('summarizeRun', () => {
       changed: 0,
       failed: 0,
       running: true,
+      openLookups: 0,
+      busy: true,
     });
   });
 
@@ -96,6 +98,27 @@ describe('summarizeRun', () => {
     expect(
       summarizeRun(RUN, [it_({ country: 'USA & Canada' })]).fallbacks,
     ).toBe(0);
+  });
+
+  it('WR-03: a finished run is busy while a lookup is open in any run', () => {
+    const done = [it_({})];
+    expect(summarizeRun(RUN, done)).toMatchObject({
+      running: false,
+      busy: false,
+    });
+    expect(summarizeRun({ ...RUN, openLookups: 1 }, done)).toMatchObject({
+      running: false,
+      openLookups: 1,
+      busy: true,
+    });
+  });
+
+  it('WR-03: a run whose adds are still going is busy with no open lookup', () => {
+    expect(summarizeRun(RUN, [it_({ importPhase: 'waiting' })])).toMatchObject({
+      running: true,
+      openLookups: 0,
+      busy: true,
+    });
   });
 
   it('an empty run is total 0 and not running', () => {

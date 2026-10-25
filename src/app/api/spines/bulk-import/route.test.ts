@@ -200,6 +200,33 @@ describe('POST /api/spines/bulk-import', () => {
     expect(count('bulk_items')).toBe(1);
   });
 
+  it("WR-03: 409 bulk_running while the latest run's adds are still waiting, then starts once they finish", async () => {
+    const { picks } = await shelfWithPicks(2);
+    const first = startBulkRun(db(), {
+      items: [picks[0]],
+      country: 'Canada',
+      folderId: 1,
+    });
+    expect(first.status).toBe('ok');
+    const job = claimNext('discogs', Date.now() + 60_000);
+    if (!job) throw new Error('nothing to claim');
+    expect(job.type).toBe(RESOLVE_PRESSING_JOB_TYPE);
+    await runResolvePressing(JSON.parse(job.payload), jobCtx(job));
+    complete(job.id);
+    // The lookup is done; its add is still pending.
+    expect(count('bulk_items', `status = 'queued'`)).toBe(0);
+    expect(count('imports', `status = 'pending'`)).toBe(1);
+    const busy = await start({ items: [picks[1]] });
+    expect(busy.status).toBe(409);
+    expect((await errorOf(busy)).error).toBe('bulk_running');
+    expect(count('bulk_runs')).toBe(1);
+
+    db().prepare(`UPDATE imports SET status = 'imported'`).run();
+    const res = await start({ items: [picks[1]] });
+    expect(res.status).toBe(201);
+    expect(count('bulk_runs')).toBe(2);
+  });
+
   it('skips picks that changed: a stale top match, an imported, an orphaned and an unknown spine, and a repeat', async () => {
     const { spineIds, picks } = await shelfWithPicks(5);
     // [1]: a newer search put another candidate on top.

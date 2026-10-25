@@ -531,7 +531,10 @@ function bulkItemOf(
 }
 
 /** The newest demo bulk run at `now`, summarized (latestBulkRun). */
-function latestBulkRunAt(state: DemoState, now: number): BulkRunDto | null {
+export function latestBulkRunAt(
+  state: DemoState,
+  now: number,
+): BulkRunDto | null {
   const run = state.bulkRuns
     .filter((r) => r.createdAt <= now)
     .sort(byNewest((r) => r.createdAt))[0];
@@ -542,6 +545,9 @@ function latestBulkRunAt(state: DemoState, now: number): BulkRunDto | null {
       country: run.country,
       folderName: folderNameOf(state, run.folderId),
       createdAt: run.createdAt,
+      openLookups: state.bulkItems.filter(
+        (i) => bulkItemPhaseAt(i, now) === 'finding',
+      ).length,
     },
     state.bulkItems
       .filter((i) => i.runId === run.id)

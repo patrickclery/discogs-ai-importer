@@ -2,6 +2,7 @@ import { connection } from 'next/server';
 import { z } from 'zod';
 import { BULK_START_BODY, type BulkStartResponse } from '@/lib/bulk-types';
 import { eligiblePicks } from '@/server/bulk/picks';
+import { latestBulkRun } from '@/server/bulk/queries';
 import { openBulkItemCount, startBulkRun } from '@/server/bulk/store';
 import { getDb } from '@/server/db/client';
 import { getDiscogsAuth } from '@/server/discogs/auth';
@@ -14,7 +15,9 @@ import { getPreferredCountry } from '@/server/settings';
 // re-checked on the server and become one run whose resolve_pressing jobs
 // are paced on the Discogs lane. The route itself never calls Discogs
 // (Phase 4 rule: all work is queued). One run at a time: while any lookup
-// is still waiting the answer is 409 bulk_running (T-06-16). The check,
+// is still waiting, or the latest run's adds are still going, the answer is
+// 409 bulk_running (T-06-16). The rule is latestBulkRun's busy flag, the
+// same one the Import button reads (WR-03). The check,
 // the pick validation and the run are one IMMEDIATE transaction.
 // T-06-15: the app binds loopback only, src/proxy.ts refuses a foreign
 // Origin on non-GET, and the JSON-only body forces a CORS preflight.
@@ -84,7 +87,9 @@ export async function POST(req: Request) {
   }
   const db = getDb().$client;
   const tx = db.transaction((): StartOutcome => {
-    if (openBulkItemCount(db) > 0) return { status: 'busy' };
+    if (openBulkItemCount(db) > 0 || latestBulkRun(db)?.busy) {
+      return { status: 'busy' };
+    }
     const picks = eligiblePicks(db, parsed.data.items);
     if (picks.accepted.length === 0) return { status: 'nothing' };
     const run = startBulkRun(db, {

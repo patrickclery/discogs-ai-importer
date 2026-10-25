@@ -122,6 +122,13 @@ export type BulkRunDto = {
   changed: number;
   failed: number;
   running: boolean;
+  /** Lookups still queued in any run, a Retry import on an older run included. */
+  openLookups: number;
+  /**
+   * A new run is refused (WR-03): this run is still running or a lookup is
+   * still open. The start route and the Import button both read this.
+   */
+  busy: boolean;
   createdAt: number;
 };
 

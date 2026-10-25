@@ -592,6 +592,15 @@ describe('importDisabledReason', () => {
       'Wait for the current bulk import to finish',
     );
   });
+
+  it('WR-03: waits for a retried lookup the server still counts as busy', () => {
+    expect(importDisabledReason({ ...ok, busy: true })).toBe(
+      'Wait for the retried lookup to finish',
+    );
+    expect(importDisabledReason({ ...ok, running: true, busy: true })).toBe(
+      'Wait for the current bulk import to finish',
+    );
+  });
 });
 
 describe('lastResultLine', () => {
@@ -636,6 +645,8 @@ function run(over: Partial<BulkRunDto> = {}): BulkRunDto {
     changed: 0,
     failed: 0,
     running: false,
+    openLookups: 0,
+    busy: false,
     createdAt: 1,
     ...over,
   };
