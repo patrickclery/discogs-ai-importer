@@ -144,9 +144,12 @@ function recordedCandidate(
 /**
  * The fallback tier (chooseFallbackTier's demo twin), reached only when the
  * preferred tier has nothing: the canned master lists no Canadian version
- * and the top match does not name Canada. A canned fallback_pressing exactly
- * from the run's fallback country is imported through a hidden candidate;
- * otherwise the top match is kept.
+ * and the top match does not name Canada. In choosePressing's order: a top
+ * match exactly from the run's fallback country is kept (D-02); else a
+ * canned fallback_pressing exactly from it is imported through a hidden
+ * candidate (an exact version ranks above a combined top match, D-19); else
+ * a top match whose combined country names it is kept; else the top match
+ * is kept with fallback_no_version. No fallback country: straight to that.
  */
 function fallbackTier(
   state: DemoState,
@@ -156,15 +159,21 @@ function fallbackTier(
   canned: CannedPressing | undefined,
   at: number,
 ): { chosen: DemoCandidate; outcome: PressingOutcome } {
+  const keep = (outcome: PressingOutcome) => ({ chosen: top, outcome });
   const second = run.fallbackCountry;
-  if (second !== null && canned?.outcome === 'fallback_pressing') {
+  if (second === null) return keep('fallback_no_version');
+  const topMatch = countryMatch(top.country, second);
+  if (topMatch === 'exact') return keep('fallback_country');
+  if (canned?.outcome === 'fallback_pressing') {
     const recorded = recordedCandidate(state, spine, canned.releaseId);
     if (recorded && countryMatch(recorded.country, second) === 'exact') {
       const pressing = pressingCandidate(state, spine, canned.releaseId, at);
       if (pressing) return { chosen: pressing, outcome: 'fallback_country' };
     }
   }
-  return { chosen: top, outcome: 'fallback_no_version' };
+  return keep(
+    topMatch === 'combined' ? 'fallback_country' : 'fallback_no_version',
+  );
 }
 
 type ItemEnd = Pick<
