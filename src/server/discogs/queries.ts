@@ -70,10 +70,14 @@ const CANDIDATE_COLUMNS = `c.id, c.spine_id, c.source, c.release_id, c.rank,
   c.title, c.year, c.country, c.labels_json, c.catno, c.formats_json,
   c.thumb_url, c.stage, c.catno_match, c.created_at`;
 
+// A bulk pressing candidate (Plan 06-02) is what an import references, never
+// one of the spine's matches: it is left out of the list, count and top
+// match (RESEARCH Pitfall 8).
 const CANDIDATES_SQL = `
   SELECT ${CANDIDATE_COLUMNS}
   FROM discogs_candidates c
-  WHERE c.spine_id IN (SELECT value FROM json_each(@ids))`;
+  WHERE c.spine_id IN (SELECT value FROM json_each(@ids))
+    AND c.source <> 'pressing'`;
 
 const FIELDS_SQL = `
   SELECT f.spine_id, f.field, f.value
@@ -84,7 +88,8 @@ const FIELDS_SQL = `
 const SPINE_CANDIDATES_SQL = `
   SELECT ${CANDIDATE_COLUMNS}
   FROM discogs_candidates c
-  WHERE c.spine_id = @spineId`;
+  WHERE c.spine_id = @spineId
+    AND c.source <> 'pressing'`;
 
 export type LatestSearchRow = {
   status: SearchStatus;

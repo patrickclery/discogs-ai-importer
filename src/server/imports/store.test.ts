@@ -540,7 +540,12 @@ describe('createImport local duplicate (D-04, IMP-03)', () => {
       const shown = shownAs(spineIds[1]);
       expect(shown.photo).toBe('shelf.jpg');
       expect(shown.cropUrl).toBe('/api/files/crops/other.jpg');
-      expect(res).toEqual({ status: 'duplicate', ...shown, done });
+      expect(res).toEqual({
+        status: 'duplicate',
+        spineId: spineIds[1],
+        ...shown,
+        done,
+      });
       expect(snapshot()).toBe(before);
     },
   );

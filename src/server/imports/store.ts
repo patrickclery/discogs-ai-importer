@@ -43,6 +43,8 @@ export type CreateImportResult =
 
 /** The other spine already holding the release (D-04), as the dialog shows it. */
 export type DuplicateOf = {
+  /** The other spine's id (a bulk item records it, D-09). */
+  spineId: string;
   /** The other spine's photo file name. */
   photo: string;
   /** The other spine's number on its photo (#n). */
@@ -152,7 +154,8 @@ function duplicateOf(
 ): DuplicateOf | null {
   const row = db
     .prepare(
-      `SELECT i.status, p.original_name AS photo, d.idx, d.crop_path
+      `SELECT i.status, i.spine_id, p.original_name AS photo, d.idx,
+         d.crop_path
        FROM imports i
        JOIN spines s ON s.id = i.spine_id
        JOIN photos p ON p.id = s.photo_id
@@ -168,6 +171,7 @@ function duplicateOf(
     .get({ releaseId, spineId }) as
     | {
         status: string;
+        spine_id: string;
         photo: string;
         idx: number | null;
         crop_path: string | null;
@@ -175,11 +179,42 @@ function duplicateOf(
     | undefined;
   if (!row) return null;
   return {
+    spineId: row.spine_id,
     photo: row.photo,
     spineNumber: (row.idx ?? 0) + 1,
     cropUrl: fileUrl(row.crop_path),
     done: row.status === 'imported',
   };
+}
+
+/**
+ * D-07: the spine's latest import when it failed after its intent was
+ * written and Discogs did not refuse the add (not_found, rejected): its POST
+ * may have reached Discogs (no answer, a crash, a timeout), so only Retry,
+ * which reconciles first, may follow it. Null otherwise; a refused add or
+ * one that never wrote an intent is safe to replace.
+ */
+export function mustRetryFirst(
+  db: Database.Database,
+  spineId: string,
+): ImportDbRow | null {
+  const latest = db
+    .prepare(
+      `SELECT * FROM imports
+       WHERE spine_id = @spineId
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+    )
+    .get({ spineId }) as ImportDbRow | undefined;
+  if (
+    latest?.status === 'failed' &&
+    latest.intent_at !== null &&
+    latest.error_kind !== 'not_found' &&
+    latest.error_kind !== 'rejected'
+  ) {
+    return latest;
+  }
+  return null;
 }
 
 /**
@@ -223,28 +258,9 @@ export function createImport(
       )
       .get({ spineId: input.spineId });
     if (open) return { status: 'already_confirmed' };
-    // D-07: a failed add whose intent was written may have reached Discogs
-    // (no answer, a crash, a timeout). Only Retry reconciles it, so a new
-    // confirm is refused until then; a refused add (not_found, rejected)
-    // or one that never wrote an intent is safe to replace.
-    const latest = db
-      .prepare(
-        `SELECT status, intent_at, error_kind FROM imports
-         WHERE spine_id = @spineId
-         ORDER BY created_at DESC, id DESC
-         LIMIT 1`,
-      )
-      .get({ spineId: input.spineId }) as
-      | { status: string; intent_at: number | null; error_kind: string | null }
-      | undefined;
-    if (
-      latest?.status === 'failed' &&
-      latest.intent_at !== null &&
-      latest.error_kind !== 'not_found' &&
-      latest.error_kind !== 'rejected'
-    ) {
-      return { status: 'retry_first' };
-    }
+    // D-07: only Retry reconciles a failed add that may have landed, so a
+    // new confirm is refused until then.
+    if (mustRetryFirst(db, input.spineId)) return { status: 'retry_first' };
     const candidate = db
       .prepare(
         `SELECT release_id, title, year, country, labels_json, catno, formats_json
@@ -468,11 +484,13 @@ export type RetrySpineResult =
  * and existing_json, so the handler reconciles before any POST and adopts a
  * copy that already landed (D-07). enqueueImport reuses an in-flight job or
  * frees a finished one's dedupe key first, so there is never a second job.
+ * opts.runAfter is passed to enqueueImport (a bulk lookup's own run_after).
  * Call inside an IMMEDIATE transaction; on its own it opens one.
  */
 export function retryImport(
   db: Database.Database,
   importRow: Pick<ImportDbRow, 'id'>,
+  opts: { runAfter?: number } = {},
 ): { id: string; created: boolean } {
   const tx = db.transaction(() => {
     db.prepare(
@@ -480,7 +498,7 @@ export function retryImport(
          updated_at = @now
        WHERE id = @id`,
     ).run({ id: importRow.id, now: Date.now() });
-    return enqueueImport(db, importRow.id);
+    return enqueueImport(db, importRow.id, opts);
   });
   return tx.immediate();
 }

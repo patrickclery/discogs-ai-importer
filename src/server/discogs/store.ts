@@ -10,6 +10,7 @@ import {
 import { newId } from '../ids';
 import type { SearchInputs } from './inputs';
 import type { Candidate } from './search';
+import type { PressingCandidateValues } from './versions';
 
 // discogs_searches and discogs_candidates writes (D-10, D-16). Raw SQL with
 // @named parameters only and single-quoted literals (DQS=0, T-03-18).
@@ -374,4 +375,60 @@ export function addManualCandidate(
     return { status: 'ok', candidateId: row.id };
   });
   return tx.immediate();
+}
+
+/**
+ * Stores the pressing a bulk lookup chose (Plan 06-02) as the spine's
+ * source 'pressing' candidate and returns its id. The same spine and
+ * release always map to one row: a later run refreshes it in place (the
+ * addManualCandidate upsert). search_id is the top match's search. Pressing
+ * rows are never listed, counted or a top match (queries.ts), and
+ * replaceAutoCandidates deletes source 'auto' only, so they survive a
+ * re-search while an import references them. Values come only from the
+ * parsed versions answer and the spine's own top match (T-06-04).
+ */
+export function upsertPressingCandidate(
+  db: Database.Database,
+  input: { spineId: string; searchId: string; values: PressingCandidateValues },
+): string {
+  const v = input.values;
+  db.prepare(
+    `INSERT INTO discogs_candidates (id, spine_id, search_id, source,
+       release_id, rank, title, artist, year, country, labels_json, catno,
+       formats_json, thumb_url, master_id, stage, catno_match, created_at)
+     VALUES (@id, @spineId, @searchId, 'pressing', @releaseId, 0, @title,
+       @artist, @year, @country, @labelsJson, @catno, @formatsJson,
+       @thumbUrl, @masterId, @stage, 0, @now)
+     ON CONFLICT(spine_id, source, release_id) DO UPDATE SET
+       search_id = excluded.search_id, title = excluded.title,
+       artist = excluded.artist, year = excluded.year,
+       country = excluded.country, labels_json = excluded.labels_json,
+       catno = excluded.catno, formats_json = excluded.formats_json,
+       thumb_url = excluded.thumb_url, master_id = excluded.master_id,
+       stage = excluded.stage, created_at = excluded.created_at`,
+  ).run({
+    id: newId(),
+    spineId: input.spineId,
+    searchId: input.searchId,
+    releaseId: v.releaseId,
+    title: v.title,
+    artist: v.artist,
+    year: v.year,
+    country: v.country,
+    labelsJson: JSON.stringify(v.labels),
+    catno: v.catno,
+    formatsJson: JSON.stringify(v.formats),
+    thumbUrl: v.thumbUrl,
+    masterId: v.masterId,
+    stage: v.stage,
+    now: Date.now(),
+  });
+  const row = db
+    .prepare(
+      `SELECT id FROM discogs_candidates
+       WHERE spine_id = @spineId AND source = 'pressing'
+         AND release_id = @releaseId`,
+    )
+    .get({ spineId: input.spineId, releaseId: v.releaseId }) as { id: string };
+  return row.id;
 }
