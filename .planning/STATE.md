@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: Completed 06-13-PLAN.md
-last_updated: "2026-10-25T23:18:36.756Z"
+stopped_at: Completed 06-14-PLAN.md
+last_updated: "2026-10-25T23:22:50.317Z"
 last_activity: 2026-10-25
-last_activity_desc: Phase 06 execution started
-state_head: 86eb179e827bb718355fb05bb0fdc434136d7162
+last_activity_desc: Completed 06-14 (fallback country setting)
+state_head: e8d75264f0c358db287f9e27937b67f425e2a36e
 progress:
   total_phases: 3
   completed_phases: 4
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
-Plan: 12 of 12
-Status: Ready to execute
-Last activity: 2026-10-25 — Phase 06 execution started
+Plan: 14 of 18 (06-14 complete; 06-15..06-18 outstanding)
+Status: Executing (14 of 18 plans done)
+Last activity: 2026-10-25 — Completed 06-14 (fallback country setting)
 
 ## Performance Metrics
 
@@ -120,6 +120,7 @@ Last activity: 2026-10-25 — Phase 06 execution started
 | Phase 06 P09 | 7 min | 3 tasks | 12 files |
 | Phase 06 P10 | 6min | 2 tasks | 2 files |
 | Phase 06 P13 | 10min | 2 tasks | 3 files |
+| Phase 06 P14 | 4min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -285,6 +286,7 @@ Recent decisions affecting current work:
 - [Phase 06]: verify-bulk-import sets the fake limit to 60/min before connect so the gate's 1112 ms spacing is in effect when the run starts
 - [Phase 06]: Bulk verify steps isolate on a fresh photo: earlier spines superseded in SQL and the fake collection emptied
 - [Phase 06]: 06-13: combined-fallback top mirrors D-19 in the fallback tier (kept as fallback_country); needsFallbackLookup derives from the shared rankTier
+- [Phase 06]: 06-14: Fallback country reuses PreferredCountrySchema + canonicalCountry under its own key (default US); no cross-field check
 
 ### Pending Todos
 
@@ -308,8 +310,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T23:18:36.535Z
-Stopped at: Completed 06-13-PLAN.md
+Last session: 2026-10-25T23:22:50.091Z
+Stopped at: Completed 06-14-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
