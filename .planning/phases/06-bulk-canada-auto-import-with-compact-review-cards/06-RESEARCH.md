@@ -504,16 +504,19 @@ Trim the probe answer (`/masters/13814/versions?country=Canada&format=CD&per_pag
 | A6 | Only page 1 (100 entries, earliest first) of versions is considered | Discogs section | A same-label version beyond 100 is missed; practically never for one country |
 | A7 | Version thumbnails are present when authenticated (they were present unauthenticated) | Pattern 4 | Cards show the Disc3 placeholder |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **"Prefer a CD format" when `format=CD` already filters.**
+1. **"Prefer a CD format" when `format=CD` already filters.** (RESOLVED)
    - What we know: the filter still lets Box Set and Vinyl `major_formats` through.
    - Recommendation: treat the D-03 first key as `major_formats` includes `CD`. No owner input needed.
-2. **Should a failed import spine be selectable?**
+   - RESOLVED: adopted. The CD key is `majorFormats.includes('CD')`. It ranks after official (D-18) and exact country (D-19), then same label, then earliest year (06-01 `choosePressing`).
+2. **Should a failed import spine be selectable?** (RESOLVED)
    - What we know: the UI-SPEC text and its copy table disagree.
    - Recommendation: not selectable (copy table wins); Retry import is the path.
-3. **Where to show the lookup's own Discogs error reason** (fixed copy vs stored reason).
+   - RESOLVED by post-research decision D-20, which overrides the recommendation: a spine whose import failed is selectable. A failed import whose intent was written goes through `retryImport` (the Phase 4 D-07 reconcile), never a blind POST (06-01 `eligibilityOf`, 06-02 `mustRetryFirst` path, outcome `retried_earlier`).
+3. **Where to show the lookup's own Discogs error reason** (fixed copy vs stored reason). (RESOLVED)
    - Recommendation: use the same failure-kind mapping as imports (`unavailable`, `auth`, `other` with a 160-code-point reason).
+   - RESOLVED: adopted and extended with `rejected` and `interrupted` (`LOOKUP_ERROR_KINDS`, 06-01). Only kind `other` carries a stored reason, capped at 160 code points (06-04 `BulkItemDto.failure`). The card copy comes from `lookupFailureLine` (06-08).
 
 ## Environment Availability
 

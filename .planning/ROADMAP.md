@@ -93,7 +93,7 @@ Plans:
 **Goal:** After photographing a shelf, the user can import every disc in bulk as the Canadian pressing of its top match without verifying hundreds one by one. The review list gets a compact card layout (spine crop with the top match directly below it; edit fields hidden until the card is expanded) so many cards fit on one screen, plus multi-select and a bulk action that resolves each selected spine's top match to its Canada release (falling back visibly when none exists) and adds them to the Discogs collection through the existing rate-limited queue.
 **Requirements**: BULK-01..BULK-12 (proposed in 06-RESEARCH.md from the 06-CONTEXT.md decisions)
 **Depends on:** Phase 5
-**Plans:** 10 plans
+**Plans:** 12 plans
 
 Plans:
 **Wave 1**
@@ -108,12 +108,14 @@ Plans:
 - [ ] 06-05-PLAN.md — Lookup failure, Retry, interrupted-lookup recovery, header count (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 06-06-PLAN.md — POST /api/spines/bulk-import and the demo bulk twin with canned pressings (wave 4)
 - [ ] 06-07-PLAN.md — Compact cards, responsive grid, Edit spine expand, Compact/Detailed toggle (wave 4)
+- [ ] 06-11-PLAN.md — Demo bulk run: canned pressings, startBulk, demo read-model bulk fields (D-17) (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 06-06-PLAN.md — POST /api/spines/bulk-import and its demo route (wave 5)
 - [ ] 06-08-PLAN.md — Bulk states on cards: Finding pressing, country badge, fallback, skipped, lookup failure (wave 5)
-- [ ] 06-10-PLAN.md — Live-stack proof against the fake Discogs: pacing, one run at a time, crash mid-run (wave 5)
+- [ ] 06-12-PLAN.md — Fallback filter toggle, filter empty states, fallback param on both /spines pages (wave 5)
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 06-09-PLAN.md — Selection, bulk bar, confirm dialog, toasts, Fallback filter, demo export check (wave 6)
+- [ ] 06-09-PLAN.md — Selection, bulk bar, confirm dialog, start and finished toasts, demo export check (wave 6)
+- [ ] 06-10-PLAN.md — Live-stack proof against the fake Discogs: pacing, one run at a time, crash mid-run (wave 6)
