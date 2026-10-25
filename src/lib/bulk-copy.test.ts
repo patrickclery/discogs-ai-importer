@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { type BulkItemDto, ELIGIBILITY_REASONS } from '@/lib/bulk-types';
+import {
+  type BulkItemDto,
+  type BulkRunDto,
+  ELIGIBILITY_REASONS,
+} from '@/lib/bulk-types';
 import type { CandidateDto, SpineDiscogsDto } from '@/lib/discogs-types';
 import type { ImportDto } from '@/lib/import-types';
 import {
+  batchDoneToast,
   bulkStatusLineOf,
   countryBadgeText,
   dialogBody,
@@ -11,6 +16,7 @@ import {
   eligibilityReasonText,
   fallbackLine,
   findingLine,
+  hasRunFinished,
   importButtonLabel,
   importDisabledReason,
   lastResultLine,
@@ -610,5 +616,86 @@ describe('startSkipsToast', () => {
     expect(startSkipsToast(5, 2)).toBe(
       'Started 5. 2 skipped because they changed since you picked them.',
     );
+  });
+});
+
+// The batch-finished toast (D-15, UI-SPEC Batch-finished toast): one per
+// run, in the browser that saw it running.
+
+function run(over: Partial<BulkRunDto> = {}): BulkRunDto {
+  return {
+    id: 'run1',
+    country: 'Canada',
+    folderName: 'Uncategorized',
+    total: 16,
+    done: 16,
+    added: 12,
+    fallbacks: 0,
+    alreadyInCollection: 0,
+    duplicates: 0,
+    changed: 0,
+    failed: 0,
+    running: false,
+    createdAt: 1,
+    ...over,
+  };
+}
+
+describe('batchDoneToast', () => {
+  it('reads added, fallbacks, already in collection and duplicates with Show fallbacks', () => {
+    expect(
+      batchDoneToast(
+        run({ fallbacks: 2, alreadyInCollection: 1, duplicates: 1 }),
+      ),
+    ).toEqual({
+      message:
+        'Bulk import done: 12 added to Uncategorized. 2 used another country. 1 already in your collection. 1 skipped as duplicates.',
+      action: 'fallbacks',
+    });
+  });
+
+  it('offers Show failed when any failed', () => {
+    const t = batchDoneToast(run({ fallbacks: 2, failed: 1 }));
+    expect(t.message).toBe(
+      'Bulk import done: 12 added to Uncategorized. 2 used another country. 1 failed.',
+    );
+    expect(t.action).toBe('failed');
+  });
+
+  it('adds the job-time changed skips', () => {
+    expect(batchDoneToast(run({ changed: 2 })).message).toBe(
+      'Bulk import done: 12 added to Uncategorized. 2 skipped because they changed.',
+    );
+  });
+
+  it('has no action when only added is nonzero', () => {
+    expect(batchDoneToast(run())).toEqual({
+      message: 'Bulk import done: 12 added to Uncategorized.',
+      action: null,
+    });
+  });
+});
+
+describe('hasRunFinished', () => {
+  const seen = new Set(['run1']);
+
+  it('is true for a run seen running that has finished and was not toasted', () => {
+    expect(hasRunFinished(seen, new Set(), run())).toBe(true);
+  });
+
+  it('is false while the run is still running', () => {
+    expect(hasRunFinished(seen, new Set(), run({ running: true }))).toBe(false);
+  });
+
+  it('is false once the run was toasted', () => {
+    expect(hasRunFinished(seen, new Set(['run1']), run())).toBe(false);
+  });
+
+  it('is false for a run first seen already finished (a reload after it)', () => {
+    expect(hasRunFinished(new Set(), new Set(), run())).toBe(false);
+  });
+
+  it('is false with no run', () => {
+    expect(hasRunFinished(seen, new Set(), null)).toBe(false);
   });
 });

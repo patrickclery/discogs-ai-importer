@@ -366,3 +366,22 @@ export function lastResultLine(
 export function startSkipsToast(started: number, skipped: number): string {
   return `Started ${started}. ${skipped} skipped because they changed since you picked them.`;
 }
+
+// The batch-finished toast (D-15).
+
+export type BatchDoneToast = {
+  message: string;
+  action: 'failed' | 'fallbacks' | null;
+};
+
+export function batchDoneToast(_run: BulkRunDto): BatchDoneToast {
+  return { message: '', action: null };
+}
+
+export function hasRunFinished(
+  _seenRunning: ReadonlySet<string>,
+  _toasted: ReadonlySet<string>,
+  _run: BulkRunDto | null,
+): boolean {
+  return false;
+}
