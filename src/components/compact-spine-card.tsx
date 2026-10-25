@@ -11,6 +11,8 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
+import { BulkStatusLine } from '@/components/bulk-status-line';
+import { CountryBadge } from '@/components/country-badge';
 import { useExpandedCard } from '@/components/expanded-cards';
 import { ImportStateBadge } from '@/components/import-state-badge';
 import { SpineCrop } from '@/components/spine-crop';
@@ -51,8 +53,8 @@ function PlaceholderLine({ text }: { text: string }) {
 /**
  * One spine in the compact grid (D-10, D-16, UI-SPEC Compact card): the
  * header (#n, the worst-field badge, Edited, the orphan badge and the state
- * badge last), the spine crop, then directly under it the top or confirmed
- * match. No field inputs, external link or Add button while collapsed: those
+ * badge last, after the bulk country badge), the spine crop, then directly
+ * under it the top or confirmed match and at most one bulk status line. No field inputs, external link or Add button while collapsed: those
  * live in the full card (D-11).
  *
  * Edit spine opens the card in place: it renders `renderFull` (the one
@@ -152,7 +154,8 @@ export function CompactSpineCard({
             No longer detected
           </Badge>
         ) : null}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex min-w-0 max-w-full items-center gap-2">
+          <CountryBadge spine={spine} />
           <ImportStateBadge spine={spine} />
         </div>
       </div>
@@ -171,6 +174,7 @@ export function CompactSpineCard({
           <PlaceholderLine text={slot.placeholder ?? ''} />
         )}
       </div>
+      <BulkStatusLine spine={spine} />
       {renderFull ? (
         <div className="flex justify-end">
           <Button

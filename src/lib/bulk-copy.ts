@@ -3,7 +3,8 @@
 // text, never re-cased. The bulk-state lines (D-04, D-09, D-15, BULK-11)
 // follow the match slot.
 import type { BulkItemDto } from './bulk-types';
-import type { CountryBadge } from './bulk-view';
+import { type CountryBadge, countryBadgeOf } from './bulk-view';
+import { pressingPhrase } from './pressing';
 import type { SpineDto } from './scan-types';
 
 export type MatchSlotLabel = 'Top match' | 'Confirmed match';
@@ -131,54 +132,127 @@ export function matchSlotOf(
 
 // ---------------------------------------------------------------------------
 // Bulk-state copy (UI-SPEC Per-spine bulk states, Copywriting Contract).
+// Plain text only: country names, photo names and reasons are rendered as
+// React text, never as HTML or a URL (T-06-20).
 
-/** The country badge's text (D-15). */
-export function countryBadgeText(_badge: CountryBadge): string {
-  return '';
+/** The country badge's text (D-15): the country verbatim, or Fallback. */
+export function countryBadgeText(badge: CountryBadge): string {
+  if (badge.kind === 'preferred') return badge.country ?? '';
+  return `Fallback: ${badge.country ?? 'no country listed'}`;
 }
 
-/** Why a fallback import used another country (D-04). */
-export function fallbackLine(_item: BulkItemDto): string {
-  return '';
+/** `{used}`: the imported release's country, or the top match without one. */
+function usedPart(country: string | null): string {
+  return present(country)
+    ? `used ${country}`
+    : 'used the top match (no country listed)';
 }
 
-/** The skipped-duplicate line (D-09). */
-export function skippedLine(_skip: NonNullable<BulkItemDto['skip']>): string {
-  return '';
+/**
+ * Why a fallback import used another country (D-04). The prefix follows
+ * the outcome: no version in the country, no usable master, or a retry
+ * that reused the release an earlier attempt chose.
+ */
+export function fallbackLine(item: BulkItemDto): string {
+  const phrase = pressingPhrase(item.preferredCountry, false);
+  const used = usedPart(item.country);
+  switch (item.outcome) {
+    case 'fallback_no_master':
+    case 'fallback_unusable_master':
+      return `No ${phrase} listed for this release, ${used}`;
+    case 'retried_earlier':
+      return `Retried the earlier import of this spine, ${used}`;
+    default:
+      return `No ${phrase}, ${used}`;
+  }
 }
 
-/** The Open Settings link of a rejected-connection line. */
+/** The skipped-duplicate line (D-09): the spine already imported. */
+export function skippedLine(skip: NonNullable<BulkItemDto['skip']>): string {
+  if (skip.spineNumber === null) return 'Already imported from another spine';
+  if (skip.samePhoto) return `Already imported from spine #${skip.spineNumber}`;
+  const photo = present(skip.photo) ? skip.photo : 'another photo';
+  return `Already imported from ${photo}, spine #${skip.spineNumber}`;
+}
+
+/** The Open Settings link of a rejected-connection line (fixed href). */
 export type SettingsLink = {
   label: 'Open Settings';
   href: '/settings';
   tail: string;
 };
 
-/** The lookup failure line (BULK-11). */
-export function lookupFailureLine(_failure: BulkItemDto['failure']): {
+const LOOKUP_PREFIX = "Couldn't look up pressings";
+const RETRY_TAIL = 'Retry the import.';
+
+/** The lookup failure line (BULK-11), by the recorded failure kind. */
+export function lookupFailureLine(failure: BulkItemDto['failure']): {
   text: string;
   link: SettingsLink | null;
 } {
-  return { text: '', link: null };
+  const plain = (why: string) => ({
+    text: `${LOOKUP_PREFIX}: ${why}. ${RETRY_TAIL}`,
+    link: null,
+  });
+  switch (failure?.kind) {
+    case 'unavailable':
+      return plain("Discogs didn't respond");
+    case 'auth':
+      return {
+        text: `${LOOKUP_PREFIX}: Discogs rejected the connection.`,
+        link: {
+          label: 'Open Settings',
+          href: '/settings',
+          tail: ' to reconnect, then retry.',
+        },
+      };
+    case 'rejected':
+      return plain('Discogs refused the request');
+    case 'interrupted':
+      return plain('the app stopped before it finished');
+    default: {
+      const reason = failure?.reason?.trim().replace(/\.+$/, '');
+      return plain(reason ? reason : 'something went wrong');
+    }
+  }
 }
 
 /** The line while the pressing is being found. */
 export function findingLine(
-  _item: Pick<BulkItemDto, 'preferredCountry'>,
+  item: Pick<BulkItemDto, 'preferredCountry'>,
 ): string {
-  return '';
+  return `Looking for the ${pressingPhrase(item.preferredCountry, false)}…`;
 }
 
 export type BulkStatusKind = 'failed' | 'fallback' | 'skipped' | 'finding';
 
-/** The one bulk status line a card shows, or null. */
+/** The one bulk status line a card shows. */
 export type BulkStatusLine =
   | { kind: 'failed'; text: string; link: SettingsLink | null }
   | { kind: 'fallback' | 'skipped' | 'finding'; text: string };
 
-/** At most one bulk status line: failed, fallback, skipped, then finding. */
+/**
+ * At most one bulk status line, in the UI-SPEC priority: a failed lookup,
+ * then a fallback import (the badge says Fallback), then a skipped
+ * duplicate, then a lookup in progress. A skip because the spine changed,
+ * a preferred import and a spine with no current bulk item show none.
+ */
 export function bulkStatusLineOf(
-  _spine: Pick<SpineDto, 'import' | 'bulk'>,
+  spine: Pick<SpineDto, 'import' | 'bulk'>,
 ): BulkStatusLine | null {
+  const item = spine.bulk?.item ?? null;
+  if (item === null) return null;
+  if (item.phase === 'failed') {
+    return { kind: 'failed', ...lookupFailureLine(item.failure) };
+  }
+  if (countryBadgeOf(spine)?.kind === 'fallback') {
+    return { kind: 'fallback', text: fallbackLine(item) };
+  }
+  if (item.phase === 'skipped' && item.skip?.reason === 'duplicate') {
+    return { kind: 'skipped', text: skippedLine(item.skip) };
+  }
+  if (item.phase === 'finding') {
+    return { kind: 'finding', text: findingLine(item) };
+  }
   return null;
 }
