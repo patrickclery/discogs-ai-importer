@@ -48,11 +48,17 @@ import { type JobContext, JobDeferredError } from '../types';
 // the spine's candidate row or the parsed versions answer (T-06-04), and
 // createImport never gets the allow-duplicate option (D-09, T-06-05).
 //
-// Each request's failures, the same for both, as in fetch-release: no sign-in or a refused one
+// Each request's failures, as in fetch-release: no sign-in or a refused one
 // fails the item as auth with no request; a paused gate or a 429 defers
 // without spending an attempt; a 401 fails it as auth; a 404 counts as no
 // master (D-04); another 4xx fails it as rejected; a 5xx or anything else
 // is recorded on the still-queued item and rethrown for the worker's retry.
+// The fallback request is optional (WR-01): the preferred answer is already
+// usable, so a 4xx or a wrong-shaped body there counts as no fallback
+// version, and so does a 5xx or anything else on the job's last attempt.
+// The item then imports its top match as fallback_no_version, as it did
+// before the fallback tier existed. Auth, 429 and the paused gate behave
+// the same for both requests.
 // A run that stops being current writes nothing (WR-04).
 
 export const ResolvePressingPayload = z.object({
@@ -241,11 +247,16 @@ export async function runResolvePressing(
    * One country's versions answer (D-01 shape). Both lookups go through
    * here, so they share the isCurrent check, the paused-gate deferral and
    * the error mapping. failed: the item already failed; the caller returns.
+   * optional (the fallback request, WR-01): a deterministic error, or a
+   * retryable one on the last attempt, answers no versions instead of
+   * failing the item.
    */
   const lookupVersions = async (
     masterId: number,
     country: string,
+    { optional = false }: { optional?: boolean } = {},
   ): Promise<Lookup> => {
+    const lastAttempt = ctx.job.attempts >= ctx.job.maxAttempts;
     if (!ctx.isCurrent()) throw new NotCurrentError();
     const pausedUntil = (deps.fetch?.gate ?? discogsGate()).pausedUntil();
     if (pausedUntil !== null) {
@@ -288,9 +299,14 @@ export async function runResolvePressing(
           // A refused request or a versions body of the wrong shape: the
           // same answer comes back on every attempt (WR-05), so no retry.
           if (!ctx.isCurrent()) throw err;
+          if (optional) return { failed: false, versions: undefined };
           fail('rejected', message(err));
           return { failed: true };
         case 'DiscogsUnavailableError':
+          if (optional && lastAttempt) {
+            if (!ctx.isCurrent()) throw err;
+            return { failed: false, versions: undefined };
+          }
           if (ctx.isCurrent()) {
             recordBulkItemError(db, itemId, {
               errorKind: 'unavailable',
@@ -299,6 +315,10 @@ export async function runResolvePressing(
           }
           throw err;
         default:
+          if (optional && lastAttempt) {
+            if (!ctx.isCurrent()) throw err;
+            return { failed: false, versions: undefined };
+          }
           if (ctx.isCurrent()) {
             recordBulkItemError(db, itemId, {
               errorKind: 'other',
@@ -334,7 +354,9 @@ export async function runResolvePressing(
       fallback !== null &&
       needsFallbackLookup({ top, preferred: run.country, fallback, versions })
     ) {
-      const second = await lookupVersions(masterId, fallback);
+      const second = await lookupVersions(masterId, fallback, {
+        optional: true,
+      });
       if (second.failed) return;
       fallbackVersions = second.versions;
       if (!ctx.isCurrent()) return;

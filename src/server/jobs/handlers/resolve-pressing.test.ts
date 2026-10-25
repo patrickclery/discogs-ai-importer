@@ -662,9 +662,14 @@ async function attempt(
     current?: () => boolean;
     pausedFor?: number;
     afterAnswer?: () => void;
+    /** Run as the job's last attempt (attempts = maxAttempts). */
+    lastAttempt?: boolean;
   } = {},
 ) {
-  const job = claim();
+  const claimed = claim();
+  const job = opts.lastAttempt
+    ? { ...claimed, attempts: claimed.maxAttempts }
+    : claimed;
   const fake = fakeDiscogsDeps((url) => {
     const a = answer(url);
     opts.afterAnswer?.();
@@ -1140,33 +1145,65 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     });
   });
 
-  it('another 4xx on the second request fails the item as rejected', async () => {
+  it('WR-01: another 4xx on the second request imports the top match with fallback_no_version', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(
       byCountry({ status: 422, body: '{"message":"no"}' }),
     );
     expect(countries(r.calls)).toEqual(['Canada', 'US']);
     expect(r.error).toBeNull();
-    const row = item(r.itemId);
-    expect(row).toMatchObject({ status: 'failed', error_kind: 'rejected' });
-    expect(row.error).toContain('422');
-    expect(importsOf(spineId)).toHaveLength(0);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+      error_kind: null,
+      error: null,
+    });
   });
 
-  it('a wrong-shaped second body fails the item as rejected', async () => {
+  it('WR-01: a wrong-shaped second body imports the top match with fallback_no_version', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(byCountry({ status: 200, body: { nope: 1 } }));
     expect(countries(r.calls)).toEqual(['Canada', 'US']);
     expect(r.error).toBeNull();
+    expect(importedReleases(spineId)).toEqual([5001]);
     expect(item(r.itemId)).toMatchObject({
-      status: 'failed',
-      error_kind: 'rejected',
-      error: 'Discogs answered an unexpected versions list',
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+    });
+  });
+
+  it('WR-01: a 5xx on the second request on the last attempt imports the top match', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(byCountry({ status: 502, body: '' }), {
+      lastAttempt: true,
+    });
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(r.error).toBeNull();
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+      error_kind: null,
+      error: null,
+    });
+  });
+
+  it('WR-01: a 5xx on the first request on the last attempt is still rethrown', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(() => ({ status: 502, body: '' }), {
+      lastAttempt: true,
+    });
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(r.error?.name).toBe('DiscogsUnavailableError');
+    expect(item(r.itemId)).toMatchObject({
+      status: 'queued',
+      error_kind: 'unavailable',
     });
     expect(importsOf(spineId)).toHaveLength(0);
   });
 
-  it('a 5xx on the second request is recorded as unavailable and rethrown', async () => {
+  it('a 5xx on the second request before the last attempt is recorded as unavailable and rethrown', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(byCountry({ status: 502, body: '' }));
     expect(countries(r.calls)).toEqual(['Canada', 'US']);
