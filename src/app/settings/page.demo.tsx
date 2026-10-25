@@ -100,6 +100,7 @@ type SettingsView = {
   statuses: SecretStatus[];
   connection: DiscogsConnection;
   preferredCountry: string;
+  fallbackCountry: string;
 };
 
 function select(state: DemoState, now: number): SettingsView {
@@ -110,6 +111,7 @@ function select(state: DemoState, now: number): SettingsView {
     statuses: secretStatuses(account),
     connection: connectionOf(account),
     preferredCountry: account.preferredCountry,
+    fallbackCountry: account.fallbackCountry,
   };
 }
 
@@ -133,6 +135,7 @@ export default function DemoSettingsPage() {
           connection={view.connection}
           callbackUrl={CALLBACK_URL}
           preferredCountry={view.preferredCountry}
+          fallbackCountry={view.fallbackCountry}
         />
         <Card>
           <CardHeader>

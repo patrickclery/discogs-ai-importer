@@ -9,7 +9,10 @@ import {
 import { DiscogsConnectNotice } from '@/components/discogs-connect-notice';
 import { DisconnectDiscogsButton } from '@/components/disconnect-discogs-button';
 import { PasteCodeForm } from '@/components/paste-code-form';
-import { PreferredCountryField } from '@/components/preferred-country-field';
+import {
+  FallbackCountryField,
+  PreferredCountryField,
+} from '@/components/preferred-country-field';
 import { DiscogsCredentials } from '@/components/secret-field';
 import { TestDiscogsButton } from '@/components/test-discogs-button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -57,9 +60,11 @@ function ConnectionBadge({
 function ConnectedSection({
   username,
   preferredCountry,
+  fallbackCountry,
 }: {
   username: string;
   preferredCountry: string;
+  fallbackCountry: string;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -83,6 +88,7 @@ function ConnectedSection({
       </div>
       <CollectionFolderField />
       <PreferredCountryField initialCountry={preferredCountry} />
+      <FallbackCountryField initialCountry={fallbackCountry} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TestDiscogsButton />
         <DisconnectDiscogsButton />
@@ -115,9 +121,11 @@ function ReconnectAlert({ credentialsSaved }: { credentialsSaved: boolean }) {
 function AccountSection({
   connection,
   preferredCountry,
+  fallbackCountry,
 }: {
   connection: DiscogsConnection;
   preferredCountry: string;
+  fallbackCountry: string;
 }) {
   if (connection.connected && connection.username) {
     return (
@@ -125,6 +133,7 @@ function AccountSection({
         <ConnectedSection
           username={connection.username}
           preferredCountry={preferredCountry}
+          fallbackCountry={fallbackCountry}
         />
         {/* A Reconnect started from the Alert can end on a code too. */}
         {connection.needsReconnect && connection.pendingConnect ? (
@@ -155,6 +164,7 @@ export function DiscogsCard({
   secretsError,
   callbackUrl,
   preferredCountry,
+  fallbackCountry,
 }: {
   statuses: SecretStatus[] | null;
   connection: DiscogsConnection | null;
@@ -163,6 +173,8 @@ export function DiscogsCard({
   callbackUrl: string | null;
   /** The bulk-import country in Discogs' spelling (D-14). */
   preferredCountry: string;
+  /** The second-tier country in Discogs' spelling (G-06-side-1). */
+  fallbackCountry: string;
 }) {
   return (
     <Card>
@@ -204,6 +216,7 @@ export function DiscogsCard({
             <AccountSection
               connection={connection}
               preferredCountry={preferredCountry}
+              fallbackCountry={fallbackCountry}
             />
           </>
         ) : (

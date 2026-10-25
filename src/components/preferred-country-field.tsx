@@ -2,7 +2,10 @@
 
 import { type KeyboardEvent, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { savePreferredCountry } from '@/app/settings/actions';
+import {
+  saveFallbackCountry,
+  savePreferredCountry,
+} from '@/app/settings/actions';
 import {
   Field,
   FieldDescription,
@@ -14,14 +17,19 @@ import { Spinner } from '@/components/ui/spinner';
 import { UNREACHABLE_REASON } from '@/lib/failure-reason';
 
 // Settings "Preferred country" (D-14; UI-SPEC "Settings: Preferred
-// country"). Saves on blur and on Enter through savePreferredCountry (the
-// demo build aliases that module), only when the trimmed value changed.
-// The action answers Discogs' spelling, which the field then shows. The
-// country is owner text rendered as React text only (T-06-09).
+// country") and "Fallback country" (G-06-side-1). Each saves on blur and on
+// Enter through its action (the demo build aliases that module), only when
+// the trimmed value changed. The action answers Discogs' spelling, which the
+// field then shows. The country is owner text rendered as React text only
+// (T-06-09, T-06-28).
 
-const INPUT_ID = 'preferred-country';
-const ERROR_ID = 'preferred-country-error';
-const EMPTY_COPY = 'Enter a country, such as Canada.';
+/** The error each field shows when left empty. */
+export const COUNTRY_EMPTY_COPY = {
+  preferred: 'Enter a country, such as Canada.',
+  fallback: 'Enter a country, such as US.',
+} as const;
+
+type CountrySave = typeof savePreferredCountry;
 
 /** skip: unchanged. empty: nothing to save. save: send the trimmed value. */
 export function countrySaveDecision(
@@ -40,10 +48,24 @@ export function countrySaveErrorText(reason: string): string {
   return `Not saved: ${clean}. Leave the field again to retry.`;
 }
 
-export function PreferredCountryField({
+function CountrySettingField({
+  inputId,
+  errorId,
+  label,
+  description,
+  emptyCopy,
+  savedToast,
   initialCountry,
+  save,
 }: {
+  inputId: string;
+  errorId: string;
+  label: string;
+  description: string;
+  emptyCopy: string;
+  savedToast: (country: string) => string;
   initialCountry: string;
+  save: CountrySave;
 }) {
   const [value, setValue] = useState(initialCountry);
   const [saved, setSaved] = useState(initialCountry);
@@ -61,16 +83,16 @@ export function PreferredCountryField({
       return;
     }
     if (decision === 'empty') {
-      setError(EMPTY_COPY);
+      setError(emptyCopy);
       return;
     }
     const sent = value.trim();
     inFlight.current = true;
     setError(null);
     startSave(async () => {
-      let res: Awaited<ReturnType<typeof savePreferredCountry>>;
+      let res: Awaited<ReturnType<CountrySave>>;
       try {
-        res = await savePreferredCountry(sent);
+        res = await save(sent);
       } catch {
         res = { ok: false, formError: UNREACHABLE_REASON };
       }
@@ -80,7 +102,7 @@ export function PreferredCountryField({
         setSaved(country);
         // Keep anything typed since the save started.
         setValue((cur) => (cur.trim() === sent ? country : cur));
-        toast.success(`Preferred country set to ${country}`);
+        toast.success(savedToast(country));
       } else {
         // The typed value stays, so the next blur retries.
         setError(countrySaveErrorText(res.formError));
@@ -101,29 +123,67 @@ export function PreferredCountryField({
 
   return (
     <Field>
-      <FieldLabel htmlFor={INPUT_ID}>Preferred country</FieldLabel>
+      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
       <div className="flex items-center gap-2">
         <Input
-          id={INPUT_ID}
+          id={inputId}
           className="w-64 max-w-full"
           value={value}
           maxLength={40}
           autoComplete="off"
           spellCheck={false}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? ERROR_ID : undefined}
+          aria-describedby={error ? errorId : undefined}
           onChange={(e) => setValue(e.target.value)}
           onBlur={commit}
           onKeyDown={onKeyDown}
         />
         {saving ? <Spinner /> : null}
       </div>
-      <FieldDescription>
-        {
-          "Bulk import picks this country's CD pressing of each top match. Write it the way Discogs does, such as Canada, US or UK."
-        }
-      </FieldDescription>
-      {error ? <FieldError id={ERROR_ID}>{error}</FieldError> : null}
+      <FieldDescription>{description}</FieldDescription>
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
     </Field>
+  );
+}
+
+export function PreferredCountryField({
+  initialCountry,
+}: {
+  initialCountry: string;
+}) {
+  return (
+    <CountrySettingField
+      inputId="preferred-country"
+      errorId="preferred-country-error"
+      label="Preferred country"
+      description={
+        "Bulk import picks this country's CD pressing of each top match. Write it the way Discogs does, such as Canada, US or UK."
+      }
+      emptyCopy={COUNTRY_EMPTY_COPY.preferred}
+      savedToast={(country) => `Preferred country set to ${country}`}
+      initialCountry={initialCountry}
+      save={savePreferredCountry}
+    />
+  );
+}
+
+export function FallbackCountryField({
+  initialCountry,
+}: {
+  initialCountry: string;
+}) {
+  return (
+    <CountrySettingField
+      inputId="fallback-country"
+      errorId="fallback-country-error"
+      label="Fallback country"
+      description={
+        "If Discogs lists no pressing from the preferred country, bulk import picks this country's CD pressing next, or else keeps the top match. Write it the way Discogs does, such as US, UK or Germany."
+      }
+      emptyCopy={COUNTRY_EMPTY_COPY.fallback}
+      savedToast={(country) => `Fallback country set to ${country}`}
+      initialCountry={initialCountry}
+      save={saveFallbackCountry}
+    />
   );
 }
