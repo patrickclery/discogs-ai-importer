@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-10-25T02:15:03.621Z"
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-10-25T02:21:35.977Z"
 last_activity: 2026-10-24
 last_activity_desc: Phase 06 execution started
-state_head: e11d8f85c54751790f6fd4fd1d8e36fc063ac069
+state_head: 36420c1a9541ffd491cdd9262b9b500ccb905900
 progress:
   total_phases: 2
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
 Last activity: 2026-10-24 — Phase 06 execution started
 
@@ -112,6 +112,7 @@ Last activity: 2026-10-24 — Phase 06 execution started
 | Phase 06 P02 | 9 min | 3 tasks | 18 files |
 | Phase 06 P03 | 4 min | 2 tasks | 15 files |
 | Phase 06 P04 | 8min | 2 tasks | 17 files |
+| Phase 06 P05 | 5min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -263,6 +264,8 @@ Recent decisions affecting current work:
 - [Phase 06]: A resolved bulk item in another country counts as a fallback whatever its import phase; one whose import row is gone counts as changed
 - [Phase 06]: reviewStatusOf: a current failed lookup is failed and a finding one matched (E6), right after not_on_discogs
 - [Phase 06]: discogsActive stays true while the latest bulk run is running, even for spines the photo filter hides
+- [Phase 06]: retrySpine checks the spine's current bulk item before its import: a failed lookup re-runs as kind lookup, a finding lookup answers busy
+- [Phase 06]: retryBulkItem reuses a live pressing:{itemId} holder or releases a finished one's key, so two retries make one job
 
 ### Pending Todos
 
@@ -286,8 +289,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T02:15:03.527Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-10-25T02:21:35.881Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
