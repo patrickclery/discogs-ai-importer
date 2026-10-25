@@ -8,6 +8,7 @@ import {
   choosePressing,
   countryMatch,
   distinctFallback,
+  needsFallbackLookup,
   needsLookup,
   pressingPhrase,
   releaseTitleOf,
@@ -341,5 +342,259 @@ describe('choosePressing fallback tier (G-06-side-1)', () => {
         }),
       ).toEqual({ use: 'top', outcome: 'fallback_no_version' });
     }
+  });
+});
+
+describe('choosePressing fallback tier rules (G-06-side-1)', () => {
+  const HK: TopMatchLite = { ...TOP, country: 'Hong Kong' };
+  const base = { top: HK, preferred: 'Canada', fallback: 'US', versions: [] };
+  const us = (over: Partial<VersionLite>): VersionLite =>
+    version({ country: 'US', ...over });
+  const pick = (fallbackVersions: VersionLite[]) =>
+    choosePressing({ ...base, fallbackVersions });
+
+  it('D-02 second tier: a top already from the fallback country is used as is', () => {
+    expect(choosePressing({ ...base, top: { ...TOP, country: 'US' } })).toEqual(
+      { use: 'top', outcome: 'fallback_country' },
+    );
+    expect(
+      choosePressing({ ...base, top: { ...TOP, country: 'USA' } }),
+    ).toEqual({ use: 'top', outcome: 'fallback_country' });
+  });
+
+  it('D-18: an official US CD beats a US bootleg', () => {
+    expect(
+      pick([
+        us({ id: 3, format: 'Album, Unofficial Release', released: '1985' }),
+        us({ id: 8, released: '1995' }),
+      ]),
+    ).toMatchObject({ use: 'version', version: { id: 8 } });
+  });
+
+  it('D-19: an exact US version beats "US & Europe"', () => {
+    expect(
+      pick([
+        us({ id: 2, country: 'US & Europe', released: '1990' }),
+        us({ id: 6, released: '1995' }),
+      ]),
+    ).toMatchObject({ use: 'version', version: { id: 6 } });
+  });
+
+  it('a CD beats a non-CD', () => {
+    expect(
+      pick([
+        us({ id: 2, majorFormats: ['Vinyl'], released: '1990' }),
+        us({ id: 6, released: '1995' }),
+      ]),
+    ).toMatchObject({ use: 'version', version: { id: 6 } });
+  });
+
+  it("the top match's label wins a tie", () => {
+    expect(
+      pick([
+        us({ id: 2, label: 'Geffen Records', released: '1990' }),
+        us({ id: 6, label: 'DGC', released: '1995' }),
+      ]),
+    ).toMatchObject({ use: 'version', version: { id: 6 } });
+  });
+
+  it('then the earliest year, then the lowest id (D-03)', () => {
+    expect(
+      pick([us({ id: 9, released: '1994' }), us({ id: 5, released: '1992' })]),
+    ).toMatchObject({ use: 'version', version: { id: 5 } });
+    expect(
+      pick([us({ id: 9, released: '1994' }), us({ id: 5, released: '1994' })]),
+    ).toMatchObject({ use: 'version', version: { id: 5 } });
+  });
+
+  it('every pick carries the fallback_country outcome', () => {
+    expect(pick([us({ id: 5 })])).toMatchObject({
+      outcome: 'fallback_country',
+    });
+  });
+
+  describe('a combined-fallback top ("US & Europe")', () => {
+    const top: TopMatchLite = { ...TOP, country: 'US & Europe' };
+    it('an exact US version beats it', () => {
+      expect(
+        choosePressing({ ...base, top, fallbackVersions: [us({ id: 6 })] }),
+      ).toMatchObject({
+        use: 'version',
+        version: { id: 6 },
+        outcome: 'fallback_country',
+      });
+    });
+    it('kept as fallback_country when the fallback answer is absent, unusable or fails the guard (mirrors D-19)', () => {
+      expect(choosePressing({ ...base, top })).toEqual({
+        use: 'top',
+        outcome: 'fallback_country',
+      });
+      expect(
+        choosePressing({ ...base, top, fallbackVersions: 'unusable' }),
+      ).toEqual({ use: 'top', outcome: 'fallback_country' });
+      expect(
+        choosePressing({
+          ...base,
+          top,
+          fallbackVersions: [us({ id: 4, title: 'Bleach' })],
+        }),
+      ).toEqual({ use: 'top', outcome: 'fallback_country' });
+    });
+    it('with no exact US version the top is kept as fallback_country', () => {
+      expect(choosePressing({ ...base, top, fallbackVersions: [] })).toEqual({
+        use: 'top',
+        outcome: 'fallback_country',
+      });
+    });
+  });
+
+  it('D-21: a fallback winner with another title keeps the top match', () => {
+    expect(
+      pick([
+        us({ id: 4, title: 'Bleach', released: '1989' }),
+        us({ id: 9, released: '1995' }),
+      ]),
+    ).toEqual({ use: 'top', outcome: 'fallback_unusable_master' });
+  });
+
+  it('an unusable fallback answer keeps the top match', () => {
+    expect(choosePressing({ ...base, fallbackVersions: 'unusable' })).toEqual({
+      use: 'top',
+      outcome: 'fallback_unusable_master',
+    });
+  });
+
+  it('no fallback answer, or none from the fallback country: fallback_no_version', () => {
+    expect(choosePressing(base)).toEqual({
+      use: 'top',
+      outcome: 'fallback_no_version',
+    });
+    expect(pick([version({ id: 4, country: 'UK' })])).toEqual({
+      use: 'top',
+      outcome: 'fallback_no_version',
+    });
+  });
+
+  it('a Canadian version always wins over a US one', () => {
+    expect(
+      choosePressing({
+        ...base,
+        versions: [version({ id: 40, released: '1999' })],
+        fallbackVersions: [us({ id: 1, released: '1980' })],
+      }),
+    ).toMatchObject({
+      use: 'version',
+      version: { id: 40 },
+      outcome: 'preferred',
+    });
+    expect(
+      choosePressing({
+        ...base,
+        top: { ...TOP, country: 'US' },
+        versions: [version({ id: 40 })],
+      }),
+    ).toMatchObject({
+      use: 'version',
+      version: { id: 40 },
+      outcome: 'preferred',
+    });
+  });
+
+  it('D-19: a combined-preferred top still answers preferred', () => {
+    expect(
+      choosePressing({
+        ...base,
+        top: { ...TOP, country: 'USA & Canada' },
+        fallbackVersions: [us({ id: 6 })],
+      }),
+    ).toEqual({ use: 'top', outcome: 'preferred' });
+  });
+});
+
+describe('needsFallbackLookup (G-06-side-1)', () => {
+  const HK: TopMatchLite = { ...TOP, country: 'Hong Kong' };
+  const base = { top: HK, preferred: 'Canada', fallback: 'US' };
+
+  it('true for a Hong Kong top with an empty or US-free Canadian answer', () => {
+    expect(needsFallbackLookup({ ...base, versions: [] })).toBe(true);
+    expect(
+      needsFallbackLookup({
+        ...base,
+        versions: [version({ id: 4, country: 'UK' })],
+      }),
+    ).toBe(true);
+  });
+
+  it('true for a combined-fallback top (an exact US version could beat it)', () => {
+    expect(
+      needsFallbackLookup({
+        ...base,
+        top: { ...TOP, country: 'US & Europe' },
+        versions: [],
+      }),
+    ).toBe(true);
+  });
+
+  it.each([null, undefined, '', '  ', 'Canada', 'canada'])(
+    'false when the fallback is %j',
+    (fallback) => {
+      expect(needsFallbackLookup({ ...base, fallback, versions: [] })).toBe(
+        false,
+      );
+    },
+  );
+
+  it('false when the preferred answer is absent or unusable', () => {
+    expect(needsFallbackLookup(base)).toBe(false);
+    expect(needsFallbackLookup({ ...base, versions: 'unusable' })).toBe(false);
+    expect(
+      needsFallbackLookup({
+        ...base,
+        top: { ...HK, masterId: null },
+        versions: [],
+      }),
+    ).toBe(false);
+  });
+
+  it('false when the preferred tier has a candidate', () => {
+    expect(
+      needsFallbackLookup({ ...base, versions: [version({ id: 4 })] }),
+    ).toBe(false);
+    expect(
+      needsFallbackLookup({
+        ...base,
+        top: { ...TOP, country: 'USA & Canada' },
+        versions: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("false when the preferred tier's pick failed the title guard", () => {
+    expect(
+      needsFallbackLookup({
+        ...base,
+        versions: [version({ id: 4, title: 'Bleach' })],
+      }),
+    ).toBe(false);
+  });
+
+  it('false when the top match is exactly from the fallback country', () => {
+    expect(
+      needsFallbackLookup({
+        ...base,
+        top: { ...TOP, country: 'US' },
+        versions: [],
+      }),
+    ).toBe(false);
+  });
+
+  it('false when the top match is already from the preferred country', () => {
+    expect(
+      needsFallbackLookup({
+        ...base,
+        top: { ...TOP, country: 'Canada' },
+        versions: [],
+      }),
+    ).toBe(false);
   });
 });
