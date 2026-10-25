@@ -75,7 +75,11 @@ function spine(id: string, top: string, confidence = 0.95): SpineDto {
 
 const TWO = [spine('sp-1', 'c-1'), spine('sp-2', 'c-2', 0.4)];
 
-function renderDialog(country = 'Canada', spines: SpineDto[] = TWO) {
+function renderDialog(
+  country = 'Canada',
+  spines: SpineDto[] = TWO,
+  fallbackCountry: string | null = null,
+) {
   return renderToStaticMarkup(
     createElement(BulkImportDialog, {
       open: true,
@@ -83,6 +87,7 @@ function renderDialog(country = 'Canada', spines: SpineDto[] = TWO) {
       spines,
       folderName: 'Uncategorized',
       country,
+      fallbackCountry,
       threshold: 0.7,
       onStarted: () => {},
     }),
@@ -109,6 +114,15 @@ describe('BulkImportDialog', () => {
     expect(html).toContain(
       '1 of them have a field Claude wasn&#x27;t sure of.',
     );
+  });
+
+  it('names the fallback country as the second choice (G-06-side-1)', () => {
+    const html = renderDialog('Canada', TWO, 'US');
+    expect(html).toContain(
+      'Canadian CD pressing when Discogs lists one, or else for its US CD pressing.',
+    );
+    expect(html).toContain('If Discogs lists neither');
+    expect(html).toContain('Import 2 to Uncategorized as Canadian pressings');
   });
 
   it('offers Keep reviewing and Start import', () => {

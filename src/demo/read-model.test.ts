@@ -290,6 +290,9 @@ describe('bulk (eligibilityOf, Plan 06-04)', () => {
     expect(all.discogs.preferredCountry).toBe('Canada');
     state.account.preferredCountry = 'Germany';
     expect(spinesAt(state, T0).discogs.preferredCountry).toBe('Germany');
+    expect(all.discogs.fallbackCountry).toBe('US');
+    state.account.fallbackCountry = 'UK';
+    expect(spinesAt(state, T0).discogs.fallbackCountry).toBe('UK');
     const r = buildSpinesResponse(state, T0, { fallback: true });
     expect(r.spines).toEqual([]);
     expect(r.photos).toEqual([]);

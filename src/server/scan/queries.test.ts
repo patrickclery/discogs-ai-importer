@@ -13,7 +13,7 @@ import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 import { failBulkItem, resolveBulkItem, startBulkRun } from '../bulk/store';
 import { getDb } from '../db/client';
 import { newId } from '../ids';
-import { setPreferredCountry } from '../settings';
+import { setFallbackCountry, setPreferredCountry } from '../settings';
 import { getSpines, parseFallbackParam } from './queries';
 
 // The /spines read model (REV-03, D-11, D-12): per-photo progress, counts
@@ -429,5 +429,12 @@ describe('getSpines bulk lookups and the Fallback filter', () => {
     expect(getSpines().discogs.preferredCountry).toBe('Canada');
     setPreferredCountry('germany');
     expect(getSpines().discogs.preferredCountry).toBe('Germany');
+  });
+
+  it('the response names the fallback country (G-06-side-1)', async () => {
+    await bulkShelf();
+    expect(getSpines().discogs.fallbackCountry).toBe('US');
+    setFallbackCountry('united kingdom');
+    expect(getSpines().discogs.fallbackCountry).toBe('UK');
   });
 });

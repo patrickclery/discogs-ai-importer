@@ -580,20 +580,52 @@ const BODY_TAIL =
 
 describe('dialogBody', () => {
   it('names the Canadian CD pressing with no low-confidence sentence at k = 0', () => {
-    expect(dialogBody('Canada', 0)).toBe(
+    expect(dialogBody('Canada', null, 0)).toBe(
       `Each spine's top match is swapped for its Canadian CD pressing${BODY_TAIL}`,
     );
   });
 
   it('adds the low-confidence sentence at k = 2', () => {
-    expect(dialogBody('Canada', 2)).toBe(
+    expect(dialogBody('Canada', null, 2)).toBe(
       `Each spine's top match is swapped for its Canadian CD pressing${BODY_TAIL} 2 of them have a field Claude wasn't sure of.`,
     );
   });
 
   it('reads CD pressing from the country for an unknown demonym', () => {
-    expect(dialogBody('Hong Kong', 0)).toBe(
+    expect(dialogBody('Hong Kong', null, 0)).toBe(
       `Each spine's top match is swapped for its CD pressing from Hong Kong${BODY_TAIL}`,
+    );
+  });
+});
+
+const FALLBACK_TAIL =
+  ' If Discogs lists neither, the top match is added as is and the card says so. Spines already imported from another spine are skipped. Large imports take a while, because Discogs allows about one request per second.';
+
+describe('dialogBody with a fallback country (G-06-side-1)', () => {
+  it('names the US CD pressing as the second choice', () => {
+    expect(dialogBody('Canada', 'US', 0)).toBe(
+      "Each spine's top match is swapped for its Canadian CD pressing when Discogs lists one, or else for its US CD pressing. If Discogs lists neither, the top match is added as is and the card says so. Spines already imported from another spine are skipped. Large imports take a while, because Discogs allows about one request per second.",
+    );
+  });
+
+  it('reads CD pressing from the fallback country without a demonym', () => {
+    expect(dialogBody('Canada', 'Hong Kong', 0)).toBe(
+      `Each spine's top match is swapped for its Canadian CD pressing when Discogs lists one, or else for its CD pressing from Hong Kong.${FALLBACK_TAIL}`,
+    );
+  });
+
+  it('a fallback equal to the preferred country keeps the one-country body', () => {
+    expect(dialogBody('Canada', 'canada', 0)).toBe(
+      dialogBody('Canada', null, 0),
+    );
+    expect(dialogBody('Canada', null, 0)).toBe(
+      `Each spine's top match is swapped for its Canadian CD pressing${BODY_TAIL}`,
+    );
+  });
+
+  it('keeps the low-confidence sentence', () => {
+    expect(dialogBody('Canada', 'US', 3)).toBe(
+      `${dialogBody('Canada', 'US', 0)} 3 of them have a field Claude wasn't sure of.`,
     );
   });
 });
