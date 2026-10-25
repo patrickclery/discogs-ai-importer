@@ -5,12 +5,13 @@ import { getDiscogsAuth } from '@/server/discogs/auth';
 import { discogsReady } from '@/server/discogs/enqueue';
 import { retrySpine } from '@/server/imports/store';
 
-// Retry one spine (REV-04, D-13): a failed import goes back in line on the
-// same row, which reconciles before any POST (D-07); otherwise a failed
-// search runs again with the current fields. Never a re-upload or re-scan,
-// never a second job (the import dedupe key, T-04-18). T-04-16: JSON only
-// (forces a CORS preflight) with an empty strict body; the proxy adds the
-// same-origin check.
+// Retry one spine (REV-04, D-13): a failed pressing lookup of the spine's
+// current bulk item runs again (BULK-11); else a failed import goes back in
+// line on the same row, which reconciles before any POST (D-07); otherwise a
+// failed search runs again with the current fields. Never a re-upload or
+// re-scan, never a second job (the import and pressing dedupe keys,
+// T-04-18). T-04-16: JSON only (forces a CORS preflight) with an empty
+// strict body; the proxy adds the same-origin check.
 
 const Body = z.strictObject({});
 
@@ -69,7 +70,9 @@ export async function POST(
       return Response.json(
         result.kind === 'import'
           ? { kind: 'import', importId: result.importId }
-          : { kind: 'search', searchId: result.searchId },
+          : result.kind === 'lookup'
+            ? { kind: 'lookup', itemId: result.itemId }
+            : { kind: 'search', searchId: result.searchId },
         { status: 201 },
       );
   }

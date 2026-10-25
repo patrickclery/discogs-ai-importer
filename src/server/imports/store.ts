@@ -1,5 +1,6 @@
 import 'server-only';
 import type Database from 'better-sqlite3';
+import { bulkItemPhaseOf, isCurrentBulkItem } from '@/lib/bulk-eligibility';
 import type { CandidateFormat } from '@/lib/discogs-types';
 import {
   canChangeMatchOf,
@@ -9,6 +10,7 @@ import {
   type ImportStatus,
   importPhaseOf,
 } from '@/lib/import-types';
+import { latestBulkItemFor, retryBulkItem } from '../bulk/store';
 import { enqueueExplicitSearch } from '../discogs/enqueue';
 import { getCollectionFolderId } from '../discogs/folders';
 import { discogsForSpines } from '../discogs/queries';
@@ -474,6 +476,7 @@ export function cancelImport(
 export type RetrySpineResult =
   | { status: 'ok'; kind: 'import'; importId: string; jobId: string }
   | { status: 'ok'; kind: 'search'; searchId: string }
+  | { status: 'ok'; kind: 'lookup'; itemId: string; jobId: string }
   | { status: 'nothing_to_retry' }
   | { status: 'busy' }
   | { status: 'not_found' };
@@ -505,7 +508,12 @@ export function retryImport(
 
 /**
  * Per-spine Retry (REV-04, D-13), never re-uploading or re-scanning the
- * photo. The latest import wins (adjacency: import first):
+ * photo. The spine's current bulk item comes first (BULK-11,
+ * isCurrentBulkItem: no import came after it, or the latest import is its
+ * own): a failed lookup (bulkItemPhaseOf, so a queued item whose job died
+ * counts) -> retryBulkItem, which re-runs the lookup and then the import
+ * under the same pressing:{itemId} job key; a lookup still finding -> busy.
+ * Otherwise the latest import wins (adjacency: import first):
  * - failed (importPhaseOf, so a pending or importing row whose job failed,
  *   was cancelled or is missing counts) -> retryImport;
  * - waiting (its job still queued) -> the same job again, so a second
@@ -535,6 +543,24 @@ export function retrySpine(
     // not retried either: the owner unmarks it first.
     if (spine.not_on_discogs === 1) return { status: 'nothing_to_retry' };
     const row = latestImport(db, spineId);
+    const item = latestBulkItemFor(db, spineId);
+    if (
+      item &&
+      isCurrentBulkItem(
+        { id: item.id, importId: item.import_id, createdAt: item.created_at },
+        row ? { id: row.id, createdAt: row.created_at } : null,
+      )
+    ) {
+      const phase = bulkItemPhaseOf({
+        status: item.status,
+        jobStatus: item.job_status,
+      });
+      if (phase === 'failed') {
+        const job = retryBulkItem(db, item.id);
+        return { status: 'ok', kind: 'lookup', itemId: item.id, jobId: job.id };
+      }
+      if (phase === 'finding') return { status: 'busy' };
+    }
     if (row) {
       switch (phaseOf(row)) {
         case 'failed': {

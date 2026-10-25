@@ -8,7 +8,7 @@ import type {
 } from '@/lib/bulk-types';
 import { capCodePoints } from '../discogs/inputs';
 import { newId } from '../ids';
-import { enqueue } from '../jobs/queue';
+import { enqueue, releaseDedupeKey } from '../jobs/queue';
 
 // Bulk runs and their items (D-08, D-09, D-14). startBulkRun writes one run
 // and one queued item per pick, each with its own resolve_pressing job on
@@ -263,18 +263,63 @@ export function recordBulkItemError(
 
 export type LatestBulkItem = BulkItemDbRow & { job_status: string | null };
 
-/** The spine's newest bulk item with its job's status (RED stub). */
+/** The spine's newest bulk item with its job's status (null when none). */
 export function latestBulkItemFor(
-  _db: Database.Database,
-  _spineId: string,
+  db: Database.Database,
+  spineId: string,
 ): LatestBulkItem | undefined {
-  return undefined;
+  return db
+    .prepare(
+      `SELECT b.*, j.status AS job_status FROM bulk_items b
+       LEFT JOIN jobs j ON j.id = b.job_id
+       WHERE b.spine_id = @spineId
+       ORDER BY b.created_at DESC, b.id DESC
+       LIMIT 1`,
+    )
+    .get({ spineId }) as LatestBulkItem | undefined;
 }
 
-/** Re-runs a failed lookup (RED stub). */
+/**
+ * Retry import on a failed lookup (BULK-11): the item goes back to queued
+ * with its error cleared, under the job holding pressing:{itemId}. A queued
+ * or running holder is reused; a finished one gives up its key first, so a
+ * retry is never a silent no-op and never a second job (the enqueueImport
+ * pattern). The run keeps its country, so the retry looks up the country
+ * the owner started with. Call inside an IMMEDIATE transaction; on its own
+ * it opens one (nested, it becomes a savepoint).
+ */
 export function retryBulkItem(
-  _db: Database.Database,
-  _itemId: string,
+  db: Database.Database,
+  itemId: string,
 ): { id: string; created: boolean } {
-  return { id: '', created: false };
+  const tx = db.transaction(() => {
+    const dedupeKey = `pressing:${itemId}`;
+    const holder = db
+      .prepare('SELECT id, status FROM jobs WHERE dedupe_key = @dedupeKey')
+      .get({ dedupeKey }) as { id: string; status: string } | undefined;
+    let job: { id: string; created: boolean };
+    if (holder && (holder.status === 'queued' || holder.status === 'running')) {
+      job = { id: holder.id, created: false };
+    } else {
+      if (holder) releaseDedupeKey(holder.id);
+      job = enqueue({
+        lane: 'discogs',
+        type: RESOLVE_PRESSING_JOB_TYPE,
+        payload: { itemId },
+        dedupeKey,
+      });
+    }
+    const info = db
+      .prepare(
+        `UPDATE bulk_items SET status = 'queued', error_kind = NULL,
+           error = NULL, job_id = @jobId, updated_at = @now
+         WHERE id = @itemId`,
+      )
+      .run({ jobId: job.id, now: Date.now(), itemId });
+    if (info.changes !== 1) {
+      throw new Error(`retryBulkItem: item ${itemId} not found`);
+    }
+    return job;
+  });
+  return tx.immediate();
 }
