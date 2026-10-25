@@ -16,6 +16,8 @@ import {
   getCollectionFolderId,
 } from '@/server/discogs/folders';
 import {
+  FALLBACK_COUNTRY_KEY,
+  getFallbackCountry,
   getPreferredCountry,
   getSetting,
   PREFERRED_COUNTRY_KEY,
@@ -25,6 +27,7 @@ import {
   clearSecretAction,
   saveCollectionFolder,
   saveDiscogsCredentials,
+  saveFallbackCountry,
   savePreferredCountry,
 } from './actions';
 
@@ -396,5 +399,69 @@ describe('savePreferredCountry', () => {
       formError: 'a country name is at most 40 characters',
     });
     expect(stored()).toBeNull();
+  });
+});
+
+// saveFallbackCountry (G-06-side-1, T-06-28): the same answers as
+// savePreferredCountry, under its own key.
+describe('saveFallbackCountry', () => {
+  useTempDataDir();
+  const stored = () => getSetting(FALLBACK_COUNTRY_KEY, z.unknown());
+
+  function failWrites(message: string): void {
+    getDb().$client.exec(
+      `CREATE TRIGGER fail_fallback BEFORE INSERT ON settings
+       WHEN NEW.key = 'fallback_country'
+       BEGIN SELECT RAISE(ABORT, '${message}'); END`,
+    );
+  }
+
+  beforeEach(() => {
+    vi.mocked(revalidatePath).mockClear();
+  });
+
+  it("saves 'uk' as UK, answers it and revalidates /settings", async () => {
+    expect(await saveFallbackCountry('uk')).toEqual({
+      ok: true,
+      country: 'UK',
+    });
+    expect(stored()).toBe('UK');
+    expect(getFallbackCountry()).toBe('UK');
+    expect(getPreferredCountry()).toBe('Canada');
+    expect(revalidatePath).toHaveBeenCalledWith('/settings');
+  });
+
+  it('a blank value answers enter a country and stores nothing', async () => {
+    expect(await saveFallbackCountry('   ')).toEqual({
+      ok: false,
+      formError: 'enter a country',
+    });
+    expect(stored()).toBeNull();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('a 41-character value answers a reason and stores nothing', async () => {
+    expect(await saveFallbackCountry('x'.repeat(41))).toEqual({
+      ok: false,
+      formError: 'a country name is at most 40 characters',
+    });
+    expect(stored()).toBeNull();
+  });
+
+  it('a storage failure answers the reason without its trailing period', async () => {
+    failWrites('the disk is full.');
+    expect(await saveFallbackCountry('Japan')).toEqual({
+      ok: false,
+      formError: 'the disk is full',
+    });
+    expect(stored()).toBeNull();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('cuts a long failure reason to 160 characters', async () => {
+    failWrites('x'.repeat(300));
+    const res = await saveFallbackCountry('Japan');
+    expect(res.ok).toBe(false);
+    expect((res as { formError: string }).formError).toBe('x'.repeat(160));
   });
 });

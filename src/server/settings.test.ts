@@ -8,14 +8,17 @@ import { revalidatePath } from 'next/cache';
 import { saveVisionModel } from '@/app/settings/actions';
 import { closeDb, getDb } from './db/client';
 import {
+  DEFAULT_FALLBACK_COUNTRY,
   DEFAULT_PREFERRED_COUNTRY,
   DEFAULT_VISION_MODEL,
   getConfidenceThreshold,
   getDensityThresholds,
+  getFallbackCountry,
   getPreferredCountry,
   getSetting,
   getVisionEffort,
   getVisionModel,
+  setFallbackCountry,
   setPreferredCountry,
   setSetting,
   setVisionEffort,
@@ -178,5 +181,44 @@ describe('preferred country', () => {
     expect(getPreferredCountry()).toBe('Canada');
     setSetting('preferred_country', 7);
     expect(getPreferredCountry()).toBe('Canada');
+  });
+});
+
+// Fallback country (G-06-side-1): the second tier bulk import tries, stored
+// under its own key in Discogs' spelling, like the preferred country.
+describe('fallback country', () => {
+  useTempDataDir();
+
+  it('getFallbackCountry with no stored row returns US', () => {
+    expect(DEFAULT_FALLBACK_COUNTRY).toBe('US');
+    expect(getFallbackCountry()).toBe('US');
+  });
+
+  it("setFallbackCountry('usa') stores and returns US", () => {
+    expect(setFallbackCountry('usa')).toBe('US');
+    expect(rawRow('fallback_country')?.value).toBe('"US"');
+    expect(getFallbackCountry()).toBe('US');
+  });
+
+  it("canonicalizes 'united kingdom' and trims an unknown country", () => {
+    expect(setFallbackCountry('united kingdom')).toBe('UK');
+    expect(getFallbackCountry()).toBe('UK');
+    expect(setFallbackCountry('  Hong Kong ')).toBe('Hong Kong');
+    expect(getFallbackCountry()).toBe('Hong Kong');
+  });
+
+  it('an empty or 41-character value throws and stores nothing', () => {
+    expect(() => setFallbackCountry('')).toThrow();
+    expect(() => setFallbackCountry('   ')).toThrow();
+    expect(() => setFallbackCountry('x'.repeat(41))).toThrow();
+    expect(rawRow('fallback_country')).toBeUndefined();
+  });
+
+  it('is independent of the preferred country', () => {
+    setFallbackCountry('Germany');
+    expect(getPreferredCountry()).toBe('Canada');
+    expect(rawRow('preferred_country')).toBeUndefined();
+    setPreferredCountry('Japan');
+    expect(getFallbackCountry()).toBe('Germany');
   });
 });

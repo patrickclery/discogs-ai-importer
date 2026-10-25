@@ -14,6 +14,7 @@ import {
   clearSecretAction,
   saveCollectionFolder,
   saveDiscogsCredentials,
+  saveFallbackCountry,
   savePreferredCountry,
   saveVisionModel,
   testClaudeAction,
@@ -57,6 +58,7 @@ describe('demo settings actions', () => {
       'clearSecretAction',
       'saveCollectionFolder',
       'saveDiscogsCredentials',
+      'saveFallbackCountry',
       'savePreferredCountry',
       'saveVisionModel',
       'testClaudeAction',
@@ -129,6 +131,29 @@ describe('demo settings actions', () => {
       formError: 'a country name is at most 40 characters',
     });
     expect(getState().account.preferredCountry).toBe('Hong Kong');
+  });
+
+  it('saves the fallback country in Discogs spelling and leaves the preferred one', async () => {
+    expect(getState().account.fallbackCountry).toBe('US');
+    const fn = vi.fn();
+    const off = subscribe(fn);
+    expect(await settle(saveFallbackCountry('united kingdom'))).toEqual({
+      ok: true,
+      country: 'UK',
+    });
+    off();
+    expect(fn).toHaveBeenCalled();
+    expect(getState().account.fallbackCountry).toBe('UK');
+    expect(getState().account.preferredCountry).toBe('Canada');
+    expect(await settle(saveFallbackCountry('   '))).toEqual({
+      ok: false,
+      formError: 'enter a country',
+    });
+    expect(await settle(saveFallbackCountry('x'.repeat(41)))).toEqual({
+      ok: false,
+      formError: 'a country name is at most 40 characters',
+    });
+    expect(getState().account.fallbackCountry).toBe('UK');
   });
 
   it('keeps only a masked tail of a saved credential and disconnects', async () => {
