@@ -170,8 +170,22 @@ export async function saveCollectionFolder(
 export async function savePreferredCountry(
   country: string,
 ): Promise<{ ok: true; country: string } | { ok: false; formError: string }> {
-  void setPreferredCountry;
-  return { ok: false, formError: `not implemented: ${country}` };
+  const trimmed = country.trim();
+  if (trimmed.length === 0) return { ok: false, formError: 'enter a country' };
+  if (trimmed.length > 40) {
+    return { ok: false, formError: 'a country name is at most 40 characters' };
+  }
+  let stored: string;
+  try {
+    stored = setPreferredCountry(country);
+  } catch (err) {
+    const reason = (err instanceof Error ? err.message : String(err))
+      .replace(/\.\s*$/, '')
+      .slice(0, 160);
+    return { ok: false, formError: reason };
+  }
+  revalidatePath('/settings');
+  return { ok: true, country: stored };
 }
 
 /** One headless Claude call with the stored vision model (D-10, D-18). */

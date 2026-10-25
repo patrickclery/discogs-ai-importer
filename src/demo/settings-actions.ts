@@ -5,6 +5,7 @@
 // A typed credential is reduced to the real mask() tail at once: the full
 // value is never stored, returned or logged (T-05-23).
 import { type TestResult, VISION_MODELS } from '@/lib/claude-types';
+import { canonicalCountry } from '@/lib/pressing';
 import type { SecretKey } from '@/server/secrets';
 import { emit, getState } from './store';
 
@@ -35,6 +36,9 @@ const VALUE_ERROR =
   "Paste the full value. It can't be empty or contain spaces.";
 const NOTHING_TO_SAVE = 'Nothing to save. Paste a value first.';
 const FOLDER_ERROR = 'that folder is not in your Discogs folder list';
+/** PreferredCountrySchema's max in src/server/settings.ts. */
+const COUNTRY_MAX = 40;
+const COUNTRY_TOO_LONG = 'a country name is at most 40 characters';
 
 /** A save or clear round trip. */
 const SETTINGS_DELAY_MS = 250;
@@ -138,7 +142,14 @@ export async function savePreferredCountry(
   country: string,
 ): Promise<{ ok: true; country: string } | { ok: false; formError: string }> {
   await delay(SETTINGS_DELAY_MS);
-  return { ok: false, formError: `not implemented: ${country}` };
+  const trimmed = country.trim();
+  if (trimmed.length === 0) return { ok: false, formError: 'enter a country' };
+  if (trimmed.length > COUNTRY_MAX)
+    return { ok: false, formError: COUNTRY_TOO_LONG };
+  const stored = canonicalCountry(trimmed) ?? trimmed;
+  getState().account.preferredCountry = stored;
+  emit();
+  return { ok: true, country: stored };
 }
 
 /** The real success answer for the stored model (D-12: CLI always ready). */

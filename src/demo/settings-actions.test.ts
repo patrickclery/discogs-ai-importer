@@ -124,9 +124,10 @@ describe('demo settings actions', () => {
       ok: false,
       formError: 'enter a country',
     });
-    expect((await settle(savePreferredCountry('x'.repeat(41)))).ok).toBe(
-      false,
-    );
+    expect(await settle(savePreferredCountry('x'.repeat(41)))).toEqual({
+      ok: false,
+      formError: 'a country name is at most 40 characters',
+    });
     expect(getState().account.preferredCountry).toBe('Hong Kong');
   });
 

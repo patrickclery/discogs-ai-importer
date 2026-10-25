@@ -1,8 +1,8 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { canonicalCountry } from '@/lib/pressing';
 import type { VisionModelId } from '@/lib/claude-types';
+import { canonicalCountry } from '@/lib/pressing';
 import {
   DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_DENSITY_MAX_SPINES,
@@ -125,11 +125,19 @@ export const DEFAULT_PREFERRED_COUNTRY = 'Canada';
 export const PreferredCountrySchema = z.string().trim().min(1).max(40);
 
 export function getPreferredCountry(): string {
-  return '';
+  return (
+    getSetting(PREFERRED_COUNTRY_KEY, PreferredCountrySchema) ??
+    DEFAULT_PREFERRED_COUNTRY
+  );
 }
 
-/** Throws on an empty value or one over 40 characters; nothing is stored. */
+/**
+ * Stores and returns Discogs' spelling of the country ("canada" -> "Canada").
+ * Throws on an empty value or one over 40 characters; nothing is stored.
+ */
 export function setPreferredCountry(input: string): string {
-  void canonicalCountry;
-  return input;
+  const parsed = PreferredCountrySchema.parse(input);
+  const stored = canonicalCountry(parsed) ?? parsed;
+  setSetting(PREFERRED_COUNTRY_KEY, stored);
+  return stored;
 }

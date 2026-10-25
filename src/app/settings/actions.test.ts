@@ -8,13 +8,13 @@ import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 import { revalidatePath } from 'next/cache';
+import { getDb } from '@/server/db/client';
 import { getDiscogsAuth, saveDiscogsAuth } from '@/server/discogs/auth';
 import {
   COLLECTION_FOLDER_KEY,
   FOLDERS_CACHE_KEY,
   getCollectionFolderId,
 } from '@/server/discogs/folders';
-import { getDb } from '@/server/db/client';
 import {
   getPreferredCountry,
   getSetting,
@@ -391,11 +391,10 @@ describe('savePreferredCountry', () => {
   });
 
   it('a 41-character value answers a reason and stores nothing', async () => {
-    const res = await savePreferredCountry('x'.repeat(41));
-    expect(res.ok).toBe(false);
-    const formError = (res as { formError: string }).formError;
-    expect(formError.length).toBeGreaterThan(0);
-    expect(formError.length).toBeLessThanOrEqual(160);
+    expect(await savePreferredCountry('x'.repeat(41))).toEqual({
+      ok: false,
+      formError: 'a country name is at most 40 characters',
+    });
     expect(stored()).toBeNull();
   });
 });
