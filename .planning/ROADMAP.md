@@ -91,9 +91,29 @@ Plans:
 ### Phase 6: Bulk Canada auto-import with compact review cards
 
 **Goal:** After photographing a shelf, the user can import every disc in bulk as the Canadian pressing of its top match without verifying hundreds one by one. The review list gets a compact card layout (spine crop with the top match directly below it; edit fields hidden until the card is expanded) so many cards fit on one screen, plus multi-select and a bulk action that resolves each selected spine's top match to its Canada release (falling back visibly when none exists) and adds them to the Discogs collection through the existing rate-limited queue.
-**Requirements**: TBD
+**Requirements**: BULK-01..BULK-12 (proposed in 06-RESEARCH.md from the 06-CONTEXT.md decisions)
 **Depends on:** Phase 5
-**Plans:** 0 plans
+**Plans:** 10 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 6 to break down)
+**Wave 1**
+- [ ] 06-01-PLAN.md — Pressing choice core: versions parsing, choosePressing (D-01..D-04, D-18, D-19, D-21), bulk contracts, eligibility (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 06-02-PLAN.md — Tracer: bulk tables + migration 0004, startBulkRun, resolve_pressing job through createImport (wave 2)
+- [ ] 06-03-PLAN.md — Preferred country setting, Settings field and demo twin (D-14) (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 06-04-PLAN.md — /spines read model: per-spine eligibility and lookup, run summary, Fallback filter, lookup-aware status (wave 3)
+- [ ] 06-05-PLAN.md — Lookup failure, Retry, interrupted-lookup recovery, header count (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 06-06-PLAN.md — POST /api/spines/bulk-import and the demo bulk twin with canned pressings (wave 4)
+- [ ] 06-07-PLAN.md — Compact cards, responsive grid, Edit spine expand, Compact/Detailed toggle (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 06-08-PLAN.md — Bulk states on cards: Finding pressing, country badge, fallback, skipped, lookup failure (wave 5)
+- [ ] 06-10-PLAN.md — Live-stack proof against the fake Discogs: pacing, one run at a time, crash mid-run (wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 06-09-PLAN.md — Selection, bulk bar, confirm dialog, toasts, Fallback filter, demo export check (wave 6)
