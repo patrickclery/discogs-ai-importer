@@ -16,6 +16,7 @@ import {
 } from '@/lib/import-types';
 import {
   buildSpinesResponse,
+  bulkFindingFor,
   candidateListedAt,
   demoAssetUrl,
   discogsOf,
@@ -156,7 +157,10 @@ function dropImport(state: DemoState, imp: DemoImport, now: number): void {
 // ---------------------------------------------------------------------------
 // Add (createImport) and the local duplicate check (duplicateOf).
 
-export type DuplicateOf = Omit<DuplicateBody, 'error' | 'message'>;
+/** The holder as the dialog shows it, plus its spine id (a bulk item records it, D-09). */
+export type DuplicateOf = Omit<DuplicateBody, 'error' | 'message'> & {
+  spineId: string;
+};
 
 export type CreateImportResult =
   | { status: 'ok'; importId: string }
@@ -205,6 +209,7 @@ function duplicateOf(
     const photo = state.photos.find((p) => p.id === spine.photoId);
     if (!photo) continue;
     return {
+      spineId: spine.id,
       photo: photo.filename,
       spineNumber: spine.index + 1,
       cropUrl: demoAssetUrl(spine.crop?.file ?? null),
@@ -225,6 +230,10 @@ export function startImport(
   if (spine.notOnDiscogs) return { status: 'not_on_discogs' };
   const rows = importsOf(state, spine.id, now);
   if (rows.some((i) => importRowAt(i, now).status !== 'failed')) {
+    return { status: 'already_confirmed' };
+  }
+  // A bulk item still finding its pressing has its import scheduled (D-17).
+  if (bulkFindingFor(state, spine.id, now)) {
     return { status: 'already_confirmed' };
   }
   // D-07: a failed add whose intent was written may have reached Discogs.
@@ -379,6 +388,8 @@ export function retrySpine(
   if (!isListed(spine) || spine.notOnDiscogs) {
     return { status: 'nothing_to_retry' };
   }
+  // A lookup still finding its pressing comes first (retrySpine, BULK-11).
+  if (bulkFindingFor(state, spine.id, now)) return { status: 'busy' };
   const row = latestImport(state, spine.id, now);
   if (row) {
     switch (phaseAt(row, now)) {

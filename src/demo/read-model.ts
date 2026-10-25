@@ -42,6 +42,7 @@ import {
   SPINE_FIELDS,
 } from '@/lib/vision-contract';
 import type {
+  DemoBulkItem,
   DemoCandidate,
   DemoImport,
   DemoPhoto,
@@ -437,6 +438,32 @@ export function importOf(
     canRetry: canRetryOf(phase),
     checking: false,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Bulk items (D-17): queued until lookupAt, running until readyAt, then the
+// status decided when the run started.
+
+/** A demo bulk item's phase at `now`: finding until its readyAt. */
+export function bulkItemPhaseAt(
+  item: DemoBulkItem,
+  now: number,
+): 'finding' | DemoBulkItem['status'] {
+  return now < item.readyAt ? 'finding' : item.status;
+}
+
+/** The spine has a bulk item whose pressing is still being found. */
+export function bulkFindingFor(
+  state: DemoState,
+  spineId: string,
+  now: number,
+): boolean {
+  return state.bulkItems.some(
+    (i) =>
+      i.spineId === spineId &&
+      i.createdAt <= now &&
+      bulkItemPhaseAt(i, now) === 'finding',
+  );
 }
 
 function toSpineDto(state: DemoState, s: DemoSpine, now: number): SpineDto {

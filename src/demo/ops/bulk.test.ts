@@ -12,7 +12,7 @@ import {
   bulkItemPhaseAt,
   startBulk,
 } from './bulk';
-import { startImport } from './imports';
+import { retrySpine, startImport } from './imports';
 
 // D-17, D-20, T-06-25: a demo bulk import runs in memory from canned pressing
 // outcomes, with every outcome the real job produces, and its state comes
@@ -232,6 +232,13 @@ describe('startBulk', () => {
     startBulk(getState(), runPicks(), T0);
     expect(startImport(getState(), top, T0 + 100)).toEqual({
       status: 'already_confirmed',
+    });
+  });
+
+  it('Retry on a spine whose pressing is being found answers busy', () => {
+    startBulk(getState(), runPicks(), T0);
+    expect(retrySpine(getState(), id('42'), T0 + 100)).toEqual({
+      status: 'busy',
     });
   });
 
