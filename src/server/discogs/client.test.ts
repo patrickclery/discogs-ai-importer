@@ -367,6 +367,8 @@ describe('discogsFetch', () => {
         path: '/users/owner/collection/folders/1/releases/1',
       },
       { method: 'PATCH', path: '/users/owner' },
+      // D-01: the versions lookup is a GET-only allowlist entry.
+      { method: 'POST', path: '/masters/13814/versions' },
     ]) {
       it(`${req.method} ${req.path} throws before fetch is called`, async () => {
         const { result, fetchImpl } = await run({ ...req, auth: 'oauth' }, () =>
@@ -608,6 +610,7 @@ describe('discogsFetch', () => {
     for (const p of [
       '/users/fake-owner/collection/folders',
       '/users/fake-owner/collection/releases/1011',
+      '/masters/13814/versions',
     ]) {
       it(`GET ${p} is allowed`, async () => {
         const { result, calls } = await run({ path: p, auth: 'oauth' }, () =>

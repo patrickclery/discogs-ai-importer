@@ -1,0 +1,178 @@
+{
+  "_note": "Recorded 2026-10-24 from GET /masters/13814/versions?country=Canada&format=CD&per_page=100&page=1&sort=released&sort_order=asc, trimmed to 6 of 17 entries. The live answer had no Box Set and no Unofficial Release entry, so two real entries were edited: 3326731 major_formats set to [\"Box Set\"], and 1112994 format set to \"Album, Unofficial Release\" with released \"1991\".",
+  "pagination": {
+    "page": 1,
+    "pages": 1,
+    "per_page": 100,
+    "items": 6,
+    "urls": {}
+  },
+  "filters": {
+    "applied": {
+      "country": [
+        "Canada"
+      ],
+      "format": [
+        "CD"
+      ]
+    },
+    "available": {
+      "label": {
+        "Dgc": 15,
+        "The David Geffen Company": 13,
+        "Cinram": 12,
+        "Sound City Studios": 11,
+        "Sub Pop": 11,
+        "Mca Records Canada": 9,
+        "The Mastering Lab": 7,
+        "Columbia House": 5,
+        "The End Of Music": 5,
+        "Virgin Songs, Inc.": 5,
+        "Geffen Records": 3,
+        "Masterdisk": 3,
+        "Scream Studios": 3,
+        "Universal Music Canada Inc.": 2,
+        "Bmg Direct Ltd.": 1,
+        "Disque Americ": 1,
+        "Sony Music, Pitman": 1,
+        "Ume": 1,
+        "Universal Music": 1,
+        "Universal Music Canada": 1
+      },
+      "released": {
+        "1991": 2,
+        "1993": 1,
+        "1994": 1,
+        "2011": 3
+      }
+    }
+  },
+  "versions": [
+    {
+      "id": 12009956,
+      "label": "DGC",
+      "country": "Canada",
+      "title": "Nevermind",
+      "major_formats": [
+        "CD"
+      ],
+      "format": "Album",
+      "catno": "DGCD-24425",
+      "released": "1991",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/12009956",
+      "thumb": "https://i.discogs.com/pP51JHbYD8ICF8u47FKTVYSDilZkR2GhUqwTjBvq9qs/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTEyMDA5/OTU2LTE1MzIwOTI5/NTQtNDkwNi5qcGVn.jpeg",
+      "stats": {
+        "community": {
+          "in_wantlist": 601,
+          "in_collection": 720
+        }
+      }
+    },
+    {
+      "id": 14253977,
+      "label": "DGC",
+      "country": "Canada",
+      "title": "Nevermind",
+      "major_formats": [
+        "CD"
+      ],
+      "format": "Album, Reissue",
+      "catno": "DGCD-24425",
+      "released": "1991",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/14253977",
+      "thumb": "https://i.discogs.com/ROsD5vl5TIv0O5y4bVkb4Xf1Zl4pYV4-fp3gdK1KidQ/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTE0MjUz/OTc3LTE3MDU1Mzkx/MDYtMjYyNC5qcGVn.jpeg",
+      "stats": {
+        "community": {
+          "in_wantlist": 366,
+          "in_collection": 204
+        }
+      }
+    },
+    {
+      "id": 11983345,
+      "label": "DGC",
+      "country": "Canada",
+      "title": "Nevermind",
+      "major_formats": [
+        "CD"
+      ],
+      "format": "Album, Reissue",
+      "catno": "DGCD-24425",
+      "released": "0",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/11983345",
+      "thumb": "https://i.discogs.com/i3uF1hUT0gexa-qc9OLamrR2mt1gHfLiSsSkcIkLJ1M/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTExOTgz/MzQ1LTE1MjU5Nzk5/NTgtMTczNy5qcGVn.jpeg",
+      "stats": {
+        "community": {
+          "in_wantlist": 558,
+          "in_collection": 215
+        }
+      }
+    },
+    {
+      "id": 5571756,
+      "label": "Geffen Records",
+      "country": "Canada",
+      "title": "Nevermind",
+      "major_formats": [
+        "CD"
+      ],
+      "format": "Album, Reissue, Remastered",
+      "catno": "B001588702",
+      "released": "2011",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/5571756",
+      "thumb": "https://i.discogs.com/ZBIchcH_ua0BUvRrr3FPcUNbRkGfkBBBFCy7sTmuSVk/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTU1NzE3/NTYtMTM5Njg4MTIw/Mi03MDQzLnBuZw.jpeg",
+      "stats": {
+        "community": {
+          "in_wantlist": 766,
+          "in_collection": 368
+        }
+      }
+    },
+    {
+      "id": 3326731,
+      "label": "DGC",
+      "country": "Canada",
+      "title": "Nevermind",
+      "major_formats": [
+        "Box Set"
+      ],
+      "format": "Album, Deluxe Edition, Reissue, Remastered",
+      "catno": "B001588302",
+      "released": "2011",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/3326731",
+      "thumb": "https://i.discogs.com/u-G2eYzdXy0ewzbchTTQgv-WTDfGVQK-Z--9SyagT1M/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTMzMjY3/MzEtMTY0ODc0ODA3/MS05MjExLmpwZWc.jpeg",
+      "stats": {
+        "community": {
+          "in_wantlist": 817,
+          "in_collection": 518
+        }
+      }
+    },
+    {
+      "id": 1112994,
+      "label": "DGC",
+      "country": "Canada",
+      "title": "Nevermind",
+      "major_formats": [
+        "CD"
+      ],
+      "format": "Album, Unofficial Release",
+      "catno": "DGCD-24425",
+      "released": "1991",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/1112994",
+      "thumb": "https://i.discogs.com/Vv3tgseG2dPZeqbnCiEaYze2vc4MAmVcrNOkEBNc4_s/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTExMTI5/OTQtMTIwMzIyMDE3/NC5qcGVn.jpeg",
+      "stats": {
+        "community": {
+          "in_wantlist": 803,
+          "in_collection": 994
+        }
+      }
+    }
+  ]
+}

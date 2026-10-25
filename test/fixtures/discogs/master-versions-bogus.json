@@ -1,0 +1,46 @@
+{
+  "_note": "Hand-written. An unknown or merged master answers 200 with versions from the whole database (RESEARCH: /masters/999999999/versions returned 8,135,288 items). Three unrelated Canadian CD titles stand in for that answer.",
+  "pagination": { "page": 1, "pages": 81353, "per_page": 100, "items": 8135288, "urls": {} },
+  "filters": { "applied": { "country": ["Canada"], "format": ["CD"] }, "available": {} },
+  "versions": [
+    {
+      "id": 9100001,
+      "label": "Fake Maple Records",
+      "country": "Canada",
+      "title": "Northern Lights Collection",
+      "major_formats": ["CD"],
+      "format": "Compilation",
+      "catno": "FMR-001",
+      "released": "1988",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/9100001",
+      "thumb": ""
+    },
+    {
+      "id": 9100002,
+      "label": "Fake Prairie Sound",
+      "country": "Canada",
+      "title": "Hockey Night Anthems",
+      "major_formats": ["CD"],
+      "format": "Album",
+      "catno": "FPS-77",
+      "released": "1995",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/9100002",
+      "thumb": ""
+    },
+    {
+      "id": 9100003,
+      "label": "Fake Harbour Music",
+      "country": "Canada",
+      "title": "Lighthouse Lullabies",
+      "major_formats": ["CD"],
+      "format": "Album, Reissue",
+      "catno": "FHM-3",
+      "released": "0",
+      "status": "Accepted",
+      "resource_url": "https://api.discogs.com/releases/9100003",
+      "thumb": ""
+    }
+  ]
+}
