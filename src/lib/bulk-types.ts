@@ -11,9 +11,12 @@ import { z } from 'zod';
  * or the top match itself when it is already from there (G-06-side-1).
  * fallback_no_version: the master
  * lists no version in the country. fallback_no_master: the top match has no
- * master. fallback_unusable_master: the versions answer was implausible or
- * its pick did not match the top match's title. retried_earlier: the item
- * reuses the release an earlier attempt chose.
+ * master. fallback_unusable_master: the preferred-country versions answer
+ * was implausible or its pick did not match the top match's title, so no
+ * fallback-country request was sent. fallback_country_unusable: the same,
+ * but for the fallback-country answer, so both countries were tried
+ * (WR-01). retried_earlier: the item reuses the release an earlier attempt
+ * chose.
  */
 export const PRESSING_OUTCOMES = [
   'preferred',
@@ -21,6 +24,7 @@ export const PRESSING_OUTCOMES = [
   'fallback_no_version',
   'fallback_no_master',
   'fallback_unusable_master',
+  'fallback_country_unusable',
   'retried_earlier',
 ] as const;
 export type PressingOutcome = (typeof PRESSING_OUTCOMES)[number];

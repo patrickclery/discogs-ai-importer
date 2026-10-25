@@ -454,14 +454,28 @@ describe('choosePressing fallback tier rules (G-06-side-1)', () => {
         us({ id: 4, title: 'Bleach', released: '1989' }),
         us({ id: 9, released: '1995' }),
       ]),
-    ).toEqual({ use: 'top', outcome: 'fallback_unusable_master' });
+    ).toEqual({ use: 'top', outcome: 'fallback_country_unusable' });
   });
 
   it('an unusable fallback answer keeps the top match', () => {
     expect(choosePressing({ ...base, fallbackVersions: 'unusable' })).toEqual({
       use: 'top',
+      outcome: 'fallback_country_unusable',
+    });
+  });
+
+  it('WR-01: a preferred-tier unusable answer or title-guard miss stays fallback_unusable_master, and sends no fallback lookup', () => {
+    const guarded = [version({ id: 4, title: 'Bleach' })];
+    expect(choosePressing({ ...base, versions: guarded })).toEqual({
+      use: 'top',
       outcome: 'fallback_unusable_master',
     });
+    expect(needsFallbackLookup({ ...base, versions: guarded })).toBe(false);
+    expect(choosePressing({ ...base, versions: 'unusable' })).toEqual({
+      use: 'top',
+      outcome: 'fallback_unusable_master',
+    });
+    expect(needsFallbackLookup({ ...base, versions: 'unusable' })).toBe(false);
   });
 
   it('no fallback answer, or none from the fallback country: fallback_no_version', () => {

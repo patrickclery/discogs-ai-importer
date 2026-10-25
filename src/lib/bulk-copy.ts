@@ -188,8 +188,9 @@ function soughtPhrase(
  * prefix follows the outcome: the fallback country's pressing (no
  * preferred one), no version in either country the run tried, no usable
  * master, or a retry that reused the release an earlier attempt chose.
- * An unusable master names every country the run looked for (IN-01): the
- * fallback tier's title guard also lands there, after both were tried.
+ * An unusable master names only the preferred country: the job sent no
+ * fallback-country request. An unusable fallback-country answer has its own
+ * outcome and names both countries, because both were tried (WR-01).
  */
 export function fallbackLine(item: BulkItemDto): string {
   const phrase = pressingPhrase(item.preferredCountry, false);
@@ -202,6 +203,8 @@ export function fallbackLine(item: BulkItemDto): string {
     case 'fallback_no_master':
       return `No ${phrase} listed for this release, ${used}`;
     case 'fallback_unusable_master':
+      return `No ${phrase} listed for this release, ${used}`;
+    case 'fallback_country_unusable':
       return `No ${soughtPhrase(item)} listed for this release, ${used}`;
     case 'retried_earlier':
       return `Retried the earlier import of this spine, ${used}`;

@@ -292,7 +292,9 @@ function chooseFallbackTier(input: PressingInput): PressingChoice {
   });
 
   if (fallbackVersions === undefined) return keep('fallback_no_version');
-  if (fallbackVersions === 'unusable') return keep('fallback_unusable_master');
+  if (fallbackVersions === 'unusable') {
+    return keep('fallback_country_unusable');
+  }
 
   const tier = rankTier(top, second, fallbackVersions);
   switch (tier.kind) {
@@ -301,7 +303,7 @@ function chooseFallbackTier(input: PressingInput): PressingChoice {
     case 'top':
       return { use: 'top', outcome: 'fallback_country' };
     case 'guard':
-      return keep('fallback_unusable_master');
+      return keep('fallback_country_unusable');
     case 'version':
       return {
         use: 'version',

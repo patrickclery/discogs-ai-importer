@@ -358,7 +358,7 @@ describe('fallbackLine', () => {
     ).toBe('No Canadian pressing, used US');
   });
 
-  it('IN-01: an unusable master names both countries the run looked for', () => {
+  it('WR-01: a preferred-tier unusable master names only the preferred country (no fallback lookup was sent)', () => {
     expect(
       fallbackLine(
         item({
@@ -367,11 +367,23 @@ describe('fallbackLine', () => {
           country: 'UK',
         }),
       ),
+    ).toBe('No Canadian pressing listed for this release, used UK');
+  });
+
+  it('WR-01: an unusable fallback-country answer names both countries the run tried', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_country_unusable',
+          fallbackCountry: 'US',
+          country: 'UK',
+        }),
+      ),
     ).toBe('No Canadian or US pressing listed for this release, used UK');
     expect(
       fallbackLine(
         item({
-          outcome: 'fallback_unusable_master',
+          outcome: 'fallback_country_unusable',
           fallbackCountry: 'canada',
           country: 'UK',
         }),

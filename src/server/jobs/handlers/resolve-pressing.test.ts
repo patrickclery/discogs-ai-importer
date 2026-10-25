@@ -1058,6 +1058,29 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     expect(item(r.itemId).outcome).toBe('fallback_unusable_master');
   });
 
+  it('WR-01: a Canadian pick that fails the title guard sends no second request and stays fallback_unusable_master', async () => {
+    const spineId = await fallbackSpine();
+    const bleach = versionsAnswer([
+      {
+        id: 7001,
+        title: 'Bleach',
+        label: 'Sub Pop',
+        country: 'Canada',
+        major_formats: ['CD'],
+        format: 'Album',
+        released: '1989',
+      },
+    ]);
+    const r = await attempt((url) =>
+      url.searchParams.get('country') === 'US'
+        ? { status: 200, body: US_VERSIONS }
+        : { status: 200, body: bleach },
+    );
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId).outcome).toBe('fallback_unusable_master');
+  });
+
   it('no US version in the second answer imports the top match with fallback_no_version', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(byCountry({ status: 200, body: NO_CANADIAN }));
@@ -1071,17 +1094,17 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     });
   });
 
-  it('an implausible second answer imports the top match with fallback_unusable_master', async () => {
+  it('an implausible second answer imports the top match with fallback_country_unusable', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(
       byCountry({ status: 200, body: fixture('master-versions-bogus.json') }),
     );
     expect(countries(r.calls)).toEqual(['Canada', 'US']);
     expect(importedReleases(spineId)).toEqual([5001]);
-    expect(item(r.itemId).outcome).toBe('fallback_unusable_master');
+    expect(item(r.itemId).outcome).toBe('fallback_country_unusable');
   });
 
-  it('a US pick that fails the title guard imports the top match with fallback_unusable_master', async () => {
+  it('a US pick that fails the title guard imports the top match with fallback_country_unusable', async () => {
     const spineId = await fallbackSpine();
     const bleach = versionsAnswer([
       {
@@ -1098,7 +1121,7 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     expect(countries(r.calls)).toEqual(['Canada', 'US']);
     expect(importedReleases(spineId)).toEqual([5001]);
     expect(pressingRows(spineId)).toHaveLength(0);
-    expect(item(r.itemId).outcome).toBe('fallback_unusable_master');
+    expect(item(r.itemId).outcome).toBe('fallback_country_unusable');
   });
 
   it('a 429 on the second request defers to the resume time with no recorded error', async () => {
