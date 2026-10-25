@@ -3,6 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  bulkShelf,
+  seedTopCandidate,
+} from '../../../../../test/helpers/bulk-seed';
+import {
   foreignCandidate,
   orphanScenario,
 } from '../../../../../test/helpers/scan-runs';
@@ -13,6 +17,12 @@ vi.mock('next/server', async (importOriginal) => ({
   connection: async () => {},
 }));
 
+import {
+  failBulkItem,
+  getBulkItem,
+  RESOLVE_PRESSING_JOB_TYPE,
+  startBulkRun,
+} from '@/server/bulk/store';
 import { getDb } from '@/server/db/client';
 import {
   clearAuthInvalid,
@@ -309,5 +319,43 @@ describe('POST /api/spines/retry-failed', () => {
       skipped: 0,
     });
     expect(rows()).toBe(before);
+  });
+
+  it('re-runs a failed pressing lookup (BULK-11): its item is queued again', async () => {
+    const { spineIds } = await bulkShelf();
+    connect();
+    const { candidateId } = seedTopCandidate(spineIds[0]);
+    const run = startBulkRun(db(), {
+      items: [{ spineId: spineIds[0], candidateId }],
+      country: 'Canada',
+      folderId: 1,
+    });
+    if (run.status !== 'ok') throw new Error(run.status);
+    const { id: itemId, job_id: oldJob } = db()
+      .prepare('SELECT id, job_id FROM bulk_items WHERE run_id = ?')
+      .get(run.runId) as { id: string; job_id: string };
+    db().prepare(`UPDATE jobs SET status = 'failed' WHERE id = ?`).run(oldJob);
+    failBulkItem(db(), itemId, {
+      errorKind: 'unavailable',
+      error: 'Discogs answered 502',
+    });
+
+    const res = await retryFailed({});
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ retried: 1, skipped: 0 });
+    const item = getBulkItem(db(), itemId);
+    expect(item).toMatchObject({ status: 'queued', error_kind: null });
+    expect(item?.job_id).not.toBe(oldJob);
+    expect(
+      db()
+        .prepare(
+          `SELECT COUNT(*) AS n FROM jobs
+           WHERE type = '${RESOLVE_PRESSING_JOB_TYPE}' AND status = 'queued'`,
+        )
+        .get(),
+    ).toEqual({ n: 1 });
+    expect(db().prepare('SELECT COUNT(*) AS n FROM imports').get()).toEqual({
+      n: 0,
+    });
   });
 });
