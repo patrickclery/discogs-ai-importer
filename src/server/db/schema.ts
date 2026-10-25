@@ -9,6 +9,11 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 import {
+  BULK_ITEM_STATUSES,
+  BULK_SKIP_REASONS,
+  PRESSING_OUTCOMES,
+} from '@/lib/bulk-types';
+import {
   CANDIDATE_SOURCES,
   SEARCH_KINDS,
   SEARCH_STAGES,
@@ -347,3 +352,62 @@ export const imports = sqliteTable(
 );
 
 export type ImportRow = typeof imports.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Phase 6: bulk import (D-08, D-09, D-14). One run per "Import N to Discogs",
+// one item per selected spine. An item hands its chosen release to the
+// Phase 4 import pipeline; it never adds an import status of its own.
+
+/** One bulk import the owner started. */
+export const bulkRuns = sqliteTable('bulk_runs', {
+  id: text('id').primaryKey(),
+  /** The collection folder at start (D-03 of Phase 4). */
+  folderId: integer('folder_id').notNull(),
+  /** The preferred country at start, in the exact Discogs spelling (D-14). */
+  country: text('country').notNull(),
+  /** Items started. */
+  total: integer('total').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+/** One selected spine of a bulk run and its resolve_pressing job. */
+export const bulkItems = sqliteTable(
+  'bulk_items',
+  {
+    id: text('id').primaryKey(),
+    runId: text('run_id')
+      .notNull()
+      .references(() => bulkRuns.id),
+    spineId: text('spine_id')
+      .notNull()
+      .references(() => spines.id),
+    /** The candidate the owner saw; no FK: a re-search replaces it. */
+    candidateId: text('candidate_id').notNull(),
+    status: text('status', { enum: BULK_ITEM_STATUSES })
+      .notNull()
+      .default('queued'),
+    outcome: text('outcome', { enum: PRESSING_OUTCOMES }),
+    skipReason: text('skip_reason', { enum: BULK_SKIP_REASONS }),
+    /** For a duplicate skip: the spine that holds the release (D-09). */
+    dupSpineId: text('dup_spine_id'),
+    /** The release the item imports, once chosen. */
+    releaseId: integer('release_id'),
+    country: text('country'),
+    importId: text('import_id'),
+    errorKind: text('error_kind'),
+    error: text('error'),
+    jobId: text('job_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [
+    uniqueIndex('bulk_items_spine_open_idx')
+      .on(t.spineId)
+      .where(sql`${t.status} = 'queued'`),
+    index('bulk_items_run_idx').on(t.runId),
+    index('bulk_items_spine_idx').on(t.spineId, t.createdAt),
+  ],
+);
+
+export type BulkRunRow = typeof bulkRuns.$inferSelect;
+export type BulkItemRow = typeof bulkItems.$inferSelect;

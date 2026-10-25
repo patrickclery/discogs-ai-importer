@@ -7,6 +7,7 @@ import type { JobHandler, Lane } from '../types';
 import { runAddToCollection, runCheckImport } from './add-to-collection';
 import { runFetchRelease } from './fetch-release';
 import { runNoop } from './noop';
+import { runResolvePressing } from './resolve-pressing';
 import { runScanPhoto } from './scan-photo';
 import { runSearchSpine } from './search-spine';
 
@@ -25,6 +26,12 @@ export const handlers: Record<string, JobHandler> = {
   // Discogs lane: one paced GET /releases/{id} for a pasted release (D-15).
   fetch_release: {
     run: (payload, ctx) => runFetchRelease(payload, ctx),
+    timeoutMs: 60_000,
+  },
+  // Discogs lane: at most one paced GET /masters/{id}/versions, then
+  // createImport (D-01, D-08).
+  resolve_pressing: {
+    run: (payload, ctx) => runResolvePressing(payload, ctx),
     timeoutMs: 60_000,
   },
   // Discogs lane: one paced GET of the owner's copies, then at most one add

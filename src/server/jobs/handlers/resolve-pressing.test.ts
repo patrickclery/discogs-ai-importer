@@ -93,9 +93,12 @@ function start(
   return res.runId;
 }
 
-function claim(): JobRow {
+/** The next discogs-lane job; the shelf is scanned before connecting, so
+ * no search_spine job is queued ahead of the bulk jobs. */
+function claim(type = RESOLVE_PRESSING_JOB_TYPE): JobRow {
   const job = claimNext('discogs', LATER);
   if (!job) throw new Error('nothing to claim');
+  if (job.type !== type) throw new Error(`claimed ${job.type}, not ${type}`);
   return job;
 }
 
@@ -172,8 +175,8 @@ describe('resolve_pressing without a lookup', () => {
   useBulkSecrets();
 
   it('D-02: imports an already-Canadian top match with zero requests', async () => {
-    connectDiscogs();
     const { spineIds } = await bulkShelf();
+    connectDiscogs();
     const top = seedTopCandidate(spineIds[0], {
       releaseId: 6001,
       country: 'Canada',
@@ -206,8 +209,8 @@ describe('resolve_pressing without a lookup', () => {
   });
 
   it('D-04: a top match with no master imports as is with fallback_no_master', async () => {
-    connectDiscogs();
     const { spineIds } = await bulkShelf();
+    connectDiscogs();
     const top = seedTopCandidate(spineIds[0], {
       releaseId: 6002,
       country: 'US',
@@ -228,8 +231,8 @@ describe('resolve_pressing without a lookup', () => {
   });
 
   it('a resolved item runs again without writing anything', async () => {
-    connectDiscogs();
     const { spineIds } = await bulkShelf();
+    connectDiscogs();
     const top = seedTopCandidate(spineIds[0], { country: 'Canada' });
     start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
     const job = claim();

@@ -198,7 +198,13 @@ function duplicateOf(
  */
 export function createImport(
   db: Database.Database,
-  input: { spineId: string; candidateId: string; allowDuplicate?: boolean },
+  input: {
+    spineId: string;
+    candidateId: string;
+    allowDuplicate?: boolean;
+    /** The add job's run_after; a bulk lookup passes its own (Phase 6). */
+    runAfter?: number;
+  },
 ): CreateImportResult {
   const tx = db.transaction((): CreateImportResult => {
     const spine = db
@@ -269,7 +275,7 @@ export function createImport(
       candidateJson: JSON.stringify(snapshotOf(candidate)),
       now,
     });
-    const job = enqueueImport(db, importId);
+    const job = enqueueImport(db, importId, { runAfter: input.runAfter });
     return { status: 'ok', importId, jobId: job.id };
   });
   try {
@@ -287,12 +293,14 @@ export function createImport(
  * import:{spineId}:{releaseId}. A job with that key that is queued or
  * running is reused; a finished one gives up its key first, so a retry or
  * "Add another copy" is never a silent no-op (RESEARCH Pitfall 3). Sets
- * imports.job_id. Call inside an IMMEDIATE transaction; on its own it opens
- * one (nested, it becomes a savepoint).
+ * imports.job_id. opts.runAfter sets a new job's run_after (a bulk lookup
+ * passes its own, so the add runs right after it). Call inside an IMMEDIATE
+ * transaction; on its own it opens one (nested, it becomes a savepoint).
  */
 export function enqueueImport(
   db: Database.Database,
   importId: string,
+  opts: { runAfter?: number } = {},
 ): { id: string; created: boolean } {
   const tx = db.transaction(() => {
     const row = db
@@ -315,6 +323,7 @@ export function enqueueImport(
         type: ADD_TO_COLLECTION_JOB_TYPE,
         payload: { importId },
         dedupeKey,
+        runAfter: opts.runAfter,
       });
     }
     db.prepare(

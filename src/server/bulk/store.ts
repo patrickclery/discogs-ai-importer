@@ -6,10 +6,21 @@ import type {
   LookupErrorKind,
   PressingOutcome,
 } from '@/lib/bulk-types';
+import { capCodePoints } from '../discogs/inputs';
+import { newId } from '../ids';
+import { enqueue } from '../jobs/queue';
 
-// RED stub (Plan 06-02 Task 1): signatures only.
+// Bulk runs and their items (D-08, D-09, D-14). startBulkRun writes one run
+// and one queued item per pick, each with its own resolve_pressing job on
+// the Discogs lane; the job moves the item to resolved, skipped or failed
+// through the compare-and-set helpers below, which only ever change a
+// queued item. Raw SQL with @named parameters; better-sqlite3 is built with
+// DQS=0, so string literals are single-quoted.
 
 export const RESOLVE_PRESSING_JOB_TYPE = 'resolve_pressing';
+
+/** Owner-facing reasons are cut to this many code points (UI-SPEC). */
+const REASON_MAX = 160;
 
 export type BulkItemDbRow = {
   id: string;
@@ -43,31 +54,209 @@ export type StartBulkRunResult =
   | { status: 'busy' };
 
 export function getBulkItem(
-  _db: Database.Database,
-  _id: string,
+  db: Database.Database,
+  id: string,
 ): BulkItemDbRow | undefined {
-  return undefined;
+  return db.prepare('SELECT * FROM bulk_items WHERE id = @id').get({ id }) as
+    | BulkItemDbRow
+    | undefined;
 }
 
 export function getBulkRun(
-  _db: Database.Database,
-  _id: string,
+  db: Database.Database,
+  id: string,
 ): BulkRunDbRow | undefined {
-  return undefined;
+  return db.prepare('SELECT * FROM bulk_runs WHERE id = @id').get({ id }) as
+    | BulkRunDbRow
+    | undefined;
 }
 
-export function openBulkItemCount(_db: Database.Database): number {
-  return 0;
+/** Items whose resolve_pressing job has not finished. */
+export function openBulkItemCount(db: Database.Database): number {
+  return (
+    db
+      .prepare(`SELECT COUNT(*) AS n FROM bulk_items WHERE status = 'queued'`)
+      .get() as { n: number }
+  ).n;
 }
 
+/**
+ * A pick that cannot be written: the spine already has an open item
+ * (bulk_items_spine_open_idx, e.g. listed twice) or no longer exists.
+ */
+function isRefusedPick(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown } | null;
+  if (e?.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') return true;
+  if (e?.code !== 'SQLITE_CONSTRAINT_UNIQUE') return false;
+  // SQLite names the columns of a violated index, not the index itself.
+  return (
+    typeof e.message === 'string' && e.message.includes('bulk_items.spine_id')
+  );
+}
+
+/**
+ * Starts one bulk run (D-08). One run at a time: while any item is still
+ * queued the answer is busy and nothing is written. Each pick gets a queued
+ * item and a resolve_pressing job (dedupe key pressing:{itemId}) whose
+ * run_after is start + its index, so the lane claims them in pick order and
+ * each spine's add job, which inherits its lookup's run_after, runs right
+ * after that lookup. A pick the index or a foreign key refuses rolls back
+ * alone and counts as skipped. One IMMEDIATE transaction.
+ */
 export function startBulkRun(
-  _db: Database.Database,
-  _input: {
+  db: Database.Database,
+  input: {
     items: Array<{ spineId: string; candidateId: string }>;
     country: string;
     folderId: number;
     now?: number;
   },
 ): StartBulkRunResult {
-  return { status: 'busy' };
+  const start = input.now ?? Date.now();
+  const tx = db.transaction((): StartBulkRunResult => {
+    if (openBulkItemCount(db) > 0) return { status: 'busy' };
+    const runId = newId();
+    db.prepare(
+      `INSERT INTO bulk_runs (id, folder_id, country, total, created_at)
+       VALUES (@runId, @folderId, @country, 0, @start)`,
+    ).run({
+      runId,
+      folderId: input.folderId,
+      country: input.country,
+      start,
+    });
+    const insertItem = db.prepare(
+      `INSERT INTO bulk_items (id, run_id, spine_id, candidate_id, status,
+         created_at, updated_at)
+       VALUES (@id, @runId, @spineId, @candidateId, 'queued', @at, @at)`,
+    );
+    const setJob = db.prepare(
+      'UPDATE bulk_items SET job_id = @jobId WHERE id = @id',
+    );
+    let started = 0;
+    let skipped = 0;
+    input.items.forEach((pick, i) => {
+      const one = db.transaction(() => {
+        const id = newId();
+        insertItem.run({
+          id,
+          runId,
+          spineId: pick.spineId,
+          candidateId: pick.candidateId,
+          at: start + i,
+        });
+        const job = enqueue({
+          lane: 'discogs',
+          type: RESOLVE_PRESSING_JOB_TYPE,
+          payload: { itemId: id },
+          dedupeKey: `pressing:${id}`,
+          runAfter: start + i,
+        });
+        setJob.run({ jobId: job.id, id });
+      });
+      try {
+        one();
+        started++;
+      } catch (err) {
+        if (!isRefusedPick(err)) throw err;
+        skipped++;
+      }
+    });
+    db.prepare('UPDATE bulk_runs SET total = @started WHERE id = @runId').run({
+      started,
+      runId,
+    });
+    return { status: 'ok', runId, started, skipped };
+  });
+  return tx.immediate();
+}
+
+/** The item imports this release (an import was created). */
+export function resolveBulkItem(
+  db: Database.Database,
+  itemId: string,
+  out: {
+    importId: string;
+    releaseId: number;
+    country: string | null;
+    outcome: PressingOutcome;
+  },
+): boolean {
+  return (
+    db
+      .prepare(
+        `UPDATE bulk_items SET status = 'resolved', import_id = @importId,
+           release_id = @releaseId, country = @country, outcome = @outcome,
+           error_kind = NULL, error = NULL, updated_at = @now
+         WHERE id = @itemId AND status = 'queued'`,
+      )
+      .run({ ...out, itemId, now: Date.now() }).changes === 1
+  );
+}
+
+/** createImport refused the item (D-09) or the spine changed. */
+export function skipBulkItem(
+  db: Database.Database,
+  itemId: string,
+  out: { reason: BulkSkipReason; dupSpineId?: string | null },
+): boolean {
+  return (
+    db
+      .prepare(
+        `UPDATE bulk_items SET status = 'skipped', skip_reason = @reason,
+           dup_spine_id = @dupSpineId, error_kind = NULL, error = NULL,
+           updated_at = @now
+         WHERE id = @itemId AND status = 'queued'`,
+      )
+      .run({
+        itemId,
+        reason: out.reason,
+        dupSpineId: out.dupSpineId ?? null,
+        now: Date.now(),
+      }).changes === 1
+  );
+}
+
+/** The lookup failed for good; the reason is cut to 160 code points. */
+export function failBulkItem(
+  db: Database.Database,
+  itemId: string,
+  out: { errorKind: LookupErrorKind; error: string | null },
+): boolean {
+  return (
+    db
+      .prepare(
+        `UPDATE bulk_items SET status = 'failed', error_kind = @errorKind,
+           error = @error, updated_at = @now
+         WHERE id = @itemId AND status = 'queued'`,
+      )
+      .run({
+        itemId,
+        errorKind: out.errorKind,
+        error: out.error === null ? null : capCodePoints(out.error, REASON_MAX),
+        now: Date.now(),
+      }).changes === 1
+  );
+}
+
+/** A retryable failure: the error is kept and the item stays queued. */
+export function recordBulkItemError(
+  db: Database.Database,
+  itemId: string,
+  out: { errorKind: LookupErrorKind; error: string | null },
+): boolean {
+  return (
+    db
+      .prepare(
+        `UPDATE bulk_items SET error_kind = @errorKind, error = @error,
+           updated_at = @now
+         WHERE id = @itemId AND status = 'queued'`,
+      )
+      .run({
+        itemId,
+        errorKind: out.errorKind,
+        error: out.error === null ? null : capCodePoints(out.error, REASON_MAX),
+        now: Date.now(),
+      }).changes === 1
+  );
 }
