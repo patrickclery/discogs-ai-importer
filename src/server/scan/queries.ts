@@ -1,4 +1,5 @@
 import 'server-only';
+import { eligibilityOf } from '@/lib/bulk-eligibility';
 import type { ReviewStatus } from '@/lib/import-types';
 import { emptyByStatus, reviewStatusOf } from '@/lib/review-status';
 import {
@@ -20,6 +21,7 @@ import {
   SPINE_FIELDS,
   type SpineField,
 } from '@/lib/vision-contract';
+import { bulkForSpines, latestBulkRun } from '../bulk/queries';
 import { getDb } from '../db/client';
 import {
   collectionFolderName,
@@ -327,6 +329,7 @@ export function getSpines(
   const db = getDb().$client;
   const summaries = discogsForSpines(db, listed);
   const imports = importsForSpines(db, listed);
+  const bulkItems = bulkForSpines(db, listed);
   const byStatus = emptyByStatus();
   const statusById: Record<string, ReviewStatus> = {};
   const photoProgress: Record<string, { imported: number; total: number }> = {};
@@ -334,6 +337,8 @@ export function getSpines(
   for (const s of listed) {
     s.discogs = summaries.get(s.id) ?? null;
     s.import = imports.get(s.id) ?? null;
+    const item = bulkItems.get(s.id) ?? null;
+    s.bulk = { ...eligibilityOf(s, item), item };
     const status = reviewStatusOf({
       importPhase: s.import?.phase ?? null,
       importInstanceId: s.import?.instanceId ?? null,
@@ -379,7 +384,6 @@ export function getSpines(
       ...discogsConnection(),
       folder: { id: folderId, name: collectionFolderName(folderId) },
     },
-
-    bulk: null,
+    bulk: latestBulkRun(db),
   };
 }

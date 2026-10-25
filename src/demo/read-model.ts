@@ -2,6 +2,7 @@
 // listPhotos / getSpines / status responses (src/server/scan/queries.ts,
 // src/app/api/status/route.ts). Every rule that decides what a card shows
 // comes from the pure src/lib functions the real read model uses.
+import { eligibilityOf } from '@/lib/bulk-eligibility';
 import {
   type CandidateDto,
   INLINE_CANDIDATES,
@@ -536,6 +537,8 @@ export function buildSpinesResponse(
   const photoProgress: Record<string, { imported: number; total: number }> = {};
   let discogsActive = false;
   for (const s of listed) {
+    // The demo has no bulk items until Plan 06-11.
+    s.bulk = { ...eligibilityOf(s, null), item: null };
     const status = reviewStatusOf({
       importPhase: s.import?.phase ?? null,
       importInstanceId: s.import?.instanceId ?? null,
@@ -591,7 +594,6 @@ export function buildSpinesResponse(
         name: folder?.name ?? 'Uncategorized',
       },
     },
-
     bulk: null,
   };
 }
