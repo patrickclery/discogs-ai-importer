@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: Completed 06-17-PLAN.md
-last_updated: "2026-10-25T23:37:49.952Z"
+stopped_at: Completed 06-18-PLAN.md
+last_updated: "2026-10-25T23:42:14.095Z"
 last_activity: 2026-10-25
 last_activity_desc: Completed 06-14 (fallback country setting)
-state_head: 979dd15289f82678d257000c8b6527fbf88cddae
+state_head: f775ee6ff9d6dc8a049a3aa031608d02fa1881d1
 progress:
   total_phases: 3
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
-Plan: 17 of 18 (06-14 complete; 06-15..06-18 outstanding)
+Plan: 18 of 18 (06-14 complete; 06-15..06-18 outstanding)
 Status: Executing (14 of 18 plans done)
 Last activity: 2026-10-25 — Completed 06-14 (fallback country setting)
 
@@ -124,6 +124,7 @@ Last activity: 2026-10-25 — Completed 06-14 (fallback country setting)
 | Phase 06 P15 | 4min | 1 tasks | 2 files |
 | Phase 06 P16 | 6min | 3 tasks | 13 files |
 | Phase 06 P17 | 4min | 2 tasks | 4 files |
+| Phase 06 P18 | 8min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -293,6 +294,7 @@ Recent decisions affecting current work:
 - [Phase 06]: Status tabs wrap (spacing={1} + flex-wrap) instead of scrolling sideways, so every tab is visible at phone width (G-06-9)
 - [Phase 06]: 06-16: bulk fallback lookup is a second D-01-shaped GET for the run's snapshotted fallback country, sent only when needsFallbackLookup
 - [Phase 06]: Demo fallback tier: a canned fallback_pressing is used only when its recorded candidate is exactly from the run's fallback country (key 53 -> US 2848589)
+- [Phase 06]: 06-18: fallback_country line names only the missed preferred country; only fallback_no_version uses the pair phrase (Canadian or US pressing)
 
 ### Pending Todos
 
@@ -316,8 +318,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T23:37:49.720Z
-Stopped at: Completed 06-17-PLAN.md
+Last session: 2026-10-25T23:42:13.859Z
+Stopped at: Completed 06-18-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
