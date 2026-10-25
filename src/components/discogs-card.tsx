@@ -9,6 +9,7 @@ import {
 import { DiscogsConnectNotice } from '@/components/discogs-connect-notice';
 import { DisconnectDiscogsButton } from '@/components/disconnect-discogs-button';
 import { PasteCodeForm } from '@/components/paste-code-form';
+import { PreferredCountryField } from '@/components/preferred-country-field';
 import { DiscogsCredentials } from '@/components/secret-field';
 import { TestDiscogsButton } from '@/components/test-discogs-button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -53,7 +54,13 @@ function ConnectionBadge({
   return <Badge variant="outline">Not connected</Badge>;
 }
 
-function ConnectedSection({ username }: { username: string }) {
+function ConnectedSection({
+  username,
+  preferredCountry,
+}: {
+  username: string;
+  preferredCountry: string;
+}) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -75,6 +82,7 @@ function ConnectedSection({ username }: { username: string }) {
         </p>
       </div>
       <CollectionFolderField />
+      <PreferredCountryField initialCountry={preferredCountry} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TestDiscogsButton />
         <DisconnectDiscogsButton />
@@ -104,11 +112,20 @@ function ReconnectAlert({ credentialsSaved }: { credentialsSaved: boolean }) {
   );
 }
 
-function AccountSection({ connection }: { connection: DiscogsConnection }) {
+function AccountSection({
+  connection,
+  preferredCountry,
+}: {
+  connection: DiscogsConnection;
+  preferredCountry: string;
+}) {
   if (connection.connected && connection.username) {
     return (
       <div className="flex flex-col gap-4">
-        <ConnectedSection username={connection.username} />
+        <ConnectedSection
+          username={connection.username}
+          preferredCountry={preferredCountry}
+        />
         {/* A Reconnect started from the Alert can end on a code too. */}
         {connection.needsReconnect && connection.pendingConnect ? (
           <PasteCodeForm />
@@ -137,12 +154,15 @@ export function DiscogsCard({
   connection,
   secretsError,
   callbackUrl,
+  preferredCountry,
 }: {
   statuses: SecretStatus[] | null;
   connection: DiscogsConnection | null;
   secretsError?: string;
   /** http://{host}/api/discogs/callback for this request (D-03). */
   callbackUrl: string | null;
+  /** The bulk-import country in Discogs' spelling (D-14). */
+  preferredCountry: string;
 }) {
   return (
     <Card>
@@ -181,7 +201,10 @@ export function DiscogsCard({
             />
             {callbackUrl ? <CallbackUrlField url={callbackUrl} /> : null}
             <Separator />
-            <AccountSection connection={connection} />
+            <AccountSection
+              connection={connection}
+              preferredCountry={preferredCountry}
+            />
           </>
         ) : (
           <Alert variant="destructive">

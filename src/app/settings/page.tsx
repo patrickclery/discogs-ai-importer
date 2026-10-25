@@ -24,7 +24,7 @@ import {
   SecretsFileError,
   secretsFile,
 } from '@/server/secrets';
-import { getVisionModel } from '@/server/settings';
+import { getPreferredCountry, getVisionModel } from '@/server/settings';
 import { dataRoot } from '@/server/storage/paths';
 
 /** Key statuses and the safe connection DTO, both read from secrets.json. */
@@ -87,6 +87,7 @@ export default async function SettingsPage() {
           connection={secrets.ok ? secrets.connection : null}
           secretsError={secrets.ok ? undefined : secrets.reason}
           callbackUrl={callbackUrl}
+          preferredCountry={getPreferredCountry()}
         />
         <Card>
           <CardHeader>

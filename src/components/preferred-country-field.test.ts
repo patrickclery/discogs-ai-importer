@@ -64,10 +64,13 @@ describe('PreferredCountryField markup', () => {
   });
 
   it('caps the input at 40 characters with no autocomplete or spellcheck', () => {
+    // React 19 keeps the camelCase names in server markup; HTML is
+    // case-insensitive, so compare in lower case.
     const input = html.match(/<input[^>]*>/)?.[0] ?? '';
-    expect(input).toContain('maxlength="40"');
-    expect(input).toContain('autocomplete="off"');
-    expect(input).toContain('spellcheck="false"');
+    const attrs = input.toLowerCase();
+    expect(attrs).toContain('maxlength="40"');
+    expect(attrs).toContain('autocomplete="off"');
+    expect(attrs).toContain('spellcheck="false"');
     expect(input).toContain('w-64 max-w-full');
     expect(input).toMatch(/id="([^"]+)"/);
     const id = input.match(/id="([^"]+)"/)?.[1];
