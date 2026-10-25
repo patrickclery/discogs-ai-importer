@@ -73,6 +73,17 @@ async function shelfWithPicks(n: number): Promise<{
   return { spineIds, picks };
 }
 
+/** A newer candidate with a catalog-number match now sorts first (D-10). */
+function outrank(spineId: string): void {
+  const { candidateId } = seedTopCandidate(spineId, {
+    releaseId: 7001,
+    country: 'Canada',
+  });
+  db()
+    .prepare('UPDATE discogs_candidates SET catno_match = 1 WHERE id = ?')
+    .run(candidateId);
+}
+
 let fetchSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
@@ -192,7 +203,7 @@ describe('POST /api/spines/bulk-import', () => {
   it('skips picks that changed: a stale top match, an imported, an orphaned and an unknown spine, and a repeat', async () => {
     const { spineIds, picks } = await shelfWithPicks(5);
     // [1]: a newer search put another candidate on top.
-    seedTopCandidate(spineIds[1], { releaseId: 7001, country: 'Canada' });
+    outrank(spineIds[1]);
     // [2]: already imported.
     const imp = createImport(db(), picks[2]);
     if (imp.status !== 'ok') throw new Error(imp.status);
@@ -234,7 +245,7 @@ describe('POST /api/spines/bulk-import', () => {
 
   it('409 nothing_to_import when every pick is skipped, and no run row is written', async () => {
     const { spineIds, picks } = await shelfWithPicks(1);
-    seedTopCandidate(spineIds[0], { releaseId: 7001, country: 'Canada' });
+    outrank(spineIds[0]);
     const res = await start({
       items: [picks[0], { spineId: 'gone', candidateId: 'gone' }],
     });
