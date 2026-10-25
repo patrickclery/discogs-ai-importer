@@ -1,5 +1,5 @@
 // Bulk import contracts shared by the job, the read model, the routes and
-// client components (Phase 6). Client-safe: no server-only import here.
+// client components (Phase 6). Client-safe: imports nothing server-side.
 
 /**
  * How a bulk item's release was chosen (D-02, D-04, D-21). preferred: the

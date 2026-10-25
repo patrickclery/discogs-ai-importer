@@ -33,9 +33,9 @@ describe('fixtures', () => {
     const json = fixture('master-versions-canada.json');
     const versions = json.versions as { format: string }[];
     expect(versions.length).toBeGreaterThanOrEqual(5);
-    expect(
-      versions.some((v) => v.format.includes('Unofficial Release')),
-    ).toBe(true);
+    expect(versions.some((v) => v.format.includes('Unofficial Release'))).toBe(
+      true,
+    );
   });
 
   it('the bogus fixture claims the whole database', () => {
@@ -132,7 +132,10 @@ describe('parseVersions', () => {
       'unusable',
     );
     expect(
-      parseVersions({ pagination: { items: MAX_PLAUSIBLE_VERSIONS }, versions: [] }),
+      parseVersions({
+        pagination: { items: MAX_PLAUSIBLE_VERSIONS },
+        versions: [],
+      }),
     ).toEqual([]);
   });
 
@@ -170,7 +173,13 @@ describe('pressingCandidateValues', () => {
 
   it('takes the artist from the top title when the top has none', () => {
     const v = pressingCandidateValues(
-      { ...first, released: '0', label: null, majorFormats: [], format: 'Album, Reissue' },
+      {
+        ...first,
+        released: '0',
+        label: null,
+        majorFormats: [],
+        format: 'Album, Reissue',
+      },
       { artist: null, title: 'Nirvana - Nevermind', masterId: null },
     );
     expect(v.artist).toBe('Nirvana');

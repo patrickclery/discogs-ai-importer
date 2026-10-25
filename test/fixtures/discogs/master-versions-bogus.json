@@ -1,7 +1,16 @@
 {
   "_note": "Hand-written. An unknown or merged master answers 200 with versions from the whole database (RESEARCH: /masters/999999999/versions returned 8,135,288 items). Three unrelated Canadian CD titles stand in for that answer.",
-  "pagination": { "page": 1, "pages": 81353, "per_page": 100, "items": 8135288, "urls": {} },
-  "filters": { "applied": { "country": ["Canada"], "format": ["CD"] }, "available": {} },
+  "pagination": {
+    "page": 1,
+    "pages": 81353,
+    "per_page": 100,
+    "items": 8135288,
+    "urls": {}
+  },
+  "filters": {
+    "applied": { "country": ["Canada"], "format": ["CD"] },
+    "available": {}
+  },
   "versions": [
     {
       "id": 9100001,

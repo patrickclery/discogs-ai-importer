@@ -9,12 +9,8 @@
   },
   "filters": {
     "applied": {
-      "country": [
-        "Canada"
-      ],
-      "format": [
-        "CD"
-      ]
+      "country": ["Canada"],
+      "format": ["CD"]
     },
     "available": {
       "label": {
@@ -53,9 +49,7 @@
       "label": "DGC",
       "country": "Canada",
       "title": "Nevermind",
-      "major_formats": [
-        "CD"
-      ],
+      "major_formats": ["CD"],
       "format": "Album",
       "catno": "DGCD-24425",
       "released": "1991",
@@ -74,9 +68,7 @@
       "label": "DGC",
       "country": "Canada",
       "title": "Nevermind",
-      "major_formats": [
-        "CD"
-      ],
+      "major_formats": ["CD"],
       "format": "Album, Reissue",
       "catno": "DGCD-24425",
       "released": "1991",
@@ -95,9 +87,7 @@
       "label": "DGC",
       "country": "Canada",
       "title": "Nevermind",
-      "major_formats": [
-        "CD"
-      ],
+      "major_formats": ["CD"],
       "format": "Album, Reissue",
       "catno": "DGCD-24425",
       "released": "0",
@@ -116,9 +106,7 @@
       "label": "Geffen Records",
       "country": "Canada",
       "title": "Nevermind",
-      "major_formats": [
-        "CD"
-      ],
+      "major_formats": ["CD"],
       "format": "Album, Reissue, Remastered",
       "catno": "B001588702",
       "released": "2011",
@@ -137,9 +125,7 @@
       "label": "DGC",
       "country": "Canada",
       "title": "Nevermind",
-      "major_formats": [
-        "Box Set"
-      ],
+      "major_formats": ["Box Set"],
       "format": "Album, Deluxe Edition, Reissue, Remastered",
       "catno": "B001588302",
       "released": "2011",
@@ -158,9 +144,7 @@
       "label": "DGC",
       "country": "Canada",
       "title": "Nevermind",
-      "major_formats": [
-        "CD"
-      ],
+      "major_formats": ["CD"],
       "format": "Album, Unofficial Release",
       "catno": "DGCD-24425",
       "released": "1991",

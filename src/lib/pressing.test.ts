@@ -217,9 +217,10 @@ describe('choosePressing', () => {
 
   it('D-19: a combined top beats having no version (it is the pool)', () => {
     const top = { ...TOP, country: 'USA & Canada' };
-    expect(
-      choosePressing({ top, preferred: 'Canada', versions: [] }),
-    ).toEqual({ use: 'top', outcome: 'preferred' });
+    expect(choosePressing({ top, preferred: 'Canada', versions: [] })).toEqual({
+      use: 'top',
+      outcome: 'preferred',
+    });
   });
 
   it('D-19: an exact-country version beats a combined top', () => {
