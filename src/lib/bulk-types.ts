@@ -5,7 +5,11 @@ import { z } from 'zod';
 /**
  * How a bulk item's release was chosen (D-02, D-04, D-21). preferred: the
  * imported release is in the preferred country (the top match itself, or
- * its pressing from the versions answer). fallback_no_version: the master
+ * its pressing from the versions answer). fallback_country: the preferred
+ * country had no usable version, so the imported release is from the run's
+ * fallback country: that country's pressing from a second versions answer,
+ * or the top match itself when it is already from there (G-06-side-1).
+ * fallback_no_version: the master
  * lists no version in the country. fallback_no_master: the top match has no
  * master. fallback_unusable_master: the versions answer was implausible or
  * its pick did not match the top match's title. retried_earlier: the item
@@ -13,6 +17,7 @@ import { z } from 'zod';
  */
 export const PRESSING_OUTCOMES = [
   'preferred',
+  'fallback_country',
   'fallback_no_version',
   'fallback_no_master',
   'fallback_unusable_master',

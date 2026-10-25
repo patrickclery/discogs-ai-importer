@@ -147,9 +147,29 @@ export function needsLookup(top: TopMatchLite, preferred: string): boolean {
   );
 }
 
+/**
+ * The run's fallback country in its canonical spelling, or null when there
+ * is no second tier: the fallback is missing, blank, or the preferred
+ * country itself (US and USA count as equal). The one rule every caller
+ * uses for "is there a fallback tier" (G-06-side-1).
+ */
+export function distinctFallback(
+  preferred: string,
+  fallback: string | null | undefined,
+): string | null {
+  if (typeof fallback !== 'string') return null;
+  const canonical = canonicalCountry(fallback);
+  if (canonical === null) return null;
+  return countryMatch(canonical, preferred) === 'exact' ? null : canonical;
+}
+
 export type PressingChoice =
   | { use: 'top'; outcome: PressingOutcome }
-  | { use: 'version'; version: VersionLite; outcome: 'preferred' };
+  | {
+      use: 'version';
+      version: VersionLite;
+      outcome: 'preferred' | 'fallback_country';
+    };
 
 type Ranked = {
   key: [number, number, number, number, number, number];
@@ -169,37 +189,34 @@ function compareKeys(a: Ranked['key'], b: Ranked['key']): number {
 }
 
 /**
- * The release to import. Ranking, best first: official before bootleg
- * (D-18), exact country before combined (D-19), CD, the top match's label,
- * the earliest year (D-03), then the lowest id. The title guard checks the
- * chosen version only (D-21). Every fallback is the top match itself, never
- * some other release.
+ * One tier's verdict. empty: no version from the country and the top match
+ * does not name it. top: the top match itself (a combined country) ranked
+ * best. guard: the best version failed the D-21 title guard. version: the
+ * best version, title checked.
  */
-export function choosePressing(input: {
-  top: TopMatchLite;
-  preferred: string;
-  versions?: VersionLite[] | 'unusable';
-}): PressingChoice {
-  const { top, preferred, versions } = input;
-  const topMatch = countryMatch(top.country, preferred);
-  if (topMatch === 'exact') return { use: 'top', outcome: 'preferred' };
-  const combined = topMatch === 'combined';
-  const fallback = (
-    outcome: PressingOutcome,
-  ): { use: 'top'; outcome: PressingOutcome } => ({
-    use: 'top',
-    outcome: combined ? 'preferred' : outcome,
-  });
+type TierResult =
+  | { kind: 'empty' }
+  | { kind: 'top' }
+  | { kind: 'guard' }
+  | { kind: 'version'; version: VersionLite };
 
-  if (top.masterId === null || versions === undefined) {
-    return fallback('fallback_no_master');
-  }
-  if (versions === 'unusable') return fallback('fallback_unusable_master');
-
+/**
+ * Ranks one tier's versions for one country. Best first: official before
+ * bootleg (D-18), exact country before combined (D-19), CD, the top match's
+ * label, the earliest year (D-03), then the lowest id. A top match whose
+ * country names this one among others joins the pool as a synthetic entry.
+ * The title guard checks the winner only (D-21). The preferred and the
+ * fallback tier share this, so both rank with the same key.
+ */
+function rankTier(
+  top: TopMatchLite,
+  country: string,
+  versions: readonly VersionLite[],
+): TierResult {
   const labels = new Set(top.labels.map(normalized).filter(Boolean));
   const pool: Ranked[] = [];
   for (const v of versions) {
-    const match = countryMatch(v.country, preferred);
+    const match = countryMatch(v.country, country);
     if (match === 'none') continue;
     const label = normalized(v.label);
     pool.push({
@@ -214,7 +231,7 @@ export function choosePressing(input: {
       version: v,
     });
   }
-  if (combined) {
+  if (countryMatch(top.country, country) === 'combined') {
     const bootleg = top.formats.some((f) =>
       f.descriptions.some(
         (d) => d.trim().toLowerCase() === 'unofficial release',
@@ -232,13 +249,80 @@ export function choosePressing(input: {
       version: null,
     });
   }
-  if (pool.length === 0) return { use: 'top', outcome: 'fallback_no_version' };
+  if (pool.length === 0) return { kind: 'empty' };
 
   pool.sort((a, b) => compareKeys(a.key, b.key));
   const best = pool[0].version;
-  if (best === null) return { use: 'top', outcome: 'preferred' };
+  if (best === null) return { kind: 'top' };
   if (!titleMatches(best.title, releaseTitleOf(top.title))) {
-    return fallback('fallback_unusable_master');
+    return { kind: 'guard' };
   }
-  return { use: 'version', version: best, outcome: 'preferred' };
+  return { kind: 'version', version: best };
+}
+
+type PressingInput = {
+  top: TopMatchLite;
+  preferred: string;
+  /** The run's second-choice country (G-06-side-1). */
+  fallback?: string | null;
+  /** The preferred-country versions answer (D-01). */
+  versions?: VersionLite[] | 'unusable';
+  /** A second versions answer, filtered to the fallback country. */
+  fallbackVersions?: VersionLite[] | 'unusable';
+};
+
+/**
+ * The fallback tier, reached only when the master is usable and lists no
+ * version from the preferred country.
+ */
+function chooseFallbackTier(input: PressingInput): PressingChoice {
+  const second = distinctFallback(input.preferred, input.fallback);
+  const { fallbackVersions } = input;
+  if (second !== null && Array.isArray(fallbackVersions)) {
+    const tier = rankTier(input.top, second, fallbackVersions);
+    if (tier.kind === 'version') {
+      return {
+        use: 'version',
+        version: tier.version,
+        outcome: 'fallback_country',
+      };
+    }
+  }
+  return { use: 'top', outcome: 'fallback_no_version' };
+}
+
+/**
+ * The release to import: the preferred country first, then the run's
+ * fallback country (G-06-side-1), then the top match. Both tiers rank with
+ * rankTier. Every fallback is the top match itself, never some other
+ * release.
+ */
+export function choosePressing(input: PressingInput): PressingChoice {
+  const { top, preferred, versions } = input;
+  const topMatch = countryMatch(top.country, preferred);
+  if (topMatch === 'exact') return { use: 'top', outcome: 'preferred' };
+  const combined = topMatch === 'combined';
+  const fallback = (
+    outcome: PressingOutcome,
+  ): { use: 'top'; outcome: PressingOutcome } => ({
+    use: 'top',
+    outcome: combined ? 'preferred' : outcome,
+  });
+
+  if (top.masterId === null || versions === undefined) {
+    return fallback('fallback_no_master');
+  }
+  if (versions === 'unusable') return fallback('fallback_unusable_master');
+
+  const tier = rankTier(top, preferred, versions);
+  switch (tier.kind) {
+    case 'top':
+      return { use: 'top', outcome: 'preferred' };
+    case 'guard':
+      return fallback('fallback_unusable_master');
+    case 'version':
+      return { use: 'version', version: tier.version, outcome: 'preferred' };
+    case 'empty':
+      return chooseFallbackTier(input);
+  }
 }
