@@ -70,14 +70,24 @@ export const VersionsEnvelopeSchema = z.object({
 });
 
 /**
+ * The versions envelope did not match (WR-05): a deterministic answer, so
+ * the lookup fails as rejected instead of being retried.
+ */
+export class DiscogsVersionsShapeError extends Error {
+  constructor(message = 'Discogs answered an unexpected versions list') {
+    super(message);
+    this.name = 'DiscogsVersionsShapeError';
+  }
+}
+
+/**
  * The parsed entries, or 'unusable' when the answer claims more versions
- * than a real master has. Throws only when the envelope itself is wrong.
+ * than a real master has. Throws DiscogsVersionsShapeError only when the
+ * envelope itself is wrong.
  */
 export function parseVersions(json: unknown): VersionLite[] | 'unusable' {
   const env = VersionsEnvelopeSchema.safeParse(json);
-  if (!env.success) {
-    throw new Error('Discogs answered an unexpected versions body');
-  }
+  if (!env.success) throw new DiscogsVersionsShapeError();
   if (env.data.pagination.items > MAX_PLAUSIBLE_VERSIONS) return 'unusable';
   const out: VersionLite[] = [];
   for (const raw of env.data.versions) {

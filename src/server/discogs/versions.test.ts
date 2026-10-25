@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { VersionLite } from '@/lib/pressing';
 import {
+  DiscogsVersionsShapeError,
   MAX_PLAUSIBLE_VERSIONS,
   masterVersionsPath,
   parseVersions,
@@ -139,9 +140,12 @@ describe('parseVersions', () => {
     ).toEqual([]);
   });
 
-  it('an envelope without pagination throws', () => {
+  it('an envelope without pagination throws DiscogsVersionsShapeError', () => {
     expect(() => parseVersions({ versions: [] })).toThrow(
-      'Discogs answered an unexpected versions body',
+      DiscogsVersionsShapeError,
+    );
+    expect(() => parseVersions({ versions: [] })).toThrow(
+      'Discogs answered an unexpected versions list',
     );
   });
 });

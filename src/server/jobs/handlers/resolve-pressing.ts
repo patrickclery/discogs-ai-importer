@@ -280,6 +280,9 @@ export async function runResolvePressing(
           versions = undefined;
           break;
         case 'DiscogsRequestError':
+        case 'DiscogsVersionsShapeError':
+          // A refused request or a versions body of the wrong shape: the
+          // same answer comes back on every attempt (WR-05), so no retry.
           if (!ctx.isCurrent()) throw err;
           fail('rejected', message(err));
           return;

@@ -779,14 +779,17 @@ describe('resolve_pressing refusals and Discogs errors', () => {
     expect(importsOf(spineId)).toHaveLength(0);
   });
 
-  it('an unexpected answer is recorded as other and rethrown', async () => {
-    await lookupSpine();
+  it('WR-05: a versions body of the wrong shape fails the item as rejected, with no retry', async () => {
+    const spineId = await lookupSpine();
     const r = await attempt(() => ({ status: 200, body: { nope: 1 } }));
-    expect(r.error).not.toBeNull();
+    expect(r.error).toBeNull();
+    expect(r.calls.length).toBe(1);
     expect(item(r.itemId)).toMatchObject({
-      status: 'queued',
-      error_kind: 'other',
+      status: 'failed',
+      error_kind: 'rejected',
+      error: 'Discogs answered an unexpected versions list',
     });
+    expect(importsOf(spineId)).toHaveLength(0);
   });
 
   it('a run that is no longer current throws before the request and writes nothing', async () => {
