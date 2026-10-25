@@ -59,6 +59,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { batchDoneToast, hasRunFinished } from '@/lib/bulk-copy';
 import { eligibleShownIds, pruneSelection } from '@/lib/bulk-selection';
 import { REVIEW_STATUS_LABELS, type ReviewStatus } from '@/lib/import-types';
 import { spinesRefetchInterval } from '@/lib/photo-status';
@@ -429,6 +430,36 @@ export function SpinesView({
     () => pruneSelection(selected, allowed),
     [selected, allowed],
   );
+
+  // The batch-finished toast (D-15): once per run, only in a browser that
+  // saw the run running, so a reload after it stays quiet (the bar's
+  // last-result line keeps the same summary). Bulk-driven moves out of the
+  // status filter stay silent: those spines were never announced through
+  // SPINE_ACTION_EVENT, so the moved-out toast does not fire.
+  const seenRunningRef = useRef(new Set<string>());
+  const toastedRef = useRef(new Set<string>());
+  const run = data?.bulk ?? null;
+  useEffect(() => {
+    if (!run) return;
+    if (run.running) {
+      seenRunningRef.current.add(run.id);
+      return;
+    }
+    if (!hasRunFinished(seenRunningRef.current, toastedRef.current, run)) {
+      return;
+    }
+    toastedRef.current.add(run.id);
+    const done = batchDoneToast(run);
+    toast(done.message, {
+      duration: 10000,
+      action:
+        done.action === 'failed'
+          ? { label: 'Show failed', onClick: () => void setStatus('failed') }
+          : done.action === 'fallbacks'
+            ? { label: 'Show fallbacks', onClick: () => void setFallback(true) }
+            : undefined,
+    });
+  }, [run, setStatus, setFallback]);
 
   // Leaving the current filter (UI-SPEC, D-11): an owner action announced
   // through SPINE_ACTION_EVENT that moves a spine out of the active status

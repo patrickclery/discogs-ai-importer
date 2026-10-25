@@ -367,21 +367,50 @@ export function startSkipsToast(started: number, skipped: number): string {
   return `Started ${started}. ${skipped} skipped because they changed since you picked them.`;
 }
 
-// The batch-finished toast (D-15).
+// The batch-finished toast (D-15, UI-SPEC Batch-finished toast).
 
 export type BatchDoneToast = {
   message: string;
+  /** Show failed, else Show fallbacks, else no action. */
   action: 'failed' | 'fallbacks' | null;
 };
 
-export function batchDoneToast(_run: BulkRunDto): BatchDoneToast {
-  return { message: '', action: null };
+/**
+ * `Bulk import done: {a} added to {folder}.` plus each nonzero part. Job-time
+ * changed skips get their own part; the UI-SPEC toast has no slot for them.
+ */
+export function batchDoneToast(run: BulkRunDto): BatchDoneToast {
+  let message = `Bulk import done: ${run.added} added to ${run.folderName}.`;
+  if (run.fallbacks > 0) message += ` ${run.fallbacks} used another country.`;
+  if (run.alreadyInCollection > 0) {
+    message += ` ${run.alreadyInCollection} already in your collection.`;
+  }
+  if (run.duplicates > 0) {
+    message += ` ${run.duplicates} skipped as duplicates.`;
+  }
+  if (run.changed > 0) {
+    message += ` ${run.changed} skipped because they changed.`;
+  }
+  if (run.failed > 0) message += ` ${run.failed} failed.`;
+  const action =
+    run.failed > 0 ? 'failed' : run.fallbacks > 0 ? 'fallbacks' : null;
+  return { message, action };
 }
 
+/**
+ * True once for a run this browser saw running: it has now finished and
+ * was not toasted yet. A run first seen already finished (a reload after
+ * it) never toasts; the bar's last-result line covers it.
+ */
 export function hasRunFinished(
-  _seenRunning: ReadonlySet<string>,
-  _toasted: ReadonlySet<string>,
-  _run: BulkRunDto | null,
+  seenRunning: ReadonlySet<string>,
+  toasted: ReadonlySet<string>,
+  run: BulkRunDto | null,
 ): boolean {
-  return false;
+  return (
+    run !== null &&
+    !run.running &&
+    seenRunning.has(run.id) &&
+    !toasted.has(run.id)
+  );
 }
