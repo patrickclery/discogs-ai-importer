@@ -133,7 +133,8 @@ export function nextShownId(
 export type FilterEmpty =
   | { kind: 'status'; status: ReviewStatus }
   | { kind: 'combined' }
-  | { kind: 'review' };
+  | { kind: 'review' }
+  | { kind: 'fallback' };
 
 /**
  * Which empty state replaces an empty list, or null while `shown` spines
@@ -143,6 +144,7 @@ export type FilterEmpty =
 export function filterEmptyOf(
   status: ReviewStatus | null,
   review: boolean,
+  _fallback: boolean,
   shown: number,
 ): FilterEmpty | null {
   if (shown > 0) return null;

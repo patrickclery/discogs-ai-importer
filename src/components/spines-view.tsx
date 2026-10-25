@@ -281,6 +281,18 @@ const STATUS_EMPTY: Record<
   },
 };
 
+/** RED stub. */
+export const COMBINED_FILTERS_BODY =
+  'Turn off Needs review or pick another status.';
+
+/** RED stub. */
+export function NoFallbacks(_props: {
+  country: string;
+  onShowAll: () => void;
+}) {
+  return null;
+}
+
 /** An empty filtered list: icon, heading, body and one outline action. */
 function FilterEmptyState({
   icon: Icon,
@@ -456,7 +468,7 @@ export function SpinesView({
   // D-11: an empty status or Needs review filter says so instead of
   // showing a blank list.
   const filterEmpty = data
-    ? filterEmptyOf(status, review, data.spines.length)
+    ? filterEmptyOf(status, review, fallback, data.spines.length)
     : null;
   let body: ReactNode;
   if (!data) {
@@ -472,7 +484,7 @@ export function SpinesView({
       <FilterEmptyState
         icon={ListFilter}
         title="No spines match these filters"
-        body="Turn off Needs review or pick another status."
+        body={COMBINED_FILTERS_BODY}
         action="Clear filters"
         onAction={() => {
           void setStatus(null);

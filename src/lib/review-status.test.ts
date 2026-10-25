@@ -234,24 +234,50 @@ describe('nextShownId', () => {
   });
 });
 
-describe('filterEmptyOf (D-11, UI-SPEC E11)', () => {
+describe('filterEmptyOf (D-11, D-15, UI-SPEC E11)', () => {
   it('names the status when a status filter shows no spine', () => {
     for (const s of REVIEW_STATUSES) {
-      expect(filterEmptyOf(s, false, 0)).toEqual({ kind: 'status', status: s });
+      expect(filterEmptyOf(s, false, false, 0)).toEqual({
+        kind: 'status',
+        status: s,
+      });
     }
   });
 
   it('uses the combined state when Needs review is also on', () => {
-    expect(filterEmptyOf('pending', true, 0)).toEqual({ kind: 'combined' });
+    expect(filterEmptyOf('pending', true, false, 0)).toEqual({
+      kind: 'combined',
+    });
   });
 
   it('keeps the Needs review state under All', () => {
-    expect(filterEmptyOf(null, true, 0)).toEqual({ kind: 'review' });
+    expect(filterEmptyOf(null, true, false, 0)).toEqual({ kind: 'review' });
+  });
+
+  it('gives Fallback alone its own state', () => {
+    expect(filterEmptyOf(null, false, true, 0)).toEqual({ kind: 'fallback' });
+  });
+
+  it('uses the combined state for Fallback with a status', () => {
+    expect(filterEmptyOf('matched', false, true, 0)).toEqual({
+      kind: 'combined',
+    });
+  });
+
+  it('uses the combined state for Fallback with Needs review', () => {
+    expect(filterEmptyOf(null, true, true, 0)).toEqual({ kind: 'combined' });
+  });
+
+  it('uses the combined state with all three filters on', () => {
+    expect(filterEmptyOf('failed', true, true, 0)).toEqual({
+      kind: 'combined',
+    });
   });
 
   it('is null while spines are shown or no filter is on', () => {
-    expect(filterEmptyOf('failed', true, 1)).toBeNull();
-    expect(filterEmptyOf('failed', false, 3)).toBeNull();
-    expect(filterEmptyOf(null, false, 0)).toBeNull();
+    expect(filterEmptyOf('failed', true, false, 1)).toBeNull();
+    expect(filterEmptyOf('failed', false, false, 3)).toBeNull();
+    expect(filterEmptyOf(null, false, true, 2)).toBeNull();
+    expect(filterEmptyOf(null, false, false, 0)).toBeNull();
   });
 });
