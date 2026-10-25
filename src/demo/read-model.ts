@@ -2,8 +2,9 @@
 // listPhotos / getSpines / status responses (src/server/scan/queries.ts,
 // src/app/api/status/route.ts). Every rule that decides what a card shows
 // comes from the pure src/lib functions the real read model uses.
-import { eligibilityOf } from '@/lib/bulk-eligibility';
-import { isFallbackSpine } from '@/lib/bulk-view';
+import { eligibilityOf, isCurrentBulkItem } from '@/lib/bulk-eligibility';
+import type { BulkItemDto, BulkRunDto } from '@/lib/bulk-types';
+import { isFallbackSpine, lookupOf, summarizeRun } from '@/lib/bulk-view';
 import {
   type CandidateDto,
   INLINE_CANDIDATES,
@@ -267,8 +268,13 @@ export function candidatesOf(
   spineId: string,
   now: number,
 ): CandidateDto[] {
+  // A bulk lookup's 'pressing' candidate is never listed (D-02): only the
+  // import points at it.
   const rows = state.candidates.filter(
-    (c) => c.spineId === spineId && candidateListedAt(c, now),
+    (c) =>
+      c.spineId === spineId &&
+      c.source !== 'pressing' &&
+      candidateListedAt(c, now),
   );
   const manual = rows
     .filter((c) => c.source === 'manual')
@@ -466,6 +472,98 @@ export function bulkFindingFor(
   );
 }
 
+/**
+ * The spine's current bulk item at `now` (bulkForSpines): its newest item,
+ * dropped once a newer import (a manual one) replaced it. Its outcome,
+ * release, country and import show only once it resolved.
+ */
+function bulkItemOf(
+  state: DemoState,
+  spine: Pick<SpineDto, 'id' | 'photoId'>,
+  now: number,
+): BulkItemDto | null {
+  const item = state.bulkItems
+    .filter((i) => i.spineId === spine.id && i.createdAt <= now)
+    .sort(byNewest((i) => i.createdAt))[0];
+  if (!item) return null;
+  const phase = bulkItemPhaseAt(item, now);
+  const resolved = phase === 'resolved';
+  const importId = resolved ? item.importId : null;
+  const latest = latestImport(state, spine.id, now);
+  if (
+    !isCurrentBulkItem(
+      { id: item.id, importId, createdAt: item.createdAt },
+      latest ? { id: latest.id, createdAt: latest.createdAt } : null,
+    )
+  ) {
+    return null;
+  }
+  const run = state.bulkRuns.find((r) => r.id === item.runId);
+  let skip: BulkItemDto['skip'] = null;
+  if (phase === 'skipped' && item.skipReason !== null) {
+    const holder =
+      item.dupSpineId === null
+        ? null
+        : (state.spines.find((s) => s.id === item.dupSpineId) ?? null);
+    const photo = holder
+      ? (state.photos.find((p) => p.id === holder.photoId) ?? null)
+      : null;
+    skip = {
+      reason: item.skipReason,
+      photo: photo?.filename ?? null,
+      spineNumber: holder ? holder.index + 1 : null,
+      samePhoto: holder !== null && holder.photoId === spine.photoId,
+    };
+  }
+  return {
+    id: item.id,
+    runId: item.runId,
+    phase,
+    preferredCountry: run?.country ?? state.account.preferredCountry,
+    outcome: resolved ? item.outcome : null,
+    releaseId: resolved ? item.releaseId : null,
+    country: resolved ? item.country : null,
+    importId,
+    skip,
+    failure: null,
+    createdAt: item.createdAt,
+  };
+}
+
+/** The newest demo bulk run at `now`, summarized (latestBulkRun). */
+function latestBulkRunAt(state: DemoState, now: number): BulkRunDto | null {
+  const run = state.bulkRuns
+    .filter((r) => r.createdAt <= now)
+    .sort(byNewest((r) => r.createdAt))[0];
+  if (!run) return null;
+  return summarizeRun(
+    {
+      id: run.id,
+      country: run.country,
+      folderName: folderNameOf(state, run.folderId),
+      createdAt: run.createdAt,
+    },
+    state.bulkItems
+      .filter((i) => i.runId === run.id)
+      .map((i) => {
+        const phase = bulkItemPhaseAt(i, now);
+        const imp =
+          phase === 'resolved' && i.importId !== null
+            ? state.imports.find(
+                (x) => x.id === i.importId && x.outcome !== 'cancelled',
+              )
+            : undefined;
+        return {
+          phase,
+          skipReason: phase === 'skipped' ? i.skipReason : null,
+          country: phase === 'resolved' ? i.country : null,
+          hasImport: imp !== undefined,
+          importPhase: imp ? importPhaseOf(importRowAt(imp, now)) : null,
+        };
+      }),
+  );
+}
+
 function toSpineDto(state: DemoState, s: DemoSpine, now: number): SpineDto {
   const byField = new Map(s.fields.map((f) => [f.field, f]));
   const fields: SpineFieldDto[] = SPINE_FIELDS.map((field) => {
@@ -568,17 +666,19 @@ export function buildSpinesResponse(
   const byStatus = emptyByStatus();
   const statusById: Record<string, ReviewStatus> = {};
   const photoProgress: Record<string, { imported: number; total: number }> = {};
-  let discogsActive = false;
+  const bulk = latestBulkRunAt(state, now);
+  let discogsActive = bulk?.running === true;
   for (const s of listed) {
-    // The demo has no bulk items until Plan 06-11.
-    s.bulk = { ...eligibilityOf(s, null), item: null };
+    const item = bulkItemOf(state, s, now);
+    s.bulk = { ...eligibilityOf(s, item), item };
+    if (item?.phase === 'finding') discogsActive = true;
     const status = reviewStatusOf({
       importPhase: s.import?.phase ?? null,
       importInstanceId: s.import?.instanceId ?? null,
       notOnDiscogs: s.notOnDiscogs,
       searchState: s.discogs?.state ?? null,
       candidateCount: s.discogs?.candidateCount ?? 0,
-      lookup: null,
+      lookup: lookupOf(item),
     });
     s.reviewStatus = status;
     byStatus[status] += 1;
@@ -636,7 +736,7 @@ export function buildSpinesResponse(
       },
       preferredCountry: account.preferredCountry,
     },
-    bulk: null,
+    bulk,
   };
 }
 
@@ -701,6 +801,20 @@ export function buildStatusResponse(
       i.readyAt,
       i.outcome === 'failed',
       i.outcome === 'cancelled',
+      now,
+    );
+    if (job) jobs.discogs[job] += 1;
+    if (job === 'queued' || job === 'running') importsLeft += 1;
+  }
+  // A bulk lookup is a Discogs-lane job: queued until lookupAt, running
+  // until readyAt, then succeeded. A finding item is an import still left.
+  for (const b of state.bulkItems) {
+    const job = jobStatusAt(
+      b.createdAt,
+      b.lookupAt,
+      b.readyAt,
+      false,
+      false,
       now,
     );
     if (job) jobs.discogs[job] += 1;
