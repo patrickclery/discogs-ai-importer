@@ -73,6 +73,7 @@ export function BulkImportDialog({
   spines,
   folderName,
   country,
+  fallbackCountry,
   threshold,
   onStarted,
   onCloseAutoFocus,
@@ -84,6 +85,8 @@ export function BulkImportDialog({
   folderName: string;
   /** The preferred country (D-14). */
   country: string;
+  /** The Fallback country setting (G-06-side-1). */
+  fallbackCountry: string | null;
   /** The confidence_threshold setting (D-16). */
   threshold: number;
   /** The run started; the dialog has already asked to close. */
@@ -127,7 +130,7 @@ export function BulkImportDialog({
             {dialogTitle(spines.length, folderName, country)}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {dialogBody(country, lowConfidence)}
+            {dialogBody(country, fallbackCountry, lowConfidence)}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error ? (

@@ -168,6 +168,8 @@ export type SpinesResponse = {
     folder: { id: number; name: string };
     /** The preferred country, in Discogs' spelling (D-14). */
     preferredCountry: string;
+    /** The Fallback country setting, in Discogs' spelling (G-06-side-1). */
+    fallbackCountry: string;
   };
   /** The latest bulk run's progress and result counts, or null (D-15). */
   bulk: BulkRunDto | null;

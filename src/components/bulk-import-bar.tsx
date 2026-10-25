@@ -192,6 +192,7 @@ export function BulkImportBar({
         spines={frozen}
         folderName={folderName}
         country={data.discogs.preferredCountry}
+        fallbackCountry={data.discogs.fallbackCountry}
         threshold={data.confidenceThreshold}
         onStarted={onStarted}
         onCloseAutoFocus={(ev) => {

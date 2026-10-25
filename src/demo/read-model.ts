@@ -748,6 +748,7 @@ export function buildSpinesResponse(
         name: folder?.name ?? 'Uncategorized',
       },
       preferredCountry: account.preferredCountry,
+      fallbackCountry: account.fallbackCountry,
     },
     bulk,
   };

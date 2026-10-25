@@ -450,6 +450,35 @@ No third-party registries are declared (`components.json` `"registries": {}`). D
 
 ---
 
+## Amendment: gap closure (G-06-side-1, G-06-9)
+
+Added by 06-18 after UAT. Where a row below differs from the sections above, this amendment wins; the earlier rows are left as written for history. All copy is plain text rendered as React text, never HTML or a URL (T-06-35).
+
+### Settings: Fallback country (`FallbackCountryField`, G-06-side-1, 06-14)
+- **Placement:** directly after the Preferred country field, 16px apart, in the connected Discogs card's account section. Shown only when connected.
+- **Field:** `FieldLabel` `Fallback country`, the same `Input` as Preferred country (`w-64 max-w-full`, `maxLength={40}`, `autoComplete="off"`, `spellCheck={false}`), then `FieldDescription` `If Discogs lists no pressing from the preferred country, bulk import picks this country's CD pressing next, or else keeps the top match. Write it the way Discogs does, such as US, UK or Germany.` Default `US`.
+- **Save, spinner, errors:** the same as Preferred country (blur and Enter, trimmed, only when changed; Escape restores; 16px `Spinner` while pending; `FieldError` with the save-error copy on failure). Empty copy: `Enter a country, such as US.` Success toast: `Fallback country set to {country}`.
+- **Equal countries:** a fallback equal to the preferred country (US and USA count as equal) means no second tier; every line below then reads as in the main contract.
+- Each bulk run snapshots its fallback country when it starts, so a later change never alters a run in progress, its Retry, or its cards.
+
+### Copy with a fallback country
+
+The pair phrase: when both countries have a demonym, `{Demonym1} or {Demonym2} pressing` (`Canadian or US pressing`); otherwise each pressing phrase in full joined by ` or ` (`Canadian pressing or pressing from Hong Kong`). These rows apply only when the run had a fallback country distinct from its preferred one.
+
+| Element | Copy |
+|---------|------|
+| Country badge | Unchanged. An import from the fallback country reads `Fallback: {country}` (`Fallback: US`), counts in the Fallback filter and in the `{f} used another country` toast part. |
+| Fallback line, fallback-country import | `No {Canadian} pressing, used {used}` (`No Canadian pressing, used US`) |
+| Fallback line, no version in either country | `No {pair phrase}, used {used}` (`No Canadian or US pressing, used Hong Kong`) |
+| Fallback line, no master / unusable master / retried / no country | Unchanged from the main contract |
+| Finding line | `Looking for the {pair phrase}…` (`Looking for the Canadian or US pressing…`) |
+| Dialog body | `Each spine's top match is swapped for its {Canadian} CD pressing when Discogs lists one, or else for its {US} CD pressing. If Discogs lists neither, the top match is added as is and the card says so. Spines already imported from another spine are skipped. Large imports take a while, because Discogs allows about one request per second.` A country without a demonym reads `CD pressing from {country}`. The low-confidence addition is unchanged. The dialog title is unchanged. |
+
+### Filter bar row 1: status tabs wrap (G-06-9, 06-15)
+- The status tabs (`ReviewStatusFilter`) are a `ToggleGroup` with 4px spacing (`spacing={1}`) and `flex-wrap`: at narrow widths they wrap onto more lines, each tab keeping its own border and rounded corners. There is no sideways scroll.
+
+---
+
 ## Checker Sign-Off
 
 - [ ] Dimension 1 Copywriting: PASS

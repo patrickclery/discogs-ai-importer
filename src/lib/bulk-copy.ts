@@ -308,19 +308,29 @@ export function dialogTitle(n: number, folder: string, country: string) {
 
 /** `Canadian CD pressing`, or `CD pressing from {country}` without a demonym. */
 function cdPressingPhrase(country: string): string {
-  const canonical = canonicalCountry(country);
-  const demonym = canonical ? COUNTRY_DEMONYMS[canonical] : undefined;
+  const demonym = demonymOf(country);
   return demonym
     ? `${demonym} CD pressing`
     : `CD pressing from ${country.trim()}`;
 }
 
 /**
- * The dialog body (D-07). With `lowConfidence` > 0 it adds how many picked
- * spines have a field Claude wasn't sure of (D-16): it informs, never blocks.
+ * The dialog body (D-07). With a fallback country distinct from the
+ * preferred one it names that country's CD pressing as the second choice
+ * (G-06-side-1). With `lowConfidence` > 0 it adds how many picked spines
+ * have a field Claude wasn't sure of (D-16): it informs, never blocks.
  */
-export function dialogBody(country: string, lowConfidence: number) {
-  const body = `Each spine's top match is swapped for its ${cdPressingPhrase(country)} when Discogs lists one. If it doesn't, the top match is added as is and the card says so. Spines already imported from another spine are skipped. Large imports take a while, because Discogs allows about one request per second.`;
+export function dialogBody(
+  country: string,
+  fallback: string | null,
+  lowConfidence: number,
+) {
+  const second = distinctFallback(country, fallback);
+  const choice =
+    second === null
+      ? `Each spine's top match is swapped for its ${cdPressingPhrase(country)} when Discogs lists one. If it doesn't, the top match is added as is and the card says so.`
+      : `Each spine's top match is swapped for its ${cdPressingPhrase(country)} when Discogs lists one, or else for its ${cdPressingPhrase(second)}. If Discogs lists neither, the top match is added as is and the card says so.`;
+  const body = `${choice} Spines already imported from another spine are skipped. Large imports take a while, because Discogs allows about one request per second.`;
   return lowConfidence > 0
     ? `${body} ${lowConfidence} of them have a field Claude wasn't sure of.`
     : body;

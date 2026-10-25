@@ -37,6 +37,7 @@ import { importsForSpines } from '../imports/queries';
 import {
   getConfidenceThreshold,
   getDensityThresholds,
+  getFallbackCountry,
   getPreferredCountry,
   VISION_MODELS,
 } from '../settings';
@@ -417,6 +418,7 @@ export function getSpines(
       ...discogsConnection(),
       folder: { id: folderId, name: collectionFolderName(folderId) },
       preferredCountry: getPreferredCountry(),
+      fallbackCountry: getFallbackCountry(),
     },
     bulk: run,
   };
