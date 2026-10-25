@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-10-25T01:58:23.331Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-10-25T02:04:13.230Z"
 last_activity: 2026-10-24
 last_activity_desc: Phase 06 execution started
-state_head: 6d76086fbff6da36a8d7762fcbd00edda625ef06
+state_head: 3f988717baa7808473e601d772ed01ca80ca3e33
 progress:
   total_phases: 2
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
 Last activity: 2026-10-24 — Phase 06 execution started
 
@@ -110,6 +110,7 @@ Last activity: 2026-10-24 — Phase 06 execution started
 | Phase 05 P09 | 5 min | 2 tasks | 1 files |
 | Phase 06 P01 | 8min | 2 tasks | 13 files |
 | Phase 06 P02 | 9 min | 3 tasks | 18 files |
+| Phase 06 P03 | 4 min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -256,6 +257,8 @@ Recent decisions affecting current work:
 - [Phase 06]: Each bulk add job inherits its lookup's run_after (start + index), so the lane runs lookup 1, add 1, lookup 2
 - [Phase 06]: A refused createImport rolls back its savepoint, so a skipped bulk item writes no pressing candidate (D-09)
 - [Phase 06]: startBulkRun counts picks refused by the open-item index or a missing spine as skipped
+- [Phase 06]: savePreferredCountry answers 'a country name is at most 40 characters' for an over-long value (real and demo) instead of zod's JSON message
+- [Phase 06]: PreferredCountryField guards Enter-then-blur with an in-flight ref so one edit saves once
 
 ### Pending Todos
 
@@ -279,8 +282,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T01:58:23.290Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-10-25T02:04:13.130Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
