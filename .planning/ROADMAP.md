@@ -119,3 +119,13 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 - [x] 06-09-PLAN.md — Selection, bulk bar, confirm dialog, start and finished toasts, demo export check (wave 6)
 - [x] 06-10-PLAN.md — Live-stack proof against the fake Discogs: pacing, one run at a time, crash mid-run (wave 6)
+
+### Phase 7: Match the patrickclery.com/awesomer color palette
+
+**Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (light and dark), applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
+**Requirements**: TBD
+**Depends on:** Phase 6
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 7 to break down)
