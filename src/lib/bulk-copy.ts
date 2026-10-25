@@ -2,7 +2,7 @@
 // Contract). Client-safe and pure. Discogs strings are joined as plain
 // text, never re-cased. The bulk-state lines (D-04, D-09, D-15, BULK-11)
 // follow the match slot.
-import type { BulkItemDto } from './bulk-types';
+import type { BulkItemDto, BulkRunDto } from './bulk-types';
 import { type CountryBadge, countryBadgeOf } from './bulk-view';
 import { pressingPhrase } from './pressing';
 import type { SpineDto } from './scan-types';
@@ -255,4 +255,35 @@ export function bulkStatusLineOf(
     return { kind: 'finding', text: findingLine(item) };
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Bulk bar and confirm dialog copy (D-05, D-07, UI-SPEC Copywriting).
+
+export function dialogTitle(_n: number, _folder: string, _country: string) {
+  return '';
+}
+
+export function dialogBody(_country: string, _lowConfidence: number) {
+  return '';
+}
+
+export function startErrorText(_reason: string) {
+  return '';
+}
+
+export function progressLine(_run: Pick<BulkRunDto, 'done' | 'total'>) {
+  return '';
+}
+
+export function selectedCountText(_s: number) {
+  return '';
+}
+
+export function importButtonLabel(_s: number) {
+  return '';
+}
+
+export function selectAllLabel(_e: number) {
+  return '';
 }

@@ -5,12 +5,19 @@ import type { ImportDto } from '@/lib/import-types';
 import {
   bulkStatusLineOf,
   countryBadgeText,
+  dialogBody,
+  dialogTitle,
   fallbackLine,
   findingLine,
+  importButtonLabel,
   lookupFailureLine,
   matchDetails,
   matchSlotOf,
+  progressLine,
+  selectAllLabel,
+  selectedCountText,
   skippedLine,
+  startErrorText,
 } from './bulk-copy';
 
 // The compact card's match slot (D-10, UI-SPEC "Match slot labels" and
@@ -430,5 +437,70 @@ describe('bulkStatusLineOf', () => {
     ).toBeNull();
     expect(bulkStatusLineOf({ import: imp, bulk: bulk(item()) })).toBeNull();
     expect(bulkStatusLineOf({ import: imp, bulk: null })).toBeNull();
+  });
+});
+
+// Bulk bar and confirm dialog copy (D-05, D-07, D-16, UI-SPEC
+// Copywriting Contract).
+
+describe('dialogTitle', () => {
+  it('names the count, the folder and Canadian pressings', () => {
+    expect(dialogTitle(12, 'Uncategorized', 'Canada')).toBe(
+      'Import 12 to Uncategorized as Canadian pressings',
+    );
+  });
+
+  it('reads pressings from the country for an unknown demonym', () => {
+    expect(dialogTitle(3, 'CDs', 'Hong Kong')).toBe(
+      'Import 3 to CDs as pressings from Hong Kong',
+    );
+  });
+});
+
+const BODY_TAIL =
+  " when Discogs lists one. If it doesn't, the top match is added as is and the card says so. Spines already imported from another spine are skipped. Large imports take a while, because Discogs allows about one request per second.";
+
+describe('dialogBody', () => {
+  it('names the Canadian CD pressing with no low-confidence sentence at k = 0', () => {
+    expect(dialogBody('Canada', 0)).toBe(
+      `Each spine's top match is swapped for its Canadian CD pressing${BODY_TAIL}`,
+    );
+  });
+
+  it('adds the low-confidence sentence at k = 2', () => {
+    expect(dialogBody('Canada', 2)).toBe(
+      `Each spine's top match is swapped for its Canadian CD pressing${BODY_TAIL} 2 of them have a field Claude wasn't sure of.`,
+    );
+  });
+
+  it('reads CD pressing from the country for an unknown demonym', () => {
+    expect(dialogBody('Hong Kong', 0)).toBe(
+      `Each spine's top match is swapped for its CD pressing from Hong Kong${BODY_TAIL}`,
+    );
+  });
+});
+
+describe('startErrorText', () => {
+  it('wraps the reason and drops its final period', () => {
+    expect(startErrorText('Wait for the current bulk import to finish.')).toBe(
+      "Couldn't start the import: Wait for the current bulk import to finish. Try again.",
+    );
+    expect(startErrorText('the server answered 500')).toBe(
+      "Couldn't start the import: the server answered 500. Try again.",
+    );
+  });
+});
+
+describe('bulk bar copy', () => {
+  it('reads the progress line', () => {
+    expect(progressLine({ done: 0, total: 40 })).toBe(
+      'Bulk import: 0 / 40 done',
+    );
+  });
+
+  it('reads the selected count, the Import label and Select all', () => {
+    expect(selectedCountText(3)).toBe('3 selected');
+    expect(importButtonLabel(3)).toBe('Import 3 selected');
+    expect(selectAllLabel(12)).toBe('Select all shown (12)');
   });
 });
