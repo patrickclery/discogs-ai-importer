@@ -20,8 +20,16 @@ import {
   SearchX,
 } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
+import { BulkImportBar } from '@/components/bulk-import-bar';
 import { useCardLayout } from '@/components/card-layout-toggle';
 import { DiscogsNotConnectedAlert } from '@/components/discogs-not-connected-alert';
 import { ExpandedCardsProvider } from '@/components/expanded-cards';
@@ -34,6 +42,7 @@ import {
 } from '@/components/import-ui-context';
 import { PhotoSection } from '@/components/photo-section';
 import { useStatusFilter } from '@/components/review-status-filter';
+import { SelectionProvider } from '@/components/spine-selection';
 import {
   SpinesFilterBar,
   usePhotoFilter,
@@ -402,6 +411,11 @@ export function SpinesView({
   const data = query.data;
   const byPhoto = useMemo(() => groupByPhoto(data?.spines ?? []), [data]);
 
+  // The bulk selection (D-05): client state, never in the URL.
+  const [selected, setSelected] = useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+
   // Leaving the current filter (UI-SPEC, D-11): an owner action announced
   // through SPINE_ACTION_EVENT that moves a spine out of the active status
   // filter gets a toast naming where it went, with Show, and focus moves on
@@ -544,25 +558,30 @@ export function SpinesView({
         {!data.discogs.connected && data.spines.length > 0 ? (
           <DiscogsNotConnectedAlert reconnect={data.discogs.needsReconnect} />
         ) : null}
-        <ImportUiProvider value={importUi}>
-          {/* Expanded compact cards, keyed by spine id so polls and filter
-              refetches keep them open; a layout switch closes them all. */}
-          <ExpandedCardsProvider layout={layout}>
-            {data.photos.map((p) => (
-              <PhotoSection
-                key={p.id}
-                photo={p}
-                spines={byPhoto.get(p.id) ?? []}
-                threshold={data.confidenceThreshold}
-                connected={data.discogs.connected}
-                needsReconnect={data.discogs.needsReconnect}
-                pausedUntil={data.discogs.pausedUntil}
-                progress={data.photoProgress[p.id]}
-                layout={layout}
-              />
-            ))}
-          </ExpandedCardsProvider>
-        </ImportUiProvider>
+        <SelectionProvider selected={selected} onChange={setSelected}>
+          <ImportUiProvider value={importUi}>
+            {/* Expanded compact cards, keyed by spine id so polls and filter
+                refetches keep them open; a layout switch closes them all. */}
+            <ExpandedCardsProvider layout={layout}>
+              {data.photos.map((p) => (
+                <PhotoSection
+                  key={p.id}
+                  photo={p}
+                  spines={byPhoto.get(p.id) ?? []}
+                  threshold={data.confidenceThreshold}
+                  connected={data.discogs.connected}
+                  needsReconnect={data.discogs.needsReconnect}
+                  pausedUntil={data.discogs.pausedUntil}
+                  progress={data.photoProgress[p.id]}
+                  layout={layout}
+                />
+              ))}
+            </ExpandedCardsProvider>
+          </ImportUiProvider>
+          {data.spines.length > 0 ? (
+            <BulkImportBar data={data} folderName={folderName} />
+          ) : null}
+        </SelectionProvider>
       </div>
     );
   }

@@ -1,24 +1,33 @@
-// Bulk selection helpers (D-05, D-06). Pure and client-safe.
+// Bulk selection over the shown list (D-05, D-06). Pure and client-safe.
+// The selection only ever holds shown, eligible spines: every data update
+// prunes it, so the selected count always matches what is visible.
 import type { SpineDto } from './scan-types';
 
 export type SelectAllState = 'checked' | 'indeterminate' | 'unchecked';
 
+/** The shown spines a bulk import accepts, in list order. */
 export function eligibleShownIds(
-  _spines: readonly Pick<SpineDto, 'id' | 'bulk'>[],
+  spines: readonly Pick<SpineDto, 'id' | 'bulk'>[],
 ): string[] {
-  return [];
+  return spines.filter((s) => s.bulk?.eligible === true).map((s) => s.id);
 }
 
+/** The selected ids that are still allowed, in selection order. */
 export function pruneSelection(
-  _selected: ReadonlySet<string>,
-  _allowed: readonly string[],
+  selected: ReadonlySet<string>,
+  allowed: readonly string[],
 ): Set<string> {
-  return new Set();
+  const ok = new Set(allowed);
+  return new Set([...selected].filter((id) => ok.has(id)));
 }
 
+/** The Select all shown checkbox: every, some or none of `eligible` picked. */
 export function selectAllState(
-  _selected: ReadonlySet<string>,
-  _eligible: readonly string[],
+  selected: ReadonlySet<string>,
+  eligible: readonly string[],
 ): SelectAllState {
-  return 'unchecked';
+  if (eligible.length === 0) return 'unchecked';
+  const picked = eligible.filter((id) => selected.has(id)).length;
+  if (picked === 0) return 'unchecked';
+  return picked === eligible.length ? 'checked' : 'indeterminate';
 }

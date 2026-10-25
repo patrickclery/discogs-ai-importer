@@ -4,7 +4,7 @@
 // follow the match slot.
 import type { BulkItemDto, BulkRunDto } from './bulk-types';
 import { type CountryBadge, countryBadgeOf } from './bulk-view';
-import { pressingPhrase } from './pressing';
+import { COUNTRY_DEMONYMS, canonicalCountry, pressingPhrase } from './pressing';
 import type { SpineDto } from './scan-types';
 
 export type MatchSlotLabel = 'Top match' | 'Confirmed match';
@@ -258,32 +258,52 @@ export function bulkStatusLineOf(
 }
 
 // ---------------------------------------------------------------------------
-// Bulk bar and confirm dialog copy (D-05, D-07, UI-SPEC Copywriting).
+// Bulk bar and confirm dialog copy (D-05, D-07, D-16, UI-SPEC Copywriting
+// Contract). Folder and country names are joined as plain text (T-06-23).
 
-export function dialogTitle(_n: number, _folder: string, _country: string) {
-  return '';
+/** `Import {n} to {folder} as Canadian pressings` (D-07, D-14). */
+export function dialogTitle(n: number, folder: string, country: string) {
+  return `Import ${n} to ${folder} as ${pressingPhrase(country, true)}`;
 }
 
-export function dialogBody(_country: string, _lowConfidence: number) {
-  return '';
+/** `Canadian CD pressing`, or `CD pressing from {country}` without a demonym. */
+function cdPressingPhrase(country: string): string {
+  const canonical = canonicalCountry(country);
+  const demonym = canonical ? COUNTRY_DEMONYMS[canonical] : undefined;
+  return demonym
+    ? `${demonym} CD pressing`
+    : `CD pressing from ${country.trim()}`;
 }
 
-export function startErrorText(_reason: string) {
-  return '';
+/**
+ * The dialog body (D-07). With `lowConfidence` > 0 it adds how many picked
+ * spines have a field Claude wasn't sure of (D-16): it informs, never blocks.
+ */
+export function dialogBody(country: string, lowConfidence: number) {
+  const body = `Each spine's top match is swapped for its ${cdPressingPhrase(country)} when Discogs lists one. If it doesn't, the top match is added as is and the card says so. Spines already imported from another spine are skipped. Large imports take a while, because Discogs allows about one request per second.`;
+  return lowConfidence > 0
+    ? `${body} ${lowConfidence} of them have a field Claude wasn't sure of.`
+    : body;
 }
 
-export function progressLine(_run: Pick<BulkRunDto, 'done' | 'total'>) {
-  return '';
+/** The dialog's inline error: `Couldn't start the import: {reason}. Try again.` */
+export function startErrorText(reason: string) {
+  return `Couldn't start the import: ${reason.trim().replace(/\.+$/, '')}. Try again.`;
 }
 
-export function selectedCountText(_s: number) {
-  return '';
+/** The running progress line: `Bulk import: {d} / {n} done`. */
+export function progressLine(run: Pick<BulkRunDto, 'done' | 'total'>) {
+  return `Bulk import: ${run.done} / ${run.total} done`;
 }
 
-export function importButtonLabel(_s: number) {
-  return '';
+export function selectedCountText(s: number) {
+  return `${s} selected`;
 }
 
-export function selectAllLabel(_e: number) {
-  return '';
+export function importButtonLabel(s: number) {
+  return `Import ${s} selected`;
+}
+
+export function selectAllLabel(e: number) {
+  return `Select all shown (${e})`;
 }
