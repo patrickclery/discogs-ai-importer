@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-10-25T01:45:31.561Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-10-25T01:58:23.331Z"
 last_activity: 2026-10-24
 last_activity_desc: Phase 06 execution started
-state_head: ed66491e7527ecb3c513d6b13907200431ebe321
+state_head: 6d76086fbff6da36a8d7762fcbd00edda625ef06
 progress:
   total_phases: 2
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
 Last activity: 2026-10-24 — Phase 06 execution started
 
@@ -109,6 +109,7 @@ Last activity: 2026-10-24 — Phase 06 execution started
 | Phase 4 P09 | 12min | 3 tasks | 13 files |
 | Phase 05 P09 | 5 min | 2 tasks | 1 files |
 | Phase 06 P01 | 8min | 2 tasks | 13 files |
+| Phase 06 P02 | 9 min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,9 @@ Recent decisions affecting current work:
 - [Phase 05]: Demo published: Pages build_type workflow, live at http://patrickclery.com/discogs-ai-importer/ (github.io 301s there); Enforce HTTPS left to owner
 - [Phase 06]: Pressing rank key [official, exact country, CD, same label, year, id]; a combined-country top joins the pool as a synthetic entry (D-18, D-19, D-03)
 - [Phase 06]: titleMatches: a missing version title never passes the D-21 guard against a real title
+- [Phase 06]: Each bulk add job inherits its lookup's run_after (start + index), so the lane runs lookup 1, add 1, lookup 2
+- [Phase 06]: A refused createImport rolls back its savepoint, so a skipped bulk item writes no pressing candidate (D-09)
+- [Phase 06]: startBulkRun counts picks refused by the open-item index or a missing spine as skipped
 
 ### Pending Todos
 
@@ -275,8 +279,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T01:45:31.518Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-10-25T01:58:23.290Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
