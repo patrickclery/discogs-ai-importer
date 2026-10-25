@@ -4,13 +4,15 @@
 // without importing them. Nothing runs on a timer and nothing reaches the
 // network (T-06-25): each item's lookup is queued until lookupAt, running
 // until readyAt, and its outcome is decided up front from the canned
-// pressing answers in demo/fixtures/pressings.json. Its import is created
+// pressing answers in demo/fixtures/pressings.json: the preferred country
+// first, then the run's fallback country (G-06-side-1), then the top match,
+// in choosePressing's order. Its import is created
 // with createdAt = readyAt, so the read model shows it only from then on
 // (the store's timestamp rule, RESEARCH Pattern 3).
 import { eligibilityOf, topMatchOf } from '@/lib/bulk-eligibility';
 import type { PressingOutcome } from '@/lib/bulk-types';
 import { importPhaseOf } from '@/lib/import-types';
-import { countryMatch } from '@/lib/pressing';
+import { countryMatch, distinctFallback } from '@/lib/pressing';
 import pressingsJson from '../../../demo/fixtures/pressings.json';
 import {
   buildSpinesResponse,
@@ -41,9 +43,16 @@ export type StartBulkResult =
   | { status: 'busy' }
   | { status: 'nothing'; skipped: number };
 
-/** A canned versions answer: a Canadian pressing, or no master. */
+/**
+ * A canned versions answer. pressing: the master lists this Canadian
+ * version. fallback_pressing: the master lists no Canadian version but lists
+ * this one from another country (used only when that country is the run's
+ * fallback country). fallback_no_master: the top match has no master. Each
+ * releaseId names a recorded candidate of the same key, so its cover exists.
+ */
 export type CannedPressing =
   | { outcome: 'pressing'; releaseId: number }
+  | { outcome: 'fallback_pressing'; releaseId: number }
   | { outcome: Extract<PressingOutcome, 'fallback_no_master'> };
 
 const CANNED: Readonly<Record<string, CannedPressing>> = (
@@ -95,12 +104,7 @@ function pressingCandidate(
   releaseId: number,
   at: number,
 ): DemoCandidate | null {
-  const recorded = state.candidates.find(
-    (c) =>
-      c.spineId === spine.id &&
-      c.releaseId === releaseId &&
-      c.source === 'auto',
-  );
+  const recorded = recordedCandidate(state, spine, releaseId);
   if (!recorded) return null;
   // demo-spine-40 -> demo-cand-40-pressing-1408104 (a pristine copy too).
   const id = `${spine.id.replace('-spine-', '-cand-')}-pressing-${releaseId}`;
@@ -121,6 +125,46 @@ function pressingCandidate(
   };
   state.candidates.push(c);
   return c;
+}
+
+/** The recorded candidate a canned releaseId names, if any. */
+function recordedCandidate(
+  state: DemoState,
+  spine: DemoSpine,
+  releaseId: number,
+): DemoCandidate | undefined {
+  return state.candidates.find(
+    (c) =>
+      c.spineId === spine.id &&
+      c.releaseId === releaseId &&
+      c.source === 'auto',
+  );
+}
+
+/**
+ * The fallback tier (chooseFallbackTier's demo twin), reached only when the
+ * preferred tier has nothing: the canned master lists no Canadian version
+ * and the top match does not name Canada. A canned fallback_pressing exactly
+ * from the run's fallback country is imported through a hidden candidate;
+ * otherwise the top match is kept.
+ */
+function fallbackTier(
+  state: DemoState,
+  run: DemoBulkRun,
+  spine: DemoSpine,
+  top: DemoCandidate,
+  canned: CannedPressing | undefined,
+  at: number,
+): { chosen: DemoCandidate; outcome: PressingOutcome } {
+  const second = run.fallbackCountry;
+  if (second !== null && canned?.outcome === 'fallback_pressing') {
+    const recorded = recordedCandidate(state, spine, canned.releaseId);
+    if (recorded && countryMatch(recorded.country, second) === 'exact') {
+      const pressing = pressingCandidate(state, spine, canned.releaseId, at);
+      if (pressing) return { chosen: pressing, outcome: 'fallback_country' };
+    }
+  }
+  return { chosen: top, outcome: 'fallback_no_version' };
 }
 
 type ItemEnd = Pick<
@@ -149,8 +193,9 @@ const changed = (candidateId: string): ItemEnd => ({
 /**
  * What the resolve_pressing job would do at readyAt: reconcile an earlier
  * failed add that may have landed (D-20, retried_earlier), else keep a top
- * match in the preferred country, else take the canned pressing or fall
- * back to the top match; then create the import with the real local rules.
+ * match in the preferred country, else take the canned Canadian pressing,
+ * else try the fallback tier, else fall back to the top match; then create
+ * the import with the real local rules.
  */
 function resolveAt(
   state: DemoState,
@@ -192,20 +237,28 @@ function resolveAt(
   let outcome: PressingOutcome;
   const match = countryMatch(top.country, run.country);
   const canned = CANNED[spine.key];
+  const pressing =
+    match !== 'exact' && canned?.outcome === 'pressing'
+      ? pressingCandidate(state, spine, canned.releaseId, readyAt)
+      : null;
   if (match === 'exact') {
     outcome = 'preferred';
-  } else if (canned?.outcome === 'pressing') {
-    const pressing = pressingCandidate(state, spine, canned.releaseId, readyAt);
-    if (pressing) {
-      chosen = pressing;
-      outcome = 'preferred';
-    } else {
-      outcome = match === 'combined' ? 'preferred' : 'fallback_no_version';
-    }
+  } else if (pressing) {
+    chosen = pressing;
+    outcome = 'preferred';
   } else if (canned?.outcome === 'fallback_no_master') {
     outcome = 'fallback_no_master';
+  } else if (match === 'combined') {
+    outcome = 'preferred';
   } else {
-    outcome = match === 'combined' ? 'preferred' : 'fallback_no_version';
+    ({ chosen, outcome } = fallbackTier(
+      state,
+      run,
+      spine,
+      top,
+      canned,
+      readyAt,
+    ));
   }
 
   const res = startImport(
@@ -260,6 +313,10 @@ export function startBulk(
   const run: DemoBulkRun = {
     id: nextId('demo-bulk-run'),
     country: state.account.preferredCountry,
+    fallbackCountry: distinctFallback(
+      state.account.preferredCountry,
+      state.account.fallbackCountry,
+    ),
     folderId: state.account.folderId,
     total: accepted.length,
     createdAt: now,

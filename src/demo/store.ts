@@ -156,6 +156,12 @@ export type DemoBulkRun = {
   id: string;
   /** The preferred country when it started (D-14). */
   country: string;
+  /**
+   * The fallback country when it started, or null when there was none
+   * distinct from the preferred one (mirrors bulk_runs.fallback_country,
+   * G-06-side-1).
+   */
+  fallbackCountry: string | null;
   folderId: number;
   total: number;
   createdAt: number;

@@ -1,11 +1,12 @@
 {
-  "_note": "Canned pressing lookups for the demo bulk import (D-17). Keys are shelf keys; pressing entries reuse a recorded Canadian candidate of the same key so its cover exists.",
+  "_note": "Canned pressing lookups for the demo bulk import (D-17). Keys are shelf keys; pressing entries reuse a recorded Canadian candidate of the same key so its cover exists. fallback_pressing entries mean the master lists no Canadian version but lists this one from another country; they reuse a recorded candidate of the same key, and the run imports it only when its country is the run's fallback country (G-06-side-1).",
   "byKey": {
     "40": { "outcome": "pressing", "releaseId": 1408104 },
     "55": { "outcome": "pressing", "releaseId": 2194807 },
     "06": { "outcome": "pressing", "releaseId": 1322801 },
     "08": { "outcome": "pressing", "releaseId": 15887451 },
     "16": { "outcome": "fallback_no_master" },
-    "17": { "outcome": "fallback_no_master" }
+    "17": { "outcome": "fallback_no_master" },
+    "53": { "outcome": "fallback_pressing", "releaseId": 2848589 }
   }
 }
