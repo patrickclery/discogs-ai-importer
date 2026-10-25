@@ -178,7 +178,8 @@ describe('startBulk', () => {
     expect(item.status).toBe('resolved');
     expect(item.importId).not.toBeNull();
     expect(item.importId).not.toBe('demo-import-42');
-    expect(item.outcome).toBe('fallback_no_version');
+    // Its top match is from the US, the seeded fallback country.
+    expect(item.outcome).toBe('fallback_country');
     const imports = getState().imports.filter((i) => i.spineId === id('42'));
     expect(imports).toHaveLength(2);
   });
@@ -298,6 +299,147 @@ describe('the fallback tier (G-06-side-1, D-17)', () => {
       country: 'US',
       addedAt: item.readyAt,
     });
+  });
+
+  /** Sets a spine's top candidate country in demo state. */
+  function setTopCountry(key: string, country: string): void {
+    const top = getState().candidates.find(
+      (c) => c.id === pick(key).candidateId,
+    );
+    if (!top) throw new Error(`no top candidate for spine ${key}`);
+    top.country = country;
+  }
+
+  it('a top match already from the fallback country is kept', () => {
+    const top = pick('07');
+    startBulk(getState(), [pick('07')], T0);
+    expect(itemOf('07')).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_country',
+      country: 'US',
+      candidateId: top.candidateId,
+    });
+    const imp = getState().imports.find((i) => i.id === itemOf('07').importId);
+    expect(imp?.candidateId).toBe(top.candidateId);
+  });
+
+  it('with neither a Canadian nor a US option the top match is kept', () => {
+    const top = pick('00');
+    startBulk(getState(), [pick('00')], T0);
+    expect(itemOf('00')).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+      country: 'Hong Kong',
+      candidateId: top.candidateId,
+    });
+    const imp = getState().imports.find((i) => i.id === itemOf('00').importId);
+    expect(imp?.candidateId).toBe(top.candidateId);
+  });
+
+  it('a combined top match naming the fallback country is kept', () => {
+    setTopCountry('00', 'US & Europe');
+    const top = pick('00');
+    startBulk(getState(), [pick('00')], T0);
+    const item = itemOf('00');
+    expect(item).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_country',
+      country: 'US & Europe',
+    });
+    const imp = getState().imports.find((i) => i.id === item.importId);
+    expect(imp?.candidateId).toBe(top.candidateId);
+  });
+
+  it('an exact canned US pressing beats a combined top match', () => {
+    setTopCountry('53', 'US & Europe');
+    startBulk(getState(), [pick('53')], T0);
+    const item = itemOf('53');
+    expect(item).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_country',
+      releaseId: 2848589,
+      country: 'US',
+    });
+    const imp = getState().imports.find((i) => i.id === item.importId);
+    expect(imp?.candidateId).toBe('demo-cand-53-pressing-2848589');
+  });
+
+  it('a UK fallback ignores the US pressing and keeps a UK top match', () => {
+    getState().account.fallbackCountry = 'UK';
+    startBulk(getState(), [pick('53'), pick('15')], T0);
+    expect(getState().bulkRuns[0].fallbackCountry).toBe('UK');
+    expect(itemOf('53')).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+      country: 'Japan',
+      candidateId: pick('53').candidateId,
+    });
+    expect(itemOf('15')).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_country',
+      country: 'UK',
+      candidateId: pick('15').candidateId,
+    });
+    expect(
+      getState().candidates.some(
+        (c) => c.id === 'demo-cand-53-pressing-2848589',
+      ),
+    ).toBe(false);
+  });
+
+  it('a fallback equal to the preferred country changes no outcome', () => {
+    getState().account.fallbackCountry = 'Canada';
+    startBulk(
+      getState(),
+      [...RUN_KEYS, '53', '07', '00'].map((k) => pick(k)),
+      T0,
+    );
+    const outcomes = Object.fromEntries(
+      [...RUN_KEYS, '53', '07', '00'].map((k) => [
+        k,
+        itemOf(k).outcome ?? itemOf(k).skipReason,
+      ]),
+    );
+    expect(outcomes).toEqual({
+      '11': 'preferred',
+      '40': 'preferred',
+      '15': 'fallback_no_version',
+      '16': 'fallback_no_master',
+      '31': 'duplicate',
+      '42': 'fallback_no_version',
+      '53': 'fallback_no_version',
+      '07': 'fallback_no_version',
+      '00': 'fallback_no_version',
+    });
+  });
+
+  it('the default US fallback leaves the preferred-tier outcomes alone', () => {
+    startBulk(getState(), runPicks(), T0);
+    const outcomes = Object.fromEntries(
+      RUN_KEYS.map((k) => [k, itemOf(k).outcome ?? itemOf(k).skipReason]),
+    );
+    expect(outcomes).toEqual({
+      '11': 'preferred',
+      '40': 'preferred',
+      // UK top match, no US option.
+      '15': 'fallback_no_version',
+      '16': 'fallback_no_master',
+      '31': 'duplicate',
+      // A US top match: the fallback tier keeps it (D-20 new import still).
+      '42': 'fallback_country',
+    });
+  });
+
+  it('a run through the fallback tier makes no network request', () => {
+    const spy = vi.spyOn(globalThis, 'fetch');
+    startBulk(
+      getState(),
+      [...RUN_KEYS, '53', '07', '00'].map((k) => pick(k)),
+      T0,
+    );
+    clockNow = lastReadyAt() + 10_000;
+    buildSpinesResponse(getState(), clockNow);
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 
