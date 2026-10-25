@@ -2,13 +2,28 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  bulkShelf,
+  connectDiscogs,
+  jobCtx,
+  seedTopCandidate,
+  useBulkSecrets,
+} from '../../../test/helpers/bulk-seed';
 import { orphanScenario } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
+import {
+  type BulkItemDbRow,
+  failBulkItem,
+  getBulkItem,
+  RESOLVE_PRESSING_JOB_TYPE,
+  startBulkRun,
+} from '../bulk/store';
 import { getDb } from '../db/client';
 import { getCollectionFolderId } from '../discogs/folders';
 import { createSearch, finishSearch } from '../discogs/store';
 import { newId } from '../ids';
-import { cancelQueuedJob } from '../jobs/queue';
+import { runResolvePressing } from '../jobs/handlers/resolve-pressing';
+import { cancelQueuedJob, claimNext } from '../jobs/queue';
 import { SECRET_ENV_NAMES, saveSecrets } from '../secrets';
 import {
   ADD_TO_COLLECTION_JOB_TYPE,
@@ -54,6 +69,9 @@ function useTempSecrets(): void {
 function db() {
   return getDb().$client;
 }
+
+/** Fake-clock start of a bulk run (after any real Date.now()). */
+const BULK_START = 1_800_000_000_000;
 
 /** One stored candidate of the spine for releaseId; returns its id. */
 function seedCandidate(spineId: string, releaseId = 1031): string {
@@ -824,6 +842,139 @@ describe('retrySpine (REV-04, D-13)', () => {
     expect(retrySpine(db(), 'no-such-spine')).toEqual({
       status: 'not_found',
     });
+  });
+});
+
+describe('retrySpine on a bulk lookup (BULK-11)', () => {
+  useTempDataDir();
+  useBulkSecrets();
+
+  /** One spine picked into a run; returns its item id and spine id. */
+  async function lookup(
+    over: { country?: string; now?: number } = {},
+  ): Promise<{ itemId: string; spineId: string }> {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0], {
+      country: over.country ?? 'US',
+    });
+    const res = startBulkRun(db(), {
+      items: [{ spineId: spineIds[0], candidateId: top.candidateId }],
+      country: 'Canada',
+      folderId: 1,
+      now: over.now ?? BULK_START,
+    });
+    if (res.status !== 'ok') throw new Error(`start: ${res.status}`);
+    const row = db()
+      .prepare('SELECT id FROM bulk_items WHERE run_id = ?')
+      .get(res.runId) as { id: string };
+    return { itemId: row.id, spineId: spineIds[0] };
+  }
+
+  function bulkItem(id: string): BulkItemDbRow {
+    const row = getBulkItem(db(), id);
+    if (!row) throw new Error(`no bulk item ${id}`);
+    return row;
+  }
+
+  /** The lookup ended failed: its job failed and the item says why. */
+  function failLookup(itemId: string): string {
+    const jobId = bulkItem(itemId).job_id ?? '';
+    setJob(jobId, 'failed');
+    failBulkItem(db(), itemId, {
+      errorKind: 'unavailable',
+      error: 'Discogs answered 502',
+    });
+    return jobId;
+  }
+
+  function queuedLookups(): number {
+    return count(
+      'jobs',
+      `type = '${RESOLVE_PRESSING_JOB_TYPE}' AND status = 'queued'`,
+    );
+  }
+
+  it('a failed lookup is queued again on the same item under a new job', async () => {
+    const { itemId, spineId } = await lookup();
+    const oldJob = failLookup(itemId);
+    const res = retrySpine(db(), spineId);
+    expect(res).toMatchObject({ status: 'ok', kind: 'lookup', itemId });
+    const jobId = (res as { jobId?: string }).jobId ?? '';
+    expect(jobId).not.toBe(oldJob);
+    expect(bulkItem(itemId)).toMatchObject({
+      status: 'queued',
+      error_kind: null,
+      error: null,
+      job_id: jobId,
+    });
+    expect(job(jobId)).toMatchObject({
+      status: 'queued',
+      type: RESOLVE_PRESSING_JOB_TYPE,
+      dedupe_key: `pressing:${itemId}`,
+    });
+    expect(job(oldJob).dedupe_key).toBeNull();
+    expect(count('imports')).toBe(0);
+  });
+
+  it('a queued item whose job failed (an interrupted read) is requeued the same way', async () => {
+    const { itemId, spineId } = await lookup();
+    const oldJob = bulkItem(itemId).job_id ?? '';
+    setJob(oldJob, 'failed');
+    const res = retrySpine(db(), spineId);
+    expect(res).toMatchObject({ status: 'ok', kind: 'lookup', itemId });
+    expect(bulkItem(itemId).job_id).not.toBe(oldJob);
+    expect(job(bulkItem(itemId).job_id ?? '').status).toBe('queued');
+  });
+
+  it('busy while the lookup job is queued or running, and nothing changes', async () => {
+    const { itemId, spineId } = await lookup();
+    const before = snapshot();
+    expect(retrySpine(db(), spineId)).toEqual({ status: 'busy' });
+    setJob(bulkItem(itemId).job_id ?? '', 'running');
+    const running = snapshot();
+    expect(retrySpine(db(), spineId)).toEqual({ status: 'busy' });
+    expect(snapshot()).toBe(running);
+    expect(running).not.toBe(before);
+  });
+
+  it('two retries in a row on a failed lookup make exactly one queued job', async () => {
+    const { itemId, spineId } = await lookup();
+    failLookup(itemId);
+    const first = retrySpine(db(), spineId);
+    expect(first.status === 'ok' ? first.kind : first.status).toBe('lookup');
+    expect(retrySpine(db(), spineId).status).toBe('busy');
+    expect(queuedLookups()).toBe(1);
+  });
+
+  it('an item a newer import replaced is ignored and the import rules apply', async () => {
+    const { itemId, spineId } = await lookup({ now: 1_000 });
+    failLookup(itemId);
+    const { importId } = failedImport(spineId);
+    const res = retrySpine(db(), spineId);
+    expect(res).toMatchObject({ status: 'ok', kind: 'import', importId });
+    expect(bulkItem(itemId).status).toBe('failed');
+    expect(queuedLookups()).toBe(0);
+  });
+
+  it('after the retry, the job resolves the item and creates the import', async () => {
+    const { itemId, spineId } = await lookup({ country: 'Canada' });
+    failLookup(itemId);
+    const res = retrySpine(db(), spineId);
+    expect(res).toMatchObject({ kind: 'lookup' });
+    const claimed = claimNext('discogs', BULK_START + 60_000);
+    expect(claimed?.type).toBe(RESOLVE_PRESSING_JOB_TYPE);
+    if (!claimed) return;
+    await runResolvePressing(JSON.parse(claimed.payload), jobCtx(claimed));
+    expect(bulkItem(itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'preferred',
+    });
+    const imports = db()
+      .prepare('SELECT id, status FROM imports WHERE spine_id = ?')
+      .all(spineId) as { id: string; status: string }[];
+    expect(imports).toHaveLength(1);
+    expect(bulkItem(itemId).import_id).toBe(imports[0]?.id);
   });
 });
 

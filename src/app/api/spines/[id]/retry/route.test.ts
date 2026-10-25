@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  bulkShelf,
+  seedTopCandidate,
+} from '../../../../../../test/helpers/bulk-seed';
 import { orphanScenario } from '../../../../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../../../../test/helpers/temp-data-dir';
 
@@ -10,6 +14,7 @@ vi.mock('next/server', async (importOriginal) => ({
   connection: async () => {},
 }));
 
+import { failBulkItem, getBulkItem, startBulkRun } from '@/server/bulk/store';
 import { getDb } from '@/server/db/client';
 import {
   clearAuthInvalid,
@@ -179,6 +184,28 @@ describe('POST /api/spines/{id}/retry', () => {
     expect(
       db().prepare('SELECT status FROM imports WHERE id = ?').get(importId),
     ).toEqual({ status: 'pending' });
+  });
+
+  it('201 kind lookup for a failed pressing lookup, which goes back in line', async () => {
+    const { spineIds } = await bulkShelf();
+    connect();
+    const top = seedTopCandidate(spineIds[0]);
+    const run = startBulkRun(db(), {
+      items: [{ spineId: spineIds[0], candidateId: top.candidateId }],
+      country: 'Canada',
+      folderId: 1,
+      now: 1_800_000_000_000,
+    });
+    if (run.status !== 'ok') throw new Error(run.status);
+    const { id: itemId, job_id: oldJob } = db()
+      .prepare('SELECT id, job_id FROM bulk_items WHERE run_id = ?')
+      .get(run.runId) as { id: string; job_id: string };
+    db().prepare(`UPDATE jobs SET status = 'failed' WHERE id = ?`).run(oldJob);
+    failBulkItem(db(), itemId, { errorKind: 'unavailable', error: 'HTTP 502' });
+    const res = await retry(spineIds[0], {});
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ kind: 'lookup', itemId });
+    expect(getBulkItem(db(), itemId)?.status).toBe('queued');
   });
 
   it('201 kind search for a failed search', async () => {

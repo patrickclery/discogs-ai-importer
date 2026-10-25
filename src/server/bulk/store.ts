@@ -260,3 +260,21 @@ export function recordBulkItemError(
       }).changes === 1
   );
 }
+
+export type LatestBulkItem = BulkItemDbRow & { job_status: string | null };
+
+/** The spine's newest bulk item with its job's status (RED stub). */
+export function latestBulkItemFor(
+  _db: Database.Database,
+  _spineId: string,
+): LatestBulkItem | undefined {
+  return undefined;
+}
+
+/** Re-runs a failed lookup (RED stub). */
+export function retryBulkItem(
+  _db: Database.Database,
+  _itemId: string,
+): { id: string; created: boolean } {
+  return { id: '', created: false };
+}
