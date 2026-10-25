@@ -15,6 +15,7 @@ import {
 } from './expanded-cards';
 import { SpineView } from './photo-section';
 import { SpineCard } from './spine-card';
+import { TooltipProvider } from './ui/tooltip';
 
 // The compact card (D-10, UI-SPEC Compact card): #n and the header badges,
 // the spine crop, then the top match with its cover, title and details. No
@@ -177,6 +178,13 @@ const DISCOGS_VIEW = {
   pausedUntil: null,
 };
 
+// createElement's typing wants children in props; pass them as an argument.
+const Expanded = ExpandedCardsProvider as FC<{
+  layout: 'compact' | 'detailed';
+  initial?: Iterable<string>;
+  children?: ReactNode;
+}>;
+
 /** Renders the compact card under a provider, optionally already expanded. */
 function renderInGrid(s: SpineDto, expanded: string[]): string {
   return renderToStaticMarkup(
@@ -184,19 +192,23 @@ function renderInGrid(s: SpineDto, expanded: string[]): string {
       QueryClientProvider,
       { client: new QueryClient() },
       h(
-        ExpandedCardsProvider,
+        Expanded,
         { layout: 'compact', initial: expanded },
-        h(CompactSpineCard, {
-          spine: s,
-          threshold: 0.7,
-          renderFull: (trailing: ReactNode) =>
-            h(SpineView, {
-              spine: s,
-              threshold: 0.7,
-              discogs: DISCOGS_VIEW,
-              trailing,
-            }),
-        }),
+        h(
+          TooltipProvider,
+          null,
+          h(CompactSpineCard, {
+            spine: s,
+            threshold: 0.7,
+            renderFull: (trailing: ReactNode) =>
+              h(SpineView, {
+                spine: s,
+                threshold: 0.7,
+                discogs: DISCOGS_VIEW,
+                trailing,
+              }),
+          }),
+        ),
       ),
     ),
   );

@@ -23,6 +23,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { useCardLayout } from '@/components/card-layout-toggle';
 import { DiscogsNotConnectedAlert } from '@/components/discogs-not-connected-alert';
+import { ExpandedCardsProvider } from '@/components/expanded-cards';
 import {
   ImportUiProvider,
   type ImportUiValue,
@@ -469,19 +470,23 @@ export function SpinesView({
           <DiscogsNotConnectedAlert reconnect={data.discogs.needsReconnect} />
         ) : null}
         <ImportUiProvider value={importUi}>
-          {data.photos.map((p) => (
-            <PhotoSection
-              key={p.id}
-              photo={p}
-              spines={byPhoto.get(p.id) ?? []}
-              threshold={data.confidenceThreshold}
-              connected={data.discogs.connected}
-              needsReconnect={data.discogs.needsReconnect}
-              pausedUntil={data.discogs.pausedUntil}
-              progress={data.photoProgress[p.id]}
-              layout={layout}
-            />
-          ))}
+          {/* Expanded compact cards, keyed by spine id so polls and filter
+              refetches keep them open; a layout switch closes them all. */}
+          <ExpandedCardsProvider layout={layout}>
+            {data.photos.map((p) => (
+              <PhotoSection
+                key={p.id}
+                photo={p}
+                spines={byPhoto.get(p.id) ?? []}
+                threshold={data.confidenceThreshold}
+                connected={data.discogs.connected}
+                needsReconnect={data.discogs.needsReconnect}
+                pausedUntil={data.discogs.pausedUntil}
+                progress={data.photoProgress[p.id]}
+                layout={layout}
+              />
+            ))}
+          </ExpandedCardsProvider>
         </ImportUiProvider>
       </div>
     );

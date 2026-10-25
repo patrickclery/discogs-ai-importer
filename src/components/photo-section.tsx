@@ -122,7 +122,7 @@ function CardSkeletons({ layout }: { layout: CardLayout }) {
 }
 
 /** Discogs connection state threaded from SpinesResponse.discogs. */
-type DiscogsView = {
+export type DiscogsView = {
   connected: boolean;
   needsReconnect: boolean;
   pausedUntil: number | null;
@@ -132,11 +132,14 @@ type DiscogsView = {
  * A /spines card: the import or search state badge last in the status slot, and a
  * footer holding the orphan row first (when orphaned, RESEARCH Pitfall 3)
  * and then the Discogs matches section, so every card offers its matches.
+ * `trailing` is appended as the footer's last row (the expanded compact
+ * card's Show less, D-11). The one full-card renderer for both layouts.
  */
 export function SpineView({
   spine,
   threshold,
   discogs,
+  trailing,
 }: {
   spine: SpineDto;
   threshold: number;
@@ -157,6 +160,7 @@ export function SpineView({
             needsReconnect={discogs.needsReconnect}
             pausedUntil={discogs.pausedUntil}
           />
+          {trailing}
         </div>
       }
     />
@@ -225,7 +229,19 @@ function SectionBody({
   // Compact (D-10, D-12): small cards in the grid. Detailed: the full card.
   const card = (spine: SpineDto) =>
     compact ? (
-      <CompactSpineCard key={spine.id} spine={spine} threshold={threshold} />
+      <CompactSpineCard
+        key={spine.id}
+        spine={spine}
+        threshold={threshold}
+        renderFull={(trailing) => (
+          <SpineView
+            spine={spine}
+            threshold={threshold}
+            discogs={discogs}
+            trailing={trailing}
+          />
+        )}
+      />
     ) : (
       <SpineView
         key={spine.id}

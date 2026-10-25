@@ -56,6 +56,7 @@ export function OrphanFooter({ spine }: { spine: SpineDto }) {
 export function SpineCard({
   spine,
   threshold,
+  leading,
   badges,
   statusSlot,
   footer,
@@ -63,6 +64,8 @@ export function SpineCard({
   spine: SpineDto;
   /** The confidence_threshold setting (D-09). */
   threshold: number;
+  /** First in the header, before `#n` (the bulk select checkbox, D-05). */
+  leading?: ReactNode;
   /** Left of the header, after `#n` and the worst-field badge. */
   badges?: ReactNode;
   statusSlot?: ReactNode;
@@ -92,10 +95,12 @@ export function SpineCard({
     footer ?? (orphaned ? <OrphanFooter spine={spine} /> : null);
   return (
     <Card
+      id={`spine-card-${spine.id}`}
       data-spine-card={spine.id}
       className={cn('gap-4 rounded-xl p-4', orphaned && 'border-warning/60')}
     >
       <div className="flex items-center gap-2 text-xs">
+        {leading}
         <span className="font-mono text-muted-foreground tabular-nums">
           #{number}
         </span>

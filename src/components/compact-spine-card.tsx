@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  ChevronDown,
+  ChevronUp,
   CircleSlash,
   CircleX,
   Clock,
@@ -8,11 +10,13 @@ import {
   SearchX,
   TriangleAlert,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { useExpandedCard } from '@/components/expanded-cards';
 import { ImportStateBadge } from '@/components/import-state-badge';
 import { SpineCrop } from '@/components/spine-crop';
 import { TopMatchRow } from '@/components/top-match-row';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { WorstFieldBadge } from '@/components/worst-field-badge';
@@ -50,17 +54,74 @@ function PlaceholderLine({ text }: { text: string }) {
  * badge last), the spine crop, then directly under it the top or confirmed
  * match. No field inputs, external link or Add button while collapsed: those
  * live in the full card (D-11).
+ *
+ * Edit spine opens the card in place: it renders `renderFull` (the one
+ * full-card renderer, SpineView) across the whole grid row, with Show less
+ * as its last row. Instant, no height animation. Focus follows the toggle:
+ * Show less after opening; after closing, the compact card scrolls into
+ * view and its Edit spine takes focus.
  */
 export function CompactSpineCard({
   spine,
   threshold,
+  renderFull,
 }: {
   spine: SpineDto;
   /** The confidence_threshold setting (D-09). */
   threshold: number;
+  /** The full card with `trailing` as its last row; without it no toggle. */
   renderFull?: (trailing: ReactNode) => ReactNode;
 }) {
+  const [expanded, setExpanded] = useExpandedCard(spine.id);
+  const editRef = useRef<HTMLButtonElement>(null);
+  const showLessRef = useRef<HTMLButtonElement>(null);
+  const focusAfter = useRef<'expand' | 'collapse' | null>(null);
+  const cardId = `spine-card-${spine.id}`;
+
+  useEffect(() => {
+    const pending = focusAfter.current;
+    if (pending === null) return;
+    focusAfter.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      if (pending === 'expand' && expanded) {
+        showLessRef.current?.focus();
+      } else if (pending === 'collapse' && !expanded) {
+        document.getElementById(cardId)?.scrollIntoView({ block: 'nearest' });
+        editRef.current?.focus();
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expanded, cardId]);
+
   const number = spineNumber(spine);
+
+  if (expanded && renderFull) {
+    return (
+      <div className="col-span-full">
+        {renderFull(
+          <div className="flex justify-end">
+            <Button
+              ref={showLessRef}
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Show less of spine #${number}`}
+              aria-expanded="true"
+              aria-controls={cardId}
+              onClick={() => {
+                focusAfter.current = 'collapse';
+                setExpanded(false);
+              }}
+            >
+              Show less
+              <ChevronUp aria-hidden="true" />
+            </Button>
+          </div>,
+        )}
+      </div>
+    );
+  }
+
   const rawText =
     spine.fields.find((f) => f.field === 'raw_text')?.value ?? null;
   const edited = editedCount(spine.fields);
@@ -73,7 +134,7 @@ export function CompactSpineCard({
       : null;
   return (
     <Card
-      id={`spine-card-${spine.id}`}
+      id={cardId}
       data-spine-card={spine.id}
       className={cn('gap-2 rounded-xl p-4', orphaned && 'border-warning/60')}
     >
@@ -110,6 +171,26 @@ export function CompactSpineCard({
           <PlaceholderLine text={slot.placeholder ?? ''} />
         )}
       </div>
+      {renderFull ? (
+        <div className="flex justify-end">
+          <Button
+            ref={editRef}
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={`Edit spine #${number}`}
+            aria-expanded="false"
+            aria-controls={cardId}
+            onClick={() => {
+              focusAfter.current = 'expand';
+              setExpanded(true);
+            }}
+          >
+            Edit spine
+            <ChevronDown aria-hidden="true" />
+          </Button>
+        </div>
+      ) : null}
     </Card>
   );
 }
