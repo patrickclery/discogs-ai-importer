@@ -4,6 +4,7 @@
 // ./routes/*.ts and each exports `routes: DemoRoute[]`, so later plans add
 // handlers without editing this dispatcher.
 import { routes as accountRoutes } from './routes/account';
+import { routes as bulkRoutes } from './routes/bulk';
 import { routes as importRoutes } from './routes/imports';
 import { routes as readRoutes } from './routes/read';
 import { routes as reviewRoutes } from './routes/review';
@@ -50,6 +51,7 @@ const ROUTES: DemoRoute[] = [
   ...readRoutes,
   ...reviewRoutes,
   ...importRoutes,
+  ...bulkRoutes,
   ...uploadRoutes,
   ...accountRoutes,
 ];
