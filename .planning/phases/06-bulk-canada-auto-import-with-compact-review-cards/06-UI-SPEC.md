@@ -458,6 +458,7 @@ Added by 06-18 after UAT. Where a row below differs from the sections above, thi
 - **Placement:** directly after the Preferred country field, 16px apart, in the connected Discogs card's account section. Shown only when connected.
 - **Field:** `FieldLabel` `Fallback country`, the same `Input` as Preferred country (`w-64 max-w-full`, `maxLength={40}`, `autoComplete="off"`, `spellCheck={false}`), then `FieldDescription` `If Discogs lists no pressing from the preferred country, bulk import picks this country's CD pressing next, or else keeps the top match. Write it the way Discogs does, such as US, UK or Germany.` Default `US`.
 - **Save, spinner, errors:** the same as Preferred country (blur and Enter, trimmed, only when changed; Escape restores; 16px `Spinner` while pending; `FieldError` with the save-error copy on failure). Empty copy: `Enter a country, such as US.` Success toast: `Fallback country set to {country}`.
+- **Same-country hint (IN-02):** when the saved fallback is the preferred country (US and USA equal), a second `FieldDescription` reads `Same as the preferred country, so bulk import goes straight to the top match.` It updates after either field saves.
 - **Equal countries:** a fallback equal to the preferred country (US and USA count as equal) means no second tier; every line below then reads as in the main contract.
 - Each bulk run snapshots its fallback country when it starts, so a later change never alters a run in progress, its Retry, or its cards.
 

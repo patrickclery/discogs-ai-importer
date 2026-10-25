@@ -88,7 +88,10 @@ function ConnectedSection({
       </div>
       <CollectionFolderField />
       <PreferredCountryField initialCountry={preferredCountry} />
-      <FallbackCountryField initialCountry={fallbackCountry} />
+      <FallbackCountryField
+        initialCountry={fallbackCountry}
+        preferredCountry={preferredCountry}
+      />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <TestDiscogsButton />
         <DisconnectDiscogsButton />

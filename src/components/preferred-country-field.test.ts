@@ -7,7 +7,9 @@ import {
   countrySaveDecision,
   countrySaveErrorText,
   FallbackCountryField,
+  fallbackCountryHint,
   PreferredCountryField,
+  SAME_COUNTRY_HINT,
 } from './preferred-country-field';
 
 // Settings "Preferred country" (D-14, UI-SPEC). The save rule and the error
@@ -114,7 +116,12 @@ describe('FallbackCountryField markup', () => {
   // Rendered inside each test, so a render error fails that test only.
   const render = () =>
     decode(
-      renderToStaticMarkup(h(FallbackCountryField, { initialCountry: 'US' })),
+      renderToStaticMarkup(
+        h(FallbackCountryField, {
+          initialCountry: 'US',
+          preferredCountry: 'Canada',
+        }),
+      ),
     );
 
   it('shows the label, the saved country and the description', () => {
@@ -139,6 +146,42 @@ describe('FallbackCountryField markup', () => {
     const html = render();
     expect(html).not.toContain('role="alert"');
     expect(html).not.toContain('role="status"');
+  });
+
+  it('shows no same-country hint when the countries differ', () => {
+    expect(render()).not.toContain(SAME_COUNTRY_HINT);
+  });
+
+  it('IN-02: notes when the fallback is the preferred country', () => {
+    const html = decode(
+      renderToStaticMarkup(
+        h(FallbackCountryField, {
+          initialCountry: 'USA',
+          preferredCountry: 'US',
+        }),
+      ),
+    );
+    expect(html).toContain(FALLBACK_DESCRIPTION);
+    expect(html).toContain(SAME_COUNTRY_HINT);
+  });
+});
+
+describe('fallbackCountryHint (IN-02)', () => {
+  it('reads the plain note', () => {
+    expect(SAME_COUNTRY_HINT).toBe(
+      'Same as the preferred country, so bulk import goes straight to the top match.',
+    );
+  });
+
+  it.each([
+    ['US', 'US', SAME_COUNTRY_HINT],
+    ['usa', 'US', SAME_COUNTRY_HINT],
+    [' canada ', 'Canada', SAME_COUNTRY_HINT],
+    ['US', 'Canada', null],
+    ['Hong Kong', 'Canada', null],
+    ['', 'Canada', null],
+  ] as const)('(%j, %j) = %j', (fallback, preferred, want) => {
+    expect(fallbackCountryHint(fallback, preferred)).toBe(want);
   });
 });
 
@@ -177,5 +220,27 @@ describe('DiscogsCard country fields', () => {
     expect(html).toMatch(
       /<input[^>]*id="fallback-country"[^>]*value="US"|<input[^>]*value="US"[^>]*id="fallback-country"/,
     );
+    expect(html).not.toContain(SAME_COUNTRY_HINT);
+  });
+
+  it('IN-02: passes the preferred country so the fallback field can note a match', () => {
+    const html = decode(
+      renderToStaticMarkup(
+        h(DiscogsCard, {
+          statuses: [],
+          connection: {
+            connected: true,
+            username: 'owner',
+            needsReconnect: false,
+            pendingConnect: false,
+            credentialsSaved: true,
+          },
+          callbackUrl: null,
+          preferredCountry: 'US',
+          fallbackCountry: 'US',
+        }),
+      ),
+    );
+    expect(html).toContain(SAME_COUNTRY_HINT);
   });
 });

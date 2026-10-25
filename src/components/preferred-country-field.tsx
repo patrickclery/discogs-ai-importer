@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { UNREACHABLE_REASON } from '@/lib/failure-reason';
+import { distinctFallback } from '@/lib/pressing';
 
 // Settings "Preferred country" (D-14; UI-SPEC "Settings: Preferred
 // country") and "Fallback country" (G-06-side-1). Each saves on blur and on
@@ -30,6 +31,24 @@ export const COUNTRY_EMPTY_COPY = {
 } as const;
 
 type CountrySave = typeof savePreferredCountry;
+
+/** The note under Fallback country when it is the preferred one (IN-02). */
+export const SAME_COUNTRY_HINT =
+  'Same as the preferred country, so bulk import goes straight to the top match.';
+
+/**
+ * SAME_COUNTRY_HINT when the saved fallback is the preferred country, so
+ * there is no second tier (the distinctFallback rule), else null.
+ */
+export function fallbackCountryHint(
+  fallback: string,
+  preferred: string,
+): string | null {
+  if (!fallback.trim()) return null;
+  return distinctFallback(preferred, fallback) === null
+    ? SAME_COUNTRY_HINT
+    : null;
+}
 
 /** skip: unchanged. empty: nothing to save. save: send the trimmed value. */
 export function countrySaveDecision(
@@ -57,6 +76,7 @@ function CountrySettingField({
   savedToast,
   initialCountry,
   save,
+  hint,
 }: {
   inputId: string;
   errorId: string;
@@ -66,6 +86,8 @@ function CountrySettingField({
   savedToast: (country: string) => string;
   initialCountry: string;
   save: CountrySave;
+  /** An extra note for the saved value, or null for none. */
+  hint?: (saved: string) => string | null;
 }) {
   const [value, setValue] = useState(initialCountry);
   const [saved, setSaved] = useState(initialCountry);
@@ -110,6 +132,8 @@ function CountrySettingField({
     });
   }
 
+  const hintText = hint ? hint(saved) : null;
+
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -141,6 +165,7 @@ function CountrySettingField({
         {saving ? <Spinner /> : null}
       </div>
       <FieldDescription>{description}</FieldDescription>
+      {hintText ? <FieldDescription>{hintText}</FieldDescription> : null}
       {error ? <FieldError id={errorId}>{error}</FieldError> : null}
     </Field>
   );
@@ -169,8 +194,11 @@ export function PreferredCountryField({
 
 export function FallbackCountryField({
   initialCountry,
+  preferredCountry,
 }: {
   initialCountry: string;
+  /** The saved preferred country, for the same-country hint (IN-02). */
+  preferredCountry: string;
 }) {
   return (
     <CountrySettingField
@@ -184,6 +212,7 @@ export function FallbackCountryField({
       savedToast={(country) => `Fallback country set to ${country}`}
       initialCountry={initialCountry}
       save={saveFallbackCountry}
+      hint={(saved) => fallbackCountryHint(saved, preferredCountry)}
     />
   );
 }
