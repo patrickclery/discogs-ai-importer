@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { eligibilityOf } from '@/lib/bulk-eligibility';
+import { eligibilityOf, topMatchOf } from '@/lib/bulk-eligibility';
+import { countryBadgeOf } from '@/lib/bulk-view';
 import { REVIEW_STATUSES } from '@/lib/import-types';
 import type { SpineDto } from '@/lib/scan-types';
 import {
   DEFAULT_CONFIDENCE_THRESHOLD,
   DEFAULT_DENSITY_MAX_SPINES,
 } from '@/lib/vision-contract';
+import { startBulk } from './ops/bulk';
+import { IMPORT_READY_MS } from './ops/imports';
 import {
   buildPhotosResponse,
   buildSpinesResponse,
@@ -403,5 +406,169 @@ describe('recording helpers (D-13)', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toContain(cannedRelease().releaseId);
     expect(recordingFor('nope')).toBeNull();
+  });
+});
+
+describe('bulk fields (D-15, D-17, BULK-12)', () => {
+  const RUN_KEYS = ['11', '40', '15', '16', '31', '42'];
+  const sid = (key: string) => `demo-spine-${key}`;
+
+  function run(): { after: number } {
+    const state = getState();
+    const listed = spinesAt(state, T0).spines;
+    const picks = RUN_KEYS.map((key) => {
+      const s = listed.find((x) => x.id === sid(key));
+      const top = s ? topMatchOf(s) : null;
+      if (!top) throw new Error(`no top match for ${key}`);
+      return { spineId: sid(key), candidateId: top.id };
+    });
+    const res = startBulk(state, picks, T0);
+    if (res.status !== 'ok') throw new Error(`startBulk ${res.status}`);
+    const last = Math.max(...state.bulkItems.map((i) => i.readyAt));
+    return { after: last + IMPORT_READY_MS };
+  }
+
+  const spineAt = (key: string, now: number) =>
+    spinesAt(getState(), now).spines.find((s) => s.id === sid(key));
+
+  it('a picked spine reads finding and Matched while its pressing is found', () => {
+    run();
+    const at = T0 + 100;
+    for (const key of RUN_KEYS) {
+      const s = spineAt(key, at);
+      expect(s?.bulk?.item?.phase, key).toBe('finding');
+      expect(s?.bulk?.eligible, key).toBe(false);
+      expect(s?.bulk?.reason, key).toBe('finding');
+      expect(s?.reviewStatus, key).toBe('matched');
+      expect(s?.bulk?.item).toMatchObject({
+        preferredCountry: 'Canada',
+        outcome: null,
+        releaseId: null,
+        country: null,
+        importId: null,
+        skip: null,
+        failure: null,
+        createdAt: T0,
+      });
+    }
+    expect(spinesAt(getState(), at).discogsActive).toBe(true);
+  });
+
+  it('the status response counts finding items as Discogs jobs and imports left', () => {
+    const before = buildStatusResponse(getState(), T0);
+    run();
+    const at = T0 + 100;
+    const during = buildStatusResponse(getState(), at);
+    // Item 0 is running, items 1..5 queued; no bulk import exists yet.
+    expect(during.discogs.imports.left).toBe(
+      before.discogs.imports.left + RUN_KEYS.length,
+    );
+    expect(during.jobs.discogs.running).toBe(before.jobs.discogs.running + 1);
+    expect(during.jobs.discogs.queued).toBe(
+      before.jobs.discogs.queued + RUN_KEYS.length - 1,
+    );
+  });
+
+  it('response.bulk summarizes the latest run with summarizeRun', () => {
+    const { after } = run();
+    const during = spinesAt(getState(), T0 + 100);
+    expect(during.bulk?.running).toBe(true);
+    expect(during.bulk).toMatchObject({
+      country: 'Canada',
+      folderName: 'Uncategorized',
+      total: 6,
+      done: 0,
+      createdAt: T0,
+    });
+    const done = spinesAt(getState(), after);
+    expect(done.bulk).toMatchObject({
+      total: 6,
+      done: 6,
+      added: 5,
+      fallbacks: 3,
+      duplicates: 1,
+      changed: 0,
+      failed: 0,
+      running: false,
+    });
+    expect(done.discogsActive).toBe(false);
+  });
+
+  it('response.bulk is null before any run', () => {
+    expect(spinesAt(getState(), T0).bulk).toBeNull();
+  });
+
+  it('a UK fallback reads the fallback badge and appears under the Fallback filter', () => {
+    const { after } = run();
+    const s = spineAt('15', after);
+    expect(s?.bulk?.item).toMatchObject({
+      phase: 'resolved',
+      outcome: 'fallback_no_version',
+      country: 'UK',
+    });
+    expect(s && countryBadgeOf(s)).toEqual({ kind: 'fallback', country: 'UK' });
+    expect(s?.reviewStatus).toBe('imported');
+    const filtered = buildSpinesResponse(getState(), after, { fallback: true });
+    expect(filtered.spines.map((x) => x.id)).toContain(sid('15'));
+    expect(filtered.spines.map((x) => x.id)).not.toContain(sid('11'));
+    expect(filtered.counts.fallback).toBe(3);
+  });
+
+  it('spine 40 imports the Canadian pressing but never lists it', () => {
+    const { after } = run();
+    const s = spineAt('40', after);
+    expect(s?.import?.releaseId).toBe(1408104);
+    expect(s?.bulk?.item).toMatchObject({
+      phase: 'resolved',
+      outcome: 'preferred',
+      releaseId: 1408104,
+      country: 'Canada',
+      importId: s?.import?.id,
+    });
+    expect(s && countryBadgeOf(s)?.kind).toBe('preferred');
+    const ids = getState()
+      .candidates.filter((c) => c.source === 'pressing')
+      .map((c) => c.id);
+    expect(ids).toEqual(['demo-cand-40-pressing-1408104']);
+    for (const x of spinesAt(getState(), after).spines) {
+      for (const c of x.discogs?.topCandidates ?? []) {
+        expect(ids).not.toContain(c.id);
+      }
+      expect(ids).not.toContain(topMatchOf(x)?.id);
+    }
+    expect(topMatchOf(s ?? { discogs: null })?.releaseId).not.toBe(1408104);
+  });
+
+  it('spine 31 shows the duplicate skip naming spine 29', () => {
+    const { after } = run();
+    const holder = getState().spines.find((x) => x.id === sid('29'));
+    const s = spineAt('31', after);
+    expect(s?.bulk?.item).toMatchObject({
+      phase: 'skipped',
+      importId: null,
+      skip: {
+        reason: 'duplicate',
+        photo: 'cd-spines.heic',
+        spineNumber: (holder?.index ?? -2) + 1,
+        samePhoto: true,
+      },
+    });
+    expect(s?.bulk?.reason).toBe('skipped_duplicate');
+  });
+
+  it('a later manual import replaces the bulk item', () => {
+    const { after } = run();
+    const state = getState();
+    const imp = state.imports.find((i) => i.spineId === sid('15'));
+    expect(imp).toBeDefined();
+    if (!imp) return;
+    state.imports.push({
+      ...structuredClone(imp),
+      id: 'manual-later',
+      createdAt: after + 1,
+      runningAt: after + 2,
+      readyAt: after + 3,
+    });
+    expect(spineAt('15', after + 10)?.bulk?.item).toBeNull();
   });
 });
