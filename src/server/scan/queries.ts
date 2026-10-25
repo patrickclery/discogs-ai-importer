@@ -266,6 +266,7 @@ export function loadSpineDtos(
       import: null,
       notOnDiscogs: r.not_on_discogs === 1,
       reviewStatus: null,
+      bulk: null,
     };
   });
 }
@@ -378,5 +379,7 @@ export function getSpines(
       ...discogsConnection(),
       folder: { id: folderId, name: collectionFolderName(folderId) },
     },
+
+    bulk: null,
   };
 }

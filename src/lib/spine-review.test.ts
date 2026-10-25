@@ -245,6 +245,7 @@ describe('withSpineField (02-09)', () => {
     import: null,
     notOnDiscogs: false,
     reviewStatus: null,
+    bulk: null,
   };
   it('replaces one field of one spine and keeps the AI read it is given', () => {
     const next = withSpineField({ spines: [spine] }, 's1', {

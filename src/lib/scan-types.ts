@@ -1,5 +1,6 @@
 // Scan DTOs and constants shared by routes and client components.
 // Client-safe: no server-only import here.
+import type { BulkRunDto, SpineBulkDto } from './bulk-types';
 import type { SpineDiscogsDto } from './discogs-types';
 import type { ImportDto, ReviewStatus } from './import-types';
 import type { Legibility, MediaKind, SpineField } from './vision-contract';
@@ -106,6 +107,11 @@ export type SpineDto = {
   notOnDiscogs: boolean;
   /** One review status (D-10); null outside the /spines read model. */
   reviewStatus: ReviewStatus | null;
+  /**
+   * Bulk selection state and the current bulk item (D-06); null outside
+   * the /spines read model.
+   */
+  bulk: SpineBulkDto | null;
 };
 
 export type PhotosResponse = { photos: PhotoDto[] };
@@ -156,6 +162,8 @@ export type SpinesResponse = {
     /** The folder new imports go to (D-03): the Add label names it. */
     folder: { id: number; name: string };
   };
+  /** The latest bulk run's progress and result counts, or null (D-15). */
+  bulk: BulkRunDto | null;
 };
 
 export type UploadResponse = { photoId: string; duplicate: boolean };

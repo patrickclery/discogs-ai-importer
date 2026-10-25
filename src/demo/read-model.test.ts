@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { eligibilityOf } from '@/lib/bulk-eligibility';
 import { REVIEW_STATUSES } from '@/lib/import-types';
 import type { SpineDto } from '@/lib/scan-types';
 import {
@@ -261,6 +262,23 @@ describe('filters (getSpines rules)', () => {
     const r = buildSpinesResponse(state, T0, { status: 'not_on_discogs' });
     expect(r.spines).toEqual([]);
     expect(r.photos).toEqual([]);
+  });
+});
+
+describe('bulk (eligibilityOf, Plan 06-04)', () => {
+  it('every listed spine gets eligibilityOf with no item, and no run', () => {
+    const r = spinesAt(getState(), T0);
+    expect(r.bulk).toBeNull();
+    expect(r.spines.length).toBeGreaterThan(0);
+    for (const s of r.spines) {
+      const e = eligibilityOf(s, null);
+      expect(s.bulk).toEqual({
+        eligible: e.eligible,
+        reason: e.reason,
+        item: null,
+      });
+    }
+    expect(r.spines.some((s) => s.bulk?.eligible)).toBe(true);
   });
 });
 

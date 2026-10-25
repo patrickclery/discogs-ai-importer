@@ -481,6 +481,7 @@ function toSpineDto(state: DemoState, s: DemoSpine, now: number): SpineDto {
     import: importOf(state, s, now),
     notOnDiscogs: s.notOnDiscogs,
     reviewStatus: null,
+    bulk: null,
   };
 }
 
@@ -590,6 +591,8 @@ export function buildSpinesResponse(
         name: folder?.name ?? 'Uncategorized',
       },
     },
+
+    bulk: null,
   };
 }
 
