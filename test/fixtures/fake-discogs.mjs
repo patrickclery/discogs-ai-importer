@@ -37,6 +37,20 @@
 //   GET  /releases/{id}  a release shaped like the real one for ids up to
 //        899999999; 404 { message: 'That release does not exist or may have
 //        been deleted.' } otherwise.
+//   GET  /masters/{id}/versions  (Plan 06-10, RESEARCH "Versions") signed
+//        with a live access token only (401 otherwise). For master
+//        m = r.id + 50000 of a search release r above other than 1011:
+//        two versions, { id r.id + 700000, country 'Canada', catno
+//        '{r.catno}-CA' } then { id r.id, country 'UK', catno r.catno },
+//        both title r.title, label 'Fake Label', major_formats ['CD'],
+//        format 'Album', released '1999', status 'Accepted'. Master 51011
+//        lists only its UK version. Any other master answers 200 with
+//        pagination.items 8135288 and three unrelated Canadian CDs (the
+//        live unknown-master shape). The country filter is exact and
+//        case-sensitive (country=canada matches nothing, as live) and the
+//        format filter is membership in major_formats; per_page (default
+//        50) and page are honoured. Envelope { pagination: { page, pages,
+//        per_page, items, urls }, filters: { applied, available }, versions }.
 //   GET  /img/{name}.jpeg  a small JPEG rendered once with sharp at startup.
 //        No rate-limit headers; never counted against the limit.
 // Collection (Plan 04-01, RESEARCH "Discogs API Facts"): an in-memory
@@ -563,6 +577,112 @@ function handleSearch(res, url, oauth, rate, base) {
   return 200;
 }
 
+/** Every search release by id, for the versions answer. */
+const SEARCH_RELEASES = new Map(
+  SEARCH_FIXTURES.flatMap((f) => f.results).map((r) => [r.id, r]),
+);
+
+/** The id the Canadian version of a search release gets. */
+const CANADIAN_OFFSET = 700_000;
+
+/** Unknown masters answer with the whole database (RESEARCH Pitfall 2). */
+const UNKNOWN_MASTER_ITEMS = 8_135_288;
+
+function versionEntry(base, r, { id, country, catno }) {
+  return {
+    id,
+    title: r.title,
+    label: 'Fake Label',
+    country,
+    major_formats: ['CD'],
+    format: 'Album',
+    catno,
+    released: '1999',
+    status: 'Accepted',
+    thumb: `${base}/img/${r.id}.jpeg`,
+    resource_url: `https://api.discogs.com/releases/${id}`,
+  };
+}
+
+/** A master's full version list (before filters), and its claimed size. */
+function masterVersions(base, masterId) {
+  const r = SEARCH_RELEASES.get(masterId - 50_000);
+  if (!r) {
+    const unrelated = [
+      { id: 880001, title: 'Maple Static', catno: 'MS-1' },
+      { id: 880002, title: 'Prairie Lights', catno: 'PL-2' },
+      { id: 880003, title: 'Harbour Front', catno: 'HF-3' },
+    ].map((u) => ({
+      id: u.id,
+      title: u.title,
+      label: 'Unrelated Label',
+      country: 'Canada',
+      major_formats: ['CD'],
+      format: 'Album',
+      catno: u.catno,
+      released: '2004',
+      status: 'Accepted',
+      thumb: `${base}/img/${u.id}.jpeg`,
+      resource_url: `https://api.discogs.com/releases/${u.id}`,
+    }));
+    return { versions: unrelated, items: UNKNOWN_MASTER_ITEMS };
+  }
+  const uk = versionEntry(base, r, { id: r.id, country: 'UK', catno: r.catno });
+  if (r.id === 1011) return { versions: [uk], items: null };
+  const ca = versionEntry(base, r, {
+    id: r.id + CANADIAN_OFFSET,
+    country: 'Canada',
+    catno: `${r.catno}-CA`,
+  });
+  return { versions: [ca, uk], items: null };
+}
+
+/** GET /masters/{id}/versions: the filtered page of one master's versions. */
+function handleVersions(res, url, idText, oauth, rate, base) {
+  if (!accessOk(oauth)) {
+    unauthorized(res, rate);
+    return 401;
+  }
+  const masterId = Number(idText);
+  if (!/^\d+$/.test(idText) || masterId < 1) {
+    sendJson(res, 404, rate, {
+      message: 'The requested resource was not found.',
+    });
+    return 404;
+  }
+  const p = url.searchParams;
+  const country = p.get('country');
+  const format = p.get('format');
+  const all = masterVersions(base, masterId);
+  // Exact, case-sensitive matches, like the live filters.
+  const filtered = all.versions.filter(
+    (v) =>
+      (country === null || v.country === country) &&
+      (format === null || v.major_formats.includes(format)),
+  );
+  const perPage = Math.min(
+    100,
+    Math.max(1, Number.parseInt(p.get('per_page') ?? '', 10) || 50),
+  );
+  const page = Math.max(1, Number.parseInt(p.get('page') ?? '', 10) || 1);
+  const items = all.items ?? filtered.length;
+  const applied = {};
+  if (country !== null) applied.country = [country];
+  if (format !== null) applied.format = [format];
+  sendJson(res, 200, rate, {
+    pagination: {
+      page,
+      pages: Math.max(1, Math.ceil(items / perPage)),
+      per_page: perPage,
+      items,
+      urls: {},
+    },
+    filters: { applied, available: {} },
+    versions: filtered.slice((page - 1) * perPage, page * perPage),
+  });
+  return 200;
+}
+
 function handleRelease(res, idText, rate, base) {
   const id = Number(idText);
   if (!/^\d+$/.test(idText) || id < 1 || id > 899_999_999) {
@@ -826,6 +946,11 @@ async function answerApi(req, res, url, oauth, rate) {
   const release = /^\/releases\/([^/]+)$/.exec(url.pathname);
   if (release && req.method === 'GET') {
     return handleRelease(res, release[1], rate, base);
+  }
+  // GET /masters/{id}/versions (Plan 06-10).
+  const versions = /^\/masters\/([^/]+)\/versions$/.exec(url.pathname);
+  if (versions && req.method === 'GET') {
+    return handleVersions(res, url, versions[1], oauth, rate, base);
   }
   const collectionStatus = await answerCollection(req, res, url, oauth, rate);
   if (collectionStatus !== null) return collectionStatus;
