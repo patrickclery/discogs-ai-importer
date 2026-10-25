@@ -96,6 +96,7 @@ describe('retryBulkItem (BULK-11)', () => {
     const { itemId } = await oneItem();
     const oldJob = failLookup(itemId);
     const job = retryBulkItem(db(), itemId);
+    if (!job) throw new Error('retry answered busy');
     expect(job.created).toBe(true);
     expect(job.id).not.toBe(oldJob);
     expect(item(itemId)).toMatchObject({
@@ -125,6 +126,20 @@ describe('retryBulkItem (BULK-11)', () => {
       id: holder,
       created: false,
     });
+    expect(pressingJobs()).toHaveLength(1);
+  });
+
+  it('WR-02: a failed item whose job is still running answers busy and changes nothing', async () => {
+    const { itemId } = await oneItem();
+    const holder = item(itemId).job_id;
+    failBulkItem(db(), itemId, {
+      errorKind: 'rejected',
+      error: 'Discogs answered 400',
+    });
+    setJobStatus(holder, 'running');
+    const before = JSON.stringify(item(itemId));
+    expect(retryBulkItem(db(), itemId)).toBeNull();
+    expect(JSON.stringify(item(itemId))).toBe(before);
     expect(pressingJobs()).toHaveLength(1);
   });
 });

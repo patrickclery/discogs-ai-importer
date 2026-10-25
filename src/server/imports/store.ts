@@ -560,6 +560,8 @@ export function retrySpine(
       });
       if (phase === 'failed') {
         const job = retryBulkItem(db, item.id);
+        // Its last attempt is still finishing (WR-02): try again shortly.
+        if (!job) return { status: 'busy' };
         return { status: 'ok', kind: 'lookup', itemId: item.id, jobId: job.id };
       }
       if (phase === 'finding') return { status: 'busy' };

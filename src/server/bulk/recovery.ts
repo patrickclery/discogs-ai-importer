@@ -5,7 +5,9 @@ import { getDb } from '../db/client';
 // lookups, T-06-14), copied from markInterruptedImports. When the worker
 // gives up on a resolve_pressing job (its final attempt failed, recovery
 // failed it after a crash on the final attempt, or it was cancelled),
-// nothing else touches the item it was running. The read model already
+// nothing else touches the item it was running. A job that finished
+// succeeded while its item is still queued is abandoned the same way
+// (WR-02): no attempt will ever move that item. The read model already
 // reads such a queued item as failed (bulkItemPhaseOf), so no card shows
 // Finding pressing forever; this hook makes the store agree, so the item
 // stops holding bulk_items_spine_open_idx and the next run can start. Run on
@@ -28,7 +30,8 @@ export function markInterruptedLookups(now = Date.now()): { failed: number } {
          updated_at = @now
        WHERE status = 'queued'
          AND job_id IN (
-           SELECT id FROM jobs WHERE status IN ('failed', 'cancelled')
+           SELECT id FROM jobs
+           WHERE status IN ('succeeded', 'failed', 'cancelled')
          )`,
     )
     .run({ reason: INTERRUPTED_LOOKUP_REASON, now });

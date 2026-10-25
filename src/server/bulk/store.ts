@@ -282,24 +282,36 @@ export function latestBulkItemFor(
 /**
  * Retry import on a failed lookup (BULK-11): the item goes back to queued
  * with its error cleared, under the job holding pressing:{itemId}. A queued
- * or running holder is reused; a finished one gives up its key first, so a
- * retry is never a silent no-op and never a second job (the enqueueImport
- * pattern). The run keeps its country, so the retry looks up the country
- * the owner started with. Call inside an IMMEDIATE transaction; on its own
- * it opens one (nested, it becomes a savepoint).
+ * holder is reused, as is a running one while the item is still queued; a
+ * finished one gives up its key first, so a retry is never a silent no-op
+ * and never a second job (the enqueueImport pattern). A running holder of
+ * an item that already left queued (it failed the item and has not been
+ * marked finished yet) answers null, busy: reusing it would strand the item
+ * queued under a job about to succeed (WR-02). The run keeps its country,
+ * so the retry looks up the country the owner started with. Call inside an
+ * IMMEDIATE transaction; on its own it opens one (nested, it becomes a
+ * savepoint).
  */
 export function retryBulkItem(
   db: Database.Database,
   itemId: string,
-): { id: string; created: boolean } {
-  const tx = db.transaction(() => {
+): { id: string; created: boolean } | null {
+  const tx = db.transaction((): { id: string; created: boolean } | null => {
     const dedupeKey = `pressing:${itemId}`;
     const holder = db
       .prepare('SELECT id, status FROM jobs WHERE dedupe_key = @dedupeKey')
       .get({ dedupeKey }) as { id: string; status: string } | undefined;
+    const current = getBulkItem(db, itemId);
+    if (!current) throw new Error(`retryBulkItem: item ${itemId} not found`);
     let job: { id: string; created: boolean };
-    if (holder && (holder.status === 'queued' || holder.status === 'running')) {
+    if (
+      holder &&
+      (holder.status === 'queued' ||
+        (holder.status === 'running' && current.status === 'queued'))
+    ) {
       job = { id: holder.id, created: false };
+    } else if (holder?.status === 'running') {
+      return null;
     } else {
       if (holder) releaseDedupeKey(holder.id);
       job = enqueue({

@@ -938,6 +938,20 @@ describe('retrySpine on a bulk lookup (BULK-11)', () => {
     expect(running).not.toBe(before);
   });
 
+  it('WR-02: busy when the lookup failed the item but its job is still running', async () => {
+    const { itemId, spineId } = await lookup();
+    const holder = bulkItem(itemId).job_id ?? '';
+    failBulkItem(db(), itemId, {
+      errorKind: 'rejected',
+      error: 'Discogs answered 400',
+    });
+    setJob(holder, 'running');
+    const before = snapshot();
+    expect(retrySpine(db(), spineId)).toEqual({ status: 'busy' });
+    expect(snapshot()).toBe(before);
+    expect(bulkItem(itemId).status).toBe('failed');
+  });
+
   it('two retries in a row on a failed lookup make exactly one queued job', async () => {
     const { itemId, spineId } = await lookup();
     failLookup(itemId);

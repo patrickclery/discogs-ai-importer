@@ -61,7 +61,7 @@ describe('markInterruptedLookups', () => {
     vi.restoreAllMocks();
   });
 
-  it.each(['failed', 'cancelled'])(
+  it.each(['failed', 'cancelled', 'succeeded'])(
     'a queued item whose job is %s becomes failed with interrupted',
     async (jobStatus) => {
       const { id, job_id, updated_at } = await oneItem();
