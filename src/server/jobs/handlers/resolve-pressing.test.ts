@@ -212,6 +212,26 @@ describe('resolve_pressing without a lookup', () => {
     });
   });
 
+  it('WR-01: the import goes to the folder snapshotted on the run, not the current setting', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0], { country: 'Canada' });
+    const res = startBulkRun(db(), {
+      items: [{ spineId: spineIds[0], candidateId: top.candidateId }],
+      country: 'Canada',
+      folderId: 7,
+      now: START,
+    });
+    expect(res.status).toBe('ok');
+    const job = claim();
+    const { deps } = fakeDiscogsDeps(() => ({ status: 500, body: '' }));
+    await runResolvePressing(payloadOf(job), jobCtx(job), { fetch: deps });
+    const row = db()
+      .prepare('SELECT folder_id FROM imports WHERE spine_id = ?')
+      .get(spineIds[0]) as { folder_id: number } | undefined;
+    expect(row?.folder_id).toBe(7);
+  });
+
   it('D-04: a top match with no master imports as is with fallback_no_master', async () => {
     const { spineIds } = await bulkShelf();
     connectDiscogs();

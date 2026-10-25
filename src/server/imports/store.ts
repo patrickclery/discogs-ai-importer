@@ -241,6 +241,9 @@ export function createImport(
     allowDuplicate?: boolean;
     /** The add job's run_after; a bulk lookup passes its own (Phase 6). */
     runAfter?: number;
+    /** The target folder; a bulk lookup passes its run's snapshot (WR-01).
+     * Defaults to the folder currently set in Settings. */
+    folderId?: number;
   },
 ): CreateImportResult {
   const tx = db.transaction((): CreateImportResult => {
@@ -289,7 +292,7 @@ export function createImport(
       spineId: input.spineId,
       candidateId: input.candidateId,
       releaseId: candidate.release_id,
-      folderId: getCollectionFolderId(),
+      folderId: input.folderId ?? getCollectionFolderId(),
       candidateJson: JSON.stringify(snapshotOf(candidate)),
       now,
     });

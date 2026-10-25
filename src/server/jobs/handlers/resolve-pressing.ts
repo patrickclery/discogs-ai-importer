@@ -327,7 +327,14 @@ export async function runResolvePressing(
               }),
             })
           : candidate.id;
-      const res = createImport(db, { spineId, candidateId, runAfter });
+      // WR-01: the folder the owner confirmed for this run, not whatever
+      // Settings says by the time this lookup runs.
+      const res = createImport(db, {
+        spineId,
+        candidateId,
+        runAfter,
+        folderId: run.folder_id,
+      });
       if (res.status !== 'ok') throw new RefusedImport(res);
       return res;
     });
