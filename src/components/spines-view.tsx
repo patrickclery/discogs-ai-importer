@@ -58,17 +58,35 @@ import {
 } from '@/lib/review-status';
 import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
-async function fetchSpines(
-  photo: string | null,
-  review: boolean,
-  status: ReviewStatus | null,
-): Promise<SpinesResponse> {
+/** The /spines list filters, as the URL holds them. */
+export type SpinesFilters = {
+  photo: string | null;
+  review: boolean;
+  status: ReviewStatus | null;
+  fallback: boolean;
+};
+
+/** RED stub: ignores fallback. */
+export function spinesSearch(f: SpinesFilters): string {
   const params = new URLSearchParams();
-  if (photo) params.set('photo', photo);
-  if (review) params.set('review', '1');
-  if (status) params.set('status', status);
-  const qs = params.size > 0 ? `?${params}` : '';
-  const res = await fetch(`/api/spines${qs}`, { cache: 'no-store' });
+  if (f.photo) params.set('photo', f.photo);
+  if (f.review) params.set('review', '1');
+  if (f.status) params.set('status', f.status);
+  return params.size > 0 ? `?${params}` : '';
+}
+
+/** RED stub: ignores fallback. */
+export function spinesQueryKey(f: SpinesFilters) {
+  return [
+    'spines',
+    { photo: f.photo, review: f.review, status: f.status },
+  ] as const;
+}
+
+async function fetchSpines(f: SpinesFilters): Promise<SpinesResponse> {
+  const res = await fetch(`/api/spines${spinesSearch(f)}`, {
+    cache: 'no-store',
+  });
   if (!res.ok) throw new Error(`GET /api/spines returned ${res.status}`);
   return (await res.json()) as SpinesResponse;
 }
@@ -311,12 +329,12 @@ export function SpinesView({
   const [layout] = useCardLayout();
   const queryClient = useQueryClient();
   const queryKey = useMemo(
-    () => ['spines', { photo, review, status }] as const,
+    () => spinesQueryKey({ photo, review, status, fallback: false }),
     [photo, review, status],
   );
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchSpines(photo, review, status),
+    queryFn: () => fetchSpines({ photo, review, status, fallback: false }),
     initialData:
       photo === initialPhoto &&
       review === initialReview &&
