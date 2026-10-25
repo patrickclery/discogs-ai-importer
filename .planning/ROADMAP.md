@@ -93,7 +93,7 @@ Plans:
 **Goal:** After photographing a shelf, the user can import every disc in bulk as the Canadian pressing of its top match without verifying hundreds one by one. The review list gets a compact card layout (spine crop with the top match directly below it; edit fields hidden until the card is expanded) so many cards fit on one screen, plus multi-select and a bulk action that resolves each selected spine's top match to its Canada release (falling back visibly when none exists) and adds them to the Discogs collection through the existing rate-limited queue.
 **Requirements**: BULK-01..BULK-12 (proposed in 06-RESEARCH.md from the 06-CONTEXT.md decisions)
 **Depends on:** Phase 5
-**Plans:** 11/12 plans executed
+**Plans:** 12/12 plans executed
 
 Plans:
 **Wave 1**
@@ -118,4 +118,4 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [x] 06-09-PLAN.md — Selection, bulk bar, confirm dialog, start and finished toasts, demo export check (wave 6)
-- [ ] 06-10-PLAN.md — Live-stack proof against the fake Discogs: pacing, one run at a time, crash mid-run (wave 6)
+- [x] 06-10-PLAN.md — Live-stack proof against the fake Discogs: pacing, one run at a time, crash mid-run (wave 6)
