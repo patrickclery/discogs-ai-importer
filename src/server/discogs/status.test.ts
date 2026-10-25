@@ -190,6 +190,13 @@ describe('discogsStatus', () => {
     expect(s).toMatchObject({ backlog: 3, imports: { left: 2 } });
   });
 
+  it('imports.left counts queued and running resolve_pressing jobs too', () => {
+    job('discogs', 'queued', 'resolve_pressing');
+    job('discogs', 'running', 'add_to_collection');
+    job('discogs', 'failed', 'resolve_pressing');
+    expect(discogsStatus(db()).imports?.left).toBe(2);
+  });
+
   it('imports.failed counts a spine whose latest import failed', () => {
     importRow(spine(), 'failed');
     importRow(spine(), 'imported', 'succeeded');
