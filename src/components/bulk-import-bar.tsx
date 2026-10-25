@@ -24,7 +24,7 @@ import {
 } from '@/lib/bulk-copy';
 import { eligibleShownIds, selectAllState } from '@/lib/bulk-selection';
 import type { BulkStartResponse } from '@/lib/bulk-types';
-import type { SpinesResponse } from '@/lib/scan-types';
+import type { SpineDto, SpinesResponse } from '@/lib/scan-types';
 
 // The sticky bulk bar (D-05, UI-SPEC Bulk bar): Select all shown over the
 // eligible spines of the current filters, the selected count, Clear
@@ -83,6 +83,10 @@ export function BulkImportBar({
   const selection = useSpineSelection();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  // The picks as they were when the dialog opened (WR-06): a poll must not
+  // change the count the owner is confirming or the set Start sends. The
+  // server re-checks each pick and reports the ones that changed.
+  const [frozen, setFrozen] = useState<SpineDto[]>([]);
   const selectAllRef = useRef<HTMLButtonElement>(null);
   const startedRef = useRef(false);
   const selectAllId = useId();
@@ -171,7 +175,10 @@ export function BulkImportBar({
             <Button
               type="button"
               disabled={disabledReason !== null}
-              onClick={() => setOpen(true)}
+              onClick={() => {
+                setFrozen(picked);
+                setOpen(true);
+              }}
             >
               <ListPlus aria-hidden="true" />
               {importButtonLabel(s)}
@@ -182,7 +189,7 @@ export function BulkImportBar({
       <BulkImportDialog
         open={open}
         onOpenChange={setOpen}
-        spines={picked}
+        spines={frozen}
         folderName={folderName}
         country={data.discogs.preferredCountry}
         threshold={data.confidenceThreshold}

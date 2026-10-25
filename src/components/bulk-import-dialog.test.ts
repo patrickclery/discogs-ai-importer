@@ -75,12 +75,12 @@ function spine(id: string, top: string, confidence = 0.95): SpineDto {
 
 const TWO = [spine('sp-1', 'c-1'), spine('sp-2', 'c-2', 0.4)];
 
-function renderDialog(country = 'Canada') {
+function renderDialog(country = 'Canada', spines: SpineDto[] = TWO) {
   return renderToStaticMarkup(
     createElement(BulkImportDialog, {
       open: true,
       onOpenChange: () => {},
-      spines: TWO,
+      spines,
       folderName: 'Uncategorized',
       country,
       threshold: 0.7,
@@ -116,6 +116,17 @@ describe('BulkImportDialog', () => {
     expect(html).toContain('Keep reviewing');
     expect(html).toContain('Start import');
     expect(html).not.toContain('Starting…');
+    const [action] = tagsWithSlot(html, 'alert-dialog-action');
+    expect(action?.attr('disabled')).toBeUndefined();
+  });
+
+  it('WR-06: Start import is disabled when there is nothing to send', () => {
+    const [action] = tagsWithSlot(
+      renderDialog('Canada', []),
+      'alert-dialog-action',
+    );
+    expect(action).toBeDefined();
+    expect(action?.attr('disabled')).toBe('');
   });
 });
 

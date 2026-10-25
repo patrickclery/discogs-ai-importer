@@ -94,6 +94,8 @@ export function BulkImportDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lowConfidence = spines.filter((s) => needsReview(s, threshold)).length;
+  // Nothing to send: Start would only earn a schema refusal (WR-06).
+  const empty = bulkStartBody(spines).items.length === 0;
 
   function close(o: boolean) {
     // Escape and Keep reviewing do nothing while the request is in flight.
@@ -137,7 +139,7 @@ export function BulkImportDialog({
           <AlertDialogCancel disabled={pending}>
             Keep reviewing
           </AlertDialogCancel>
-          <AlertDialogAction disabled={pending} onClick={start}>
+          <AlertDialogAction disabled={pending || empty} onClick={start}>
             {pending ? (
               <>
                 <Spinner aria-hidden="true" role="presentation" />
