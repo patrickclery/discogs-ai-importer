@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: Completed 06-05-PLAN.md
-last_updated: "2026-10-25T02:21:35.977Z"
+stopped_at: Completed 06-07-PLAN.md
+last_updated: "2026-10-25T02:31:32.738Z"
 last_activity: 2026-10-24
 last_activity_desc: Phase 06 execution started
-state_head: 36420c1a9541ffd491cdd9262b9b500ccb905900
+state_head: 6b0467de6f216381eca86c9038427b3b93bd6ec8
 progress:
   total_phases: 2
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Last activity: 2026-10-24 — Phase 06 execution started
 
@@ -113,6 +113,7 @@ Last activity: 2026-10-24 — Phase 06 execution started
 | Phase 06 P03 | 4 min | 2 tasks | 15 files |
 | Phase 06 P04 | 8min | 2 tasks | 17 files |
 | Phase 06 P05 | 5min | 2 tasks | 13 files |
+| Phase 06 P07 | 7 min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -266,6 +267,7 @@ Recent decisions affecting current work:
 - [Phase 06]: discogsActive stays true while the latest bulk run is running, even for spines the photo filter hides
 - [Phase 06]: retrySpine checks the spine's current bulk item before its import: a failed lookup re-runs as kind lookup, a finding lookup answers busy
 - [Phase 06]: retryBulkItem reuses a live pressing:{itemId} holder or releases a finished one's key, so two retries make one job
+- [Phase 06]: CompactSpineCard takes renderFull(trailing) so SpineView stays the one full-card renderer; expanded ids keyed by spine id reset on layout switch
 
 ### Pending Todos
 
@@ -289,8 +291,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T02:21:35.881Z
-Stopped at: Completed 06-05-PLAN.md
+Last session: 2026-10-25T02:31:32.640Z
+Stopped at: Completed 06-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
