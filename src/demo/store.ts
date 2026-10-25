@@ -139,6 +139,8 @@ export type DemoAccount = {
   consumerKeyTail: string | null;
   consumerSecretTail: string | null;
   pendingConnectAt: number | null;
+  /** Discogs' spelling of the bulk-import country (D-14). */
+  preferredCountry: string;
 };
 
 export type DemoState = {

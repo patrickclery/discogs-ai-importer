@@ -134,6 +134,13 @@ export async function saveCollectionFolder(
   return { ok: true, name: folder.name };
 }
 
+export async function savePreferredCountry(
+  country: string,
+): Promise<{ ok: true; country: string } | { ok: false; formError: string }> {
+  await delay(SETTINGS_DELAY_MS);
+  return { ok: false, formError: `not implemented: ${country}` };
+}
+
 /** The real success answer for the stored model (D-12: CLI always ready). */
 export async function testClaudeAction(): Promise<TestResult> {
   await delay(TEST_CLAUDE_DELAY_MS);

@@ -8,12 +8,15 @@ import { revalidatePath } from 'next/cache';
 import { saveVisionModel } from '@/app/settings/actions';
 import { closeDb, getDb } from './db/client';
 import {
+  DEFAULT_PREFERRED_COUNTRY,
   DEFAULT_VISION_MODEL,
   getConfidenceThreshold,
   getDensityThresholds,
+  getPreferredCountry,
   getSetting,
   getVisionEffort,
   getVisionModel,
+  setPreferredCountry,
   setSetting,
   setVisionEffort,
   setVisionModel,
@@ -136,5 +139,44 @@ describe('settings', () => {
     setSetting('density_max_spines', 45);
     expect(getConfidenceThreshold()).toBe(0.4);
     expect(getDensityThresholds().maxSpines).toBe(45);
+  });
+});
+
+// Preferred country (D-14, RESEARCH Pitfall 1): stored in Discogs' exact
+// spelling because the versions filter is case-sensitive.
+describe('preferred country', () => {
+  useTempDataDir();
+
+  it('getPreferredCountry with no stored row returns Canada', () => {
+    expect(DEFAULT_PREFERRED_COUNTRY).toBe('Canada');
+    expect(getPreferredCountry()).toBe('Canada');
+  });
+
+  it("setPreferredCountry('canada') stores and returns Canada", () => {
+    expect(setPreferredCountry('canada')).toBe('Canada');
+    expect(rawRow('preferred_country')?.value).toBe('"Canada"');
+    expect(getPreferredCountry()).toBe('Canada');
+  });
+
+  it('trims an unknown country and stores it as typed', () => {
+    expect(setPreferredCountry('  Hong Kong ')).toBe('Hong Kong');
+    expect(getPreferredCountry()).toBe('Hong Kong');
+    expect(setPreferredCountry('usa')).toBe('US');
+    expect(getPreferredCountry()).toBe('US');
+  });
+
+  it('an empty or 41-character value throws and stores nothing', () => {
+    expect(() => setPreferredCountry('')).toThrow();
+    expect(() => setPreferredCountry('   ')).toThrow();
+    expect(() => setPreferredCountry('x'.repeat(41))).toThrow();
+    expect(rawRow('preferred_country')).toBeUndefined();
+    expect(setPreferredCountry('y'.repeat(40))).toBe('y'.repeat(40));
+  });
+
+  it('a stored value failing the schema reads back as Canada', () => {
+    setSetting('preferred_country', '');
+    expect(getPreferredCountry()).toBe('Canada');
+    setSetting('preferred_country', 7);
+    expect(getPreferredCountry()).toBe('Canada');
   });
 });

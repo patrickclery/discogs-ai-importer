@@ -14,11 +14,18 @@ import {
   FOLDERS_CACHE_KEY,
   getCollectionFolderId,
 } from '@/server/discogs/folders';
-import { getSetting, setSetting } from '@/server/settings';
+import { getDb } from '@/server/db/client';
+import {
+  getPreferredCountry,
+  getSetting,
+  PREFERRED_COUNTRY_KEY,
+  setSetting,
+} from '@/server/settings';
 import {
   clearSecretAction,
   saveCollectionFolder,
   saveDiscogsCredentials,
+  savePreferredCountry,
 } from './actions';
 
 const CANARY_KEY = 'CANARYKEY-0123456789wxyz';
@@ -325,5 +332,70 @@ describe('saveCollectionFolder', () => {
     expect(stored()).toBe(2);
     expect(getCollectionFolderId()).toBe(2);
     expect(revalidatePath).toHaveBeenCalledWith('/settings');
+  });
+});
+
+// savePreferredCountry (D-14, T-06-09): Discogs' spelling is stored and
+// answered; an empty value or a storage failure answers a bare reason.
+describe('savePreferredCountry', () => {
+  useTempDataDir();
+  const stored = () => getSetting(PREFERRED_COUNTRY_KEY, z.unknown());
+
+  /** A real SQLite failure on the next write of the preferred country. */
+  function failWrites(message: string): void {
+    getDb().$client.exec(
+      `CREATE TRIGGER fail_country BEFORE INSERT ON settings
+       WHEN NEW.key = 'preferred_country'
+       BEGIN SELECT RAISE(ABORT, '${message}'); END`,
+    );
+  }
+
+  beforeEach(() => {
+    vi.mocked(revalidatePath).mockClear();
+  });
+
+  it("saves 'uk' as UK, answers it and revalidates /settings", async () => {
+    expect(await savePreferredCountry('uk')).toEqual({
+      ok: true,
+      country: 'UK',
+    });
+    expect(stored()).toBe('UK');
+    expect(getPreferredCountry()).toBe('UK');
+    expect(revalidatePath).toHaveBeenCalledWith('/settings');
+  });
+
+  it('a blank value answers enter a country and stores nothing', async () => {
+    expect(await savePreferredCountry('   ')).toEqual({
+      ok: false,
+      formError: 'enter a country',
+    });
+    expect(stored()).toBeNull();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('a storage failure answers the reason without its trailing period', async () => {
+    failWrites('the disk is full.');
+    expect(await savePreferredCountry('Japan')).toEqual({
+      ok: false,
+      formError: 'the disk is full',
+    });
+    expect(stored()).toBeNull();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('cuts a long failure reason to 160 characters', async () => {
+    failWrites('x'.repeat(300));
+    const res = await savePreferredCountry('Japan');
+    expect(res.ok).toBe(false);
+    expect((res as { formError: string }).formError).toBe('x'.repeat(160));
+  });
+
+  it('a 41-character value answers a reason and stores nothing', async () => {
+    const res = await savePreferredCountry('x'.repeat(41));
+    expect(res.ok).toBe(false);
+    const formError = (res as { formError: string }).formError;
+    expect(formError.length).toBeGreaterThan(0);
+    expect(formError.length).toBeLessThanOrEqual(160);
+    expect(stored()).toBeNull();
   });
 });

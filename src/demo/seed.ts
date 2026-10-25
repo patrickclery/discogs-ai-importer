@@ -170,6 +170,7 @@ export function defaultAccount(): DemoAccount {
     consumerKeyTail: '••••demo',
     consumerSecretTail: '••••demo',
     pendingConnectAt: null,
+    preferredCountry: '',
   };
 }
 

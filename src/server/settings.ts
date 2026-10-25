@@ -1,6 +1,7 @@
 import 'server-only';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { canonicalCountry } from '@/lib/pressing';
 import type { VisionModelId } from '@/lib/claude-types';
 import {
   DEFAULT_CONFIDENCE_THRESHOLD,
@@ -113,4 +114,22 @@ export function getDensityThresholds(): {
       getSetting(DENSITY_MIN_SHORT_SIDE_PX_KEY, DensityValueSchema) ??
       DEFAULT_DENSITY_MIN_SHORT_SIDE_PX,
   };
+}
+
+// Preferred country (D-14): bulk import picks this country's pressing of
+// each top match. Stored in Discogs' exact spelling, because the versions
+// filter is case-sensitive (RESEARCH Pitfall 1).
+
+export const PREFERRED_COUNTRY_KEY = 'preferred_country';
+export const DEFAULT_PREFERRED_COUNTRY = 'Canada';
+export const PreferredCountrySchema = z.string().trim().min(1).max(40);
+
+export function getPreferredCountry(): string {
+  return '';
+}
+
+/** Throws on an empty value or one over 40 characters; nothing is stored. */
+export function setPreferredCountry(input: string): string {
+  void canonicalCountry;
+  return input;
 }

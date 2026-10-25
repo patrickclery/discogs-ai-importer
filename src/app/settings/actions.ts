@@ -21,6 +21,7 @@ import {
 } from '@/server/secrets';
 import {
   getVisionModel,
+  setPreferredCountry,
   setVisionModel,
   VisionModelSchema,
 } from '@/server/settings';
@@ -159,6 +160,18 @@ export async function saveCollectionFolder(
   }
   revalidatePath('/settings');
   return { ok: true, name: collectionFolderName(parsed.data) };
+}
+
+/**
+ * Saves the preferred country (D-14, T-06-09) in Discogs' spelling and
+ * answers the stored value. The field wraps formError in its own sentence,
+ * so the reason here is bare (Phase 4 decision 04-06).
+ */
+export async function savePreferredCountry(
+  country: string,
+): Promise<{ ok: true; country: string } | { ok: false; formError: string }> {
+  void setPreferredCountry;
+  return { ok: false, formError: `not implemented: ${country}` };
 }
 
 /** One headless Claude call with the stored vision model (D-10, D-18). */

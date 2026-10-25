@@ -14,6 +14,7 @@ import {
   clearSecretAction,
   saveCollectionFolder,
   saveDiscogsCredentials,
+  savePreferredCountry,
   saveVisionModel,
   testClaudeAction,
 } from './settings-actions';
@@ -56,6 +57,7 @@ describe('demo settings actions', () => {
       'clearSecretAction',
       'saveCollectionFolder',
       'saveDiscogsCredentials',
+      'savePreferredCountry',
       'saveVisionModel',
       'testClaudeAction',
     ]);
@@ -101,6 +103,31 @@ describe('demo settings actions', () => {
       });
     }
     expect(getState().account.folderId).toBe(7);
+  });
+
+  it('saves the preferred country in Discogs spelling, like the real action', async () => {
+    expect(getState().account.preferredCountry).toBe('Canada');
+    const fn = vi.fn();
+    const off = subscribe(fn);
+    expect(await settle(savePreferredCountry(' uk '))).toEqual({
+      ok: true,
+      country: 'UK',
+    });
+    off();
+    expect(fn).toHaveBeenCalled();
+    expect(getState().account.preferredCountry).toBe('UK');
+    expect(await settle(savePreferredCountry('  Hong Kong '))).toEqual({
+      ok: true,
+      country: 'Hong Kong',
+    });
+    expect(await settle(savePreferredCountry('   '))).toEqual({
+      ok: false,
+      formError: 'enter a country',
+    });
+    expect((await settle(savePreferredCountry('x'.repeat(41)))).ok).toBe(
+      false,
+    );
+    expect(getState().account.preferredCountry).toBe('Hong Kong');
   });
 
   it('keeps only a masked tail of a saved credential and disconnects', async () => {
