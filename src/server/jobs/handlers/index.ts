@@ -1,4 +1,5 @@
 import 'server-only';
+import { markInterruptedLookups } from '../../bulk/recovery';
 import { enqueueMissingSearches } from '../../discogs/enqueue';
 import { discogsGate } from '../../discogs/gate';
 import { markInterruptedImports } from '../../imports/recovery';
@@ -61,6 +62,9 @@ export const maintenance: Array<() => unknown> = [
   // An import whose job the worker gave up on (failed or cancelled) never
   // stays pending or importing (Pitfall 4). One UPDATE, no request.
   () => markInterruptedImports(),
+  // The same for a pressing lookup (Pitfall 4 for lookups): a queued bulk
+  // item whose job was given up on ends failed. One UPDATE, no request.
+  () => markInterruptedLookups(),
 ];
 
 /**

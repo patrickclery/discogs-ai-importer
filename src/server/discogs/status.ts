@@ -34,10 +34,11 @@ const FAILED_SPINES_SQL = `
       OR (l.status = 'queued' AND j.status = @failedJob))`;
 
 // The imports part of the backlog (Plan 04-09): add_to_collection jobs still
-// waiting or running.
+// waiting or running. Bulk pressing lookups count as left too, so the header
+// covers a whole bulk run (BULK-11).
 const IMPORTS_LEFT_SQL = `
   SELECT COUNT(*) AS n FROM jobs
-  WHERE lane = @lane AND type = 'add_to_collection'
+  WHERE lane = @lane AND type IN ('add_to_collection', 'resolve_pressing')
     AND status IN ('queued', 'running')`;
 
 // The latest import per active or orphaned spine not marked not on Discogs
