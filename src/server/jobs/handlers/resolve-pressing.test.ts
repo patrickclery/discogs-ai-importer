@@ -931,3 +931,286 @@ describe('resolve_pressing refusals and Discogs errors', () => {
     expect([...(item(itemId).error ?? '')].length).toBe(160);
   });
 });
+
+describe('resolve_pressing fallback lookup: when it is sent and how it fails', () => {
+  useTempDataDir();
+  useBulkSecrets();
+
+  /** A Hong Kong top match (master 13814) in a run with fallback US. */
+  async function fallbackSpine(
+    over: Parameters<typeof seedTopCandidate>[1] = {},
+    fallback: string | null = 'US',
+  ): Promise<string> {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0], {
+      country: 'Hong Kong',
+      ...over,
+    });
+    start(
+      [{ spineId: spineIds[0], candidateId: top.candidateId }],
+      START,
+      fallback,
+    );
+    return spineIds[0];
+  }
+
+  /** Canada answers no version; the US request gets `us`. */
+  function byCountry(us: {
+    status: number;
+    body: unknown;
+    headers?: Record<string, string>;
+  }) {
+    return (url: URL) =>
+      url.searchParams.get('country') === 'US'
+        ? us
+        : { status: 200, body: NO_CANADIAN };
+  }
+
+  const countries = (calls: URL[]) =>
+    calls.map((u) => u.searchParams.get('country'));
+
+  function tables(): string {
+    return JSON.stringify([
+      db().prepare('SELECT * FROM bulk_items ORDER BY id').all(),
+      db().prepare('SELECT * FROM imports ORDER BY id').all(),
+      db().prepare('SELECT * FROM discogs_candidates ORDER BY id').all(),
+    ]);
+  }
+
+  function importedReleases(spineId: string): number[] {
+    return importsOf(spineId).map((i) => i.release_id);
+  }
+
+  it('a top match already from the fallback country costs one request and is imported as fallback_country', async () => {
+    const spineId = await fallbackSpine({ country: 'US' });
+    const r = await attempt(byCountry({ status: 200, body: US_VERSIONS }));
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_country',
+      release_id: 5001,
+      country: 'US',
+    });
+  });
+
+  it('a run with no fallback country makes one request and keeps fallback_no_version', async () => {
+    const spineId = await fallbackSpine({}, null);
+    const r = await attempt(byCountry({ status: 200, body: US_VERSIONS }));
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+    });
+  });
+
+  it('a Canadian version in the first answer never asks for the US one', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt((url) =>
+      url.searchParams.get('country') === 'US'
+        ? { status: 200, body: US_VERSIONS }
+        : { status: 200, body: fixture('master-versions-canada.json') },
+    );
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(importedReleases(spineId)).toEqual([CANADIAN_ID]);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'preferred',
+    });
+  });
+
+  it('a top match with no master makes no request', async () => {
+    const spineId = await fallbackSpine({ masterId: null });
+    const r = await attempt(byCountry({ status: 200, body: US_VERSIONS }));
+    expect(r.calls.length).toBe(0);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId).outcome).toBe('fallback_no_master');
+  });
+
+  it('a 404 on the first request sends no second request', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt((url) =>
+      url.searchParams.get('country') === 'US'
+        ? { status: 200, body: US_VERSIONS }
+        : { status: 404, body: '{"message":"no"}' },
+    );
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId).outcome).toBe('fallback_no_master');
+  });
+
+  it('an implausible first answer sends no second request', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt((url) =>
+      url.searchParams.get('country') === 'US'
+        ? { status: 200, body: US_VERSIONS }
+        : { status: 200, body: fixture('master-versions-bogus.json') },
+    );
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId).outcome).toBe('fallback_unusable_master');
+  });
+
+  it('no US version in the second answer imports the top match with fallback_no_version', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(byCountry({ status: 200, body: NO_CANADIAN }));
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+      release_id: 5001,
+      country: 'Hong Kong',
+    });
+  });
+
+  it('an implausible second answer imports the top match with fallback_unusable_master', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(
+      byCountry({ status: 200, body: fixture('master-versions-bogus.json') }),
+    );
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId).outcome).toBe('fallback_unusable_master');
+  });
+
+  it('a US pick that fails the title guard imports the top match with fallback_unusable_master', async () => {
+    const spineId = await fallbackSpine();
+    const bleach = versionsAnswer([
+      {
+        id: US_ID,
+        title: 'Bleach',
+        label: 'Sub Pop',
+        country: 'US',
+        major_formats: ['CD'],
+        format: 'Album',
+        released: '1989',
+      },
+    ]);
+    const r = await attempt(byCountry({ status: 200, body: bleach }));
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(pressingRows(spineId)).toHaveLength(0);
+    expect(item(r.itemId).outcome).toBe('fallback_unusable_master');
+  });
+
+  it('a 429 on the second request defers to the resume time with no recorded error', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(
+      byCountry({ status: 429, body: '', headers: { 'retry-after': '4' } }),
+    );
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(r.error?.name).toBe('JobDeferredError');
+    expect(r.error?.runAfter).toBe(r.clock.t + 4000);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'queued',
+      error_kind: null,
+      error: null,
+    });
+    expect(importsOf(spineId)).toHaveLength(0);
+  });
+
+  it('a 401 on the second request fails the item as auth with no username', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(
+      byCountry({ status: 401, body: '{"message":"no"}' }),
+    );
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(r.error).toBeNull();
+    const row = item(r.itemId);
+    expect(row).toMatchObject({ status: 'failed', error_kind: 'auth' });
+    expect(row.error).toBeTruthy();
+    expect(row.error).not.toContain('fake-owner');
+    expect(importsOf(spineId)).toHaveLength(0);
+  });
+
+  it('a 404 on the second request counts as no US version', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(
+      byCountry({ status: 404, body: '{"message":"no"}' }),
+    );
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(r.error).toBeNull();
+    expect(importedReleases(spineId)).toEqual([5001]);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+    });
+  });
+
+  it('another 4xx on the second request fails the item as rejected', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(
+      byCountry({ status: 422, body: '{"message":"no"}' }),
+    );
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(r.error).toBeNull();
+    const row = item(r.itemId);
+    expect(row).toMatchObject({ status: 'failed', error_kind: 'rejected' });
+    expect(row.error).toContain('422');
+    expect(importsOf(spineId)).toHaveLength(0);
+  });
+
+  it('a wrong-shaped second body fails the item as rejected', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(byCountry({ status: 200, body: { nope: 1 } }));
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(r.error).toBeNull();
+    expect(item(r.itemId)).toMatchObject({
+      status: 'failed',
+      error_kind: 'rejected',
+      error: 'Discogs answered an unexpected versions list',
+    });
+    expect(importsOf(spineId)).toHaveLength(0);
+  });
+
+  it('a 5xx on the second request is recorded as unavailable and rethrown', async () => {
+    const spineId = await fallbackSpine();
+    const r = await attempt(byCountry({ status: 502, body: '' }));
+    expect(countries(r.calls)).toEqual(['Canada', 'US']);
+    expect(r.error?.name).toBe('DiscogsUnavailableError');
+    expect(item(r.itemId)).toMatchObject({
+      status: 'queued',
+      error_kind: 'unavailable',
+    });
+    expect(importsOf(spineId)).toHaveLength(0);
+  });
+
+  it('a job that stops being current before the second request writes nothing', async () => {
+    await fallbackSpine();
+    const before = tables();
+    let current = true;
+    const r = await attempt(byCountry({ status: 200, body: US_VERSIONS }), {
+      current: () => current,
+      afterAnswer: () => {
+        current = false;
+      },
+    });
+    expect(countries(r.calls)).toEqual(['Canada']);
+    expect(tables()).toBe(before);
+  });
+
+  it('a gate paused between the two requests defers without the second request', async () => {
+    const spineId = await fallbackSpine();
+    const job = claim();
+    const fake = fakeDiscogsDeps((url) => {
+      if (url.searchParams.get('country') === 'US') {
+        return { status: 200, body: US_VERSIONS };
+      }
+      fake.deps.gate?.pause(5000);
+      return { status: 200, body: NO_CANADIAN };
+    });
+    const err = await runResolvePressing(payloadOf(job), jobCtx(job), {
+      fetch: fake.deps,
+    }).then(
+      () => null,
+      (e: unknown) => e as { name?: string },
+    );
+    expect(err?.name).toBe('JobDeferredError');
+    expect(countries(fake.calls)).toEqual(['Canada']);
+    expect(item(payloadOf(job).itemId).status).toBe('queued');
+    expect(importsOf(spineId)).toHaveLength(0);
+  });
+});
