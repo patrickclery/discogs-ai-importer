@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
+import { useCardLayout } from '@/components/card-layout-toggle';
 import { DiscogsNotConnectedAlert } from '@/components/discogs-not-connected-alert';
 import {
   ImportUiProvider,
@@ -306,6 +307,7 @@ export function SpinesView({
   const [photo, setPhoto] = usePhotoFilter();
   const [review, setReview] = useReviewFilter();
   const [status, setStatus] = useStatusFilter();
+  const [layout] = useCardLayout();
   const queryClient = useQueryClient();
   const queryKey = useMemo(
     () => ['spines', { photo, review, status }] as const,
@@ -477,6 +479,7 @@ export function SpinesView({
               needsReconnect={data.discogs.needsReconnect}
               pausedUntil={data.discogs.pausedUntil}
               progress={data.photoProgress[p.id]}
+              layout={layout}
             />
           ))}
         </ImportUiProvider>

@@ -1,15 +1,11 @@
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { createElement as h } from 'react';
+import { type FC, createElement as h, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { candidateThumbSrc } from '@/lib/asset-urls';
 import type { CandidateDto } from '@/lib/discogs-types';
 import type { SpineDto } from '@/lib/scan-types';
-import {
-  layoutOf,
-  layoutParamOf,
-  useCardLayout,
-} from './card-layout-toggle';
+import { layoutOf, layoutParamOf, useCardLayout } from './card-layout-toggle';
 import { CompactSpineCard } from './compact-spine-card';
 
 // The compact card (D-10, UI-SPEC Compact card): #n and the header badges,
@@ -86,7 +82,9 @@ function spine(over: Partial<SpineDto> = {}): SpineDto {
 }
 
 function render(s: SpineDto): string {
-  return renderToStaticMarkup(h(CompactSpineCard, { spine: s, threshold: 0.7 }));
+  return renderToStaticMarkup(
+    h(CompactSpineCard, { spine: s, threshold: 0.7 }),
+  );
 }
 
 describe('CompactSpineCard (collapsed)', () => {
@@ -138,9 +136,12 @@ function layoutUnder(searchParams: string): string {
     const [layout] = useCardLayout();
     return h('span', null, layout);
   }
-  return renderToStaticMarkup(
-    h(NuqsTestingAdapter, { searchParams }, h(Probe)),
-  );
+  // createElement's typing wants children in props; pass them as an argument.
+  const Adapter = NuqsTestingAdapter as FC<{
+    searchParams: string;
+    children?: ReactNode;
+  }>;
+  return renderToStaticMarkup(h(Adapter, { searchParams }, h(Probe)));
 }
 
 describe('useCardLayout', () => {

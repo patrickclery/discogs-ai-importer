@@ -76,9 +76,9 @@ describe('matchDetails', () => {
   });
 
   it('omits missing parts', () => {
-    expect(matchDetails({ year: 1991, country: null, catno: 'DGCD-24425' })).toBe(
-      '1991 · DGCD-24425',
-    );
+    expect(
+      matchDetails({ year: 1991, country: null, catno: 'DGCD-24425' }),
+    ).toBe('1991 · DGCD-24425');
     expect(matchDetails({ year: 0, country: '  ', catno: 'X1' })).toBe('X1');
   });
 
@@ -174,13 +174,13 @@ describe('matchSlotOf', () => {
 
   it('lets the Not on Discogs mark win over candidates and an import', () => {
     for (const imp of [null, importDto()]) {
-      expect(
-        matchSlotOf({ ...base, import: imp, notOnDiscogs: true }),
-      ).toEqual({
-        label: 'Top match',
-        match: null,
-        placeholder: 'Marked not on Discogs',
-      });
+      expect(matchSlotOf({ ...base, import: imp, notOnDiscogs: true })).toEqual(
+        {
+          label: 'Top match',
+          match: null,
+          placeholder: 'Marked not on Discogs',
+        },
+      );
     }
   });
 });

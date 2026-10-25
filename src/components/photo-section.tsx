@@ -2,6 +2,8 @@
 
 import { CircleX, ImageIcon, ScanSearch } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { CardLayout } from '@/components/card-layout-toggle';
+import { CompactSpineCard } from '@/components/compact-spine-card';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
 import { DiscogsMatches } from '@/components/discogs-matches';
 import { ImportStateBadge } from '@/components/import-state-badge';
@@ -20,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { isActiveStatus, pluralize, statusView } from '@/lib/photo-status';
 import type { PhotoDto, SpineDto } from '@/lib/scan-types';
 import { formatRelativeTime } from '@/lib/spine-review';
+import { cn } from '@/lib/utils';
 
 /** Current time, refreshed every `intervalMs` (the m:ss timer, "scanned …"). */
 function useNow(intervalMs: number): number {
@@ -94,7 +97,21 @@ function SectionThumb({ photo }: { photo: PhotoDto }) {
   );
 }
 
-function CardSkeletons() {
+/** The compact grid (D-12): 1 column on phones, 2 at sm, 3 at lg, 4 at xl. */
+export const COMPACT_GRID =
+  'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+
+function CardSkeletons({ layout }: { layout: CardLayout }) {
+  if (layout === 'compact') {
+    return (
+      <div className={COMPACT_GRID}>
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
       <Skeleton className="h-48 w-full rounded-xl" />
@@ -150,24 +167,30 @@ function SectionBody({
   spines,
   threshold,
   discogs,
+  layout,
 }: {
   photo: PhotoDto;
   spines: SpineDto[];
   threshold: number;
   discogs: DiscogsView;
+  layout: CardLayout;
 }) {
+  const compact = layout === 'compact';
   const active = spines.filter((s) => s.state !== 'orphaned');
   const orphans = spines.filter((s) => s.state === 'orphaned');
   // First run still working: nothing to show yet. A re-scan that is still
   // analyzing keeps the existing (editable) cards under the header's
   // Analyzing badge; the merged cards replace them with the same keys.
   if (isActiveStatus(photo.status) && spines.length === 0) {
-    return <CardSkeletons />;
+    return <CardSkeletons layout={layout} />;
   }
   const failed = photo.status === 'error';
   const rescanFailed = failed && photo.runNo > 1 && photo.hasEarlierScan;
   const alert = failed ? (
-    <Alert variant="destructive">
+    <Alert
+      variant="destructive"
+      className={compact ? 'col-span-full' : undefined}
+    >
       <CircleX aria-hidden="true" />
       <AlertTitle>
         {rescanFailed
@@ -182,7 +205,7 @@ function SectionBody({
 
   const noCds =
     photo.status === 'done' && active.length === 0 ? (
-      <Empty className="py-8 md:py-8">
+      <Empty className={cn('py-8 md:py-8', compact && 'col-span-full')}>
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <ScanSearch className="size-5" />
@@ -198,40 +221,47 @@ function SectionBody({
       </Empty>
     ) : null;
 
+  // Compact (D-10, D-12): small cards in the grid. Detailed: the full card.
+  const card = (spine: SpineDto) =>
+    compact ? (
+      <CompactSpineCard key={spine.id} spine={spine} threshold={threshold} />
+    ) : (
+      <SpineView
+        key={spine.id}
+        spine={spine}
+        threshold={threshold}
+        discogs={discogs}
+      />
+    );
+
   // D-16: spines the latest re-scan no longer found but that carry edits
   // follow the active cards under their own Caption sub-heading.
   const orphanList =
     orphans.length > 0 ? (
       <>
-        <p className="pt-2 text-xs text-muted-foreground">
+        <p
+          className={cn(
+            'pt-2 text-xs text-muted-foreground',
+            compact && 'col-span-full',
+          )}
+        >
           {`No longer detected (${orphans.length})`}
         </p>
-        {orphans.map((spine) => (
-          <SpineView
-            key={spine.id}
-            spine={spine}
-            threshold={threshold}
-            discogs={discogs}
-          />
-        ))}
+        {orphans.map(card)}
       </>
     ) : null;
 
-  return (
+  const body = (
     <>
       {alert}
       {noCds}
-      {active.map((spine) => (
-        <SpineView
-          key={spine.id}
-          spine={spine}
-          threshold={threshold}
-          discogs={discogs}
-        />
-      ))}
+      {active.map(card)}
       {orphanList}
     </>
   );
+  // The Alert, No CDs found and the orphan sub-heading span the whole row;
+  // orphans follow in the same grid.
+  return compact ? <div className={COMPACT_GRID}>{body}</div> : body;
 }
 
 /**
@@ -247,6 +277,7 @@ export function PhotoSection({
   needsReconnect = false,
   pausedUntil,
   progress,
+  layout,
 }: {
   photo: PhotoDto;
   spines: SpineDto[];
@@ -260,6 +291,8 @@ export function PhotoSection({
   pausedUntil: number | null;
   /** SpinesResponse.photoProgress for this photo (D-12). */
   progress?: PhotoProgress;
+  /** Compact grid or full-card stack (D-13, `?view=`). */
+  layout: CardLayout;
 }) {
   const headingId = `photo-${photo.id}`;
   const now = useNow(photo.status === 'calling' ? 1000 : 30_000);
@@ -311,6 +344,7 @@ export function PhotoSection({
         spines={spines}
         threshold={threshold}
         discogs={{ connected, needsReconnect, pausedUntil }}
+        layout={layout}
       />
     </section>
   );
