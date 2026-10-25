@@ -363,3 +363,45 @@ describe('fieldsChanged (D-14)', () => {
     expect(changed(spineIds[0])).toBe(false);
   });
 });
+
+describe('pressing candidates stay hidden (Plan 06-02, RESEARCH Pitfall 8)', () => {
+  useTempDataDir();
+
+  it('a pressing row never shows in discogsForSpines or listCandidates', async () => {
+    const { spineIds } = await orphanScenario();
+    const id = spineIds[0];
+    const db = getDb().$client;
+    const searchId = createSearch(db, {
+      spineId: id,
+      kind: 'auto',
+      inputs: { artist: null, title: null, catno: null, rawText: 'x' },
+      inputHash: 'h',
+    });
+    finishSearch(db, searchId, { status: 'done', resultCount: 1 });
+    const insert = db.prepare(
+      `INSERT INTO discogs_candidates (id, spine_id, search_id, source,
+         release_id, rank, title, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
+    );
+    insert.run(newId(), id, searchId, 'auto', 5001, 'Nirvana - Nevermind', 1);
+    insert.run(
+      newId(),
+      id,
+      searchId,
+      'pressing',
+      12009956,
+      'Nirvana - Nevermind',
+      2,
+    );
+    const summary = discogsForSpines(db, [{ id }]).get(id);
+    expect(summary?.candidateCount).toBe(1);
+    expect(summary?.topCandidates.map((c) => c.releaseId).join(',')).toBe(
+      '5001',
+    );
+    expect(
+      listCandidates(db, id)
+        .map((c) => c.releaseId)
+        .join(','),
+    ).toBe('5001');
+  });
+});

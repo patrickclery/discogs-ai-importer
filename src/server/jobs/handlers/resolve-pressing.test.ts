@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   bulkShelf,
@@ -16,8 +18,8 @@ import {
 } from '../../bulk/store';
 import { getDb } from '../../db/client';
 import type { JobRow } from '../../db/schema';
-import { ADD_TO_COLLECTION_JOB_TYPE } from '../../imports/store';
-import { claimNext } from '../queue';
+import { ADD_TO_COLLECTION_JOB_TYPE, createImport } from '../../imports/store';
+import { claimNext, complete } from '../queue';
 import { runResolvePressing } from './resolve-pressing';
 
 // resolve_pressing (D-01, D-02, D-04, D-08, D-09, D-20, D-21): one job per
@@ -247,5 +249,354 @@ describe('resolve_pressing without a lookup', () => {
     const before = snapshot();
     await runResolvePressing(payloadOf(job), jobCtx(job));
     expect(snapshot()).toBe(before);
+  });
+});
+
+const FIXTURES = path.resolve(__dirname, '../../../../test/fixtures/discogs');
+
+function fixture(name: string): unknown {
+  return JSON.parse(fs.readFileSync(path.join(FIXTURES, name), 'utf8'));
+}
+
+/** The canada fixture's earliest official DGC CD (Plan 06-01, D-03). */
+const CANADIAN_ID = 12009956;
+
+const NO_CANADIAN = {
+  pagination: { page: 1, pages: 0, per_page: 100, items: 0 },
+  versions: [],
+};
+
+type CandidateDb = {
+  id: string;
+  source: string;
+  release_id: number;
+  search_id: string;
+  thumb_url: string | null;
+  country: string | null;
+  title: string;
+};
+
+function pressingRows(spineId: string): CandidateDb[] {
+  return db()
+    .prepare(
+      `SELECT * FROM discogs_candidates
+       WHERE spine_id = ? AND source = 'pressing'`,
+    )
+    .all(spineId) as CandidateDb[];
+}
+
+function setImport(id: string, set: Record<string, unknown>): void {
+  const cols = Object.keys(set)
+    .map((k) => `${k} = @${k}`)
+    .join(', ');
+  db()
+    .prepare(`UPDATE imports SET ${cols} WHERE id = @id`)
+    .run({ ...set, id });
+}
+
+function setJobStatus(id: string | null, status: string): void {
+  db().prepare('UPDATE jobs SET status = ? WHERE id = ?').run(status, id);
+}
+
+/** A pending import of the spine's top match made outside any bulk run. */
+function earlierImport(spineId: string, candidateId: string): ImportDb {
+  const res = createImport(db(), { spineId, candidateId });
+  if (res.status !== 'ok') throw new Error(`earlierImport: ${res.status}`);
+  return importsOf(spineId)[0] as ImportDb;
+}
+
+/** Claims the next resolve job and runs it against the canned answer. */
+async function resolveNext(
+  answer: (url: URL) => { status: number; body: unknown },
+) {
+  const job = claim();
+  const fake = fakeDiscogsDeps(answer);
+  await runResolvePressing(payloadOf(job), jobCtx(job), { fetch: fake.deps });
+  return { job, calls: fake.calls, itemId: payloadOf(job).itemId };
+}
+
+describe('resolve_pressing with a versions lookup', () => {
+  useTempDataDir();
+  useBulkSecrets();
+
+  it('D-01: one versions request picks the Canadian pressing, stored hidden', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    const { calls, itemId } = await resolveNext(() => ({
+      status: 200,
+      body: fixture('master-versions-canada.json'),
+    }));
+    expect(calls.length).toBe(1);
+    const url = calls[0] as URL;
+    expect(url.pathname).toBe('/masters/13814/versions');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      country: 'Canada',
+      format: 'CD',
+      per_page: '100',
+      page: '1',
+      sort: 'released',
+      sort_order: 'asc',
+    });
+    const pressing = pressingRows(spineIds[0]);
+    expect(pressing).toHaveLength(1);
+    expect(pressing[0]).toMatchObject({
+      release_id: CANADIAN_ID,
+      search_id: top.searchId,
+      country: 'Canada',
+      title: 'Nirvana - Nevermind',
+    });
+    expect(pressing[0]?.thumb_url).toMatch(/^https:\/\/i\.discogs\.com\//);
+    const imports = importsOf(spineIds[0]);
+    expect(imports).toHaveLength(1);
+    expect(imports[0]).toMatchObject({
+      release_id: CANADIAN_ID,
+      candidate_id: pressing[0]?.id,
+      status: 'pending',
+    });
+    expect(item(itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'preferred',
+      release_id: CANADIAN_ID,
+      country: 'Canada',
+      import_id: imports[0]?.id,
+    });
+  });
+
+  it('a later run of the same spine reuses its pressing row', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    const canada = () => ({
+      status: 200,
+      body: fixture('master-versions-canada.json'),
+    });
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    const first = await resolveNext(canada);
+    complete(first.job.id);
+    const [firstImport] = importsOf(spineIds[0]);
+    setImport(firstImport?.id as string, { status: 'failed' });
+    setJobStatus(firstImport?.job_id ?? null, 'failed');
+    const before = pressingRows(spineIds[0]);
+    start(
+      [{ spineId: spineIds[0], candidateId: top.candidateId }],
+      START + 100,
+    );
+    const second = await resolveNext(canada);
+    expect(second.calls.length).toBe(1);
+    const after = pressingRows(spineIds[0]);
+    expect(after).toHaveLength(1);
+    expect(after[0]?.id).toBe(before[0]?.id);
+    expect(item(second.itemId).status).toBe('resolved');
+    expect(importsOf(spineIds[0])).toHaveLength(2);
+  });
+
+  it('D-04: no Canadian version imports the top match with fallback_no_version', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    const { calls, itemId } = await resolveNext(() => ({
+      status: 200,
+      body: NO_CANADIAN,
+    }));
+    expect(calls.length).toBe(1);
+    expect(pressingRows(spineIds[0])).toHaveLength(0);
+    expect(importsOf(spineIds[0]).map((i) => i.release_id)).toEqual([5001]);
+    expect(item(itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_version',
+      release_id: 5001,
+      country: 'US',
+    });
+  });
+
+  it('D-21: an implausible versions answer imports the top match with fallback_unusable_master', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    const { itemId } = await resolveNext(() => ({
+      status: 200,
+      body: fixture('master-versions-bogus.json'),
+    }));
+    expect(pressingRows(spineIds[0])).toHaveLength(0);
+    expect(importsOf(spineIds[0]).map((i) => i.release_id)).toEqual([5001]);
+    expect(item(itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_unusable_master',
+      release_id: 5001,
+    });
+  });
+
+  it('D-09: a second spine resolving to the same release is skipped as a duplicate', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const a = seedTopCandidate(spineIds[0], {
+      releaseId: 7001,
+      country: 'Canada',
+    });
+    const b = seedTopCandidate(spineIds[1], {
+      releaseId: 7001,
+      country: 'Canada',
+    });
+    start([
+      { spineId: spineIds[0], candidateId: a.candidateId },
+      { spineId: spineIds[1], candidateId: b.candidateId },
+    ]);
+    const first = await resolveNext(() => ({ status: 500, body: '' }));
+    complete(first.job.id);
+    // The first spine's add job is next; park it so the second lookup runs.
+    const add = claim(ADD_TO_COLLECTION_JOB_TYPE);
+    const second = await resolveNext(() => ({ status: 500, body: '' }));
+    expect(add.id).toBe(importsOf(spineIds[0])[0]?.job_id);
+    expect(item(first.itemId).status).toBe('resolved');
+    expect(item(second.itemId)).toMatchObject({
+      status: 'skipped',
+      skip_reason: 'duplicate',
+      dup_spine_id: spineIds[0],
+      import_id: null,
+    });
+    expect(importsOf(spineIds[1])).toHaveLength(0);
+  });
+
+  it('D-20: a failed import that may have landed is retried on the same row, with no request', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    const earlier = earlierImport(spineIds[0], top.candidateId);
+    setImport(earlier.id, {
+      status: 'failed',
+      intent_at: 1,
+      error_kind: 'unavailable',
+      error: 'Discogs did not answer',
+    });
+    setJobStatus(earlier.job_id, 'failed');
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    const { job, calls, itemId } = await resolveNext(() => ({
+      status: 200,
+      body: fixture('master-versions-canada.json'),
+    }));
+    expect(calls.length).toBe(0);
+    const imports = importsOf(spineIds[0]);
+    expect(imports).toHaveLength(1);
+    expect(imports[0]?.id).toBe(earlier.id);
+    expect(imports[0]?.status).toBe('pending');
+    const addJob = db()
+      .prepare('SELECT * FROM jobs WHERE id = ?')
+      .get(imports[0]?.job_id) as JobDb;
+    expect(addJob.status).toBe('queued');
+    expect(addJob.type).toBe(ADD_TO_COLLECTION_JOB_TYPE);
+    expect(addJob.run_after).toBe(job.runAfter);
+    expect(item(itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'retried_earlier',
+      import_id: earlier.id,
+      release_id: 5001,
+      country: 'US',
+    });
+  });
+
+  it('D-20: a failed import with no intent gets a new import for the pressing', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    const earlier = earlierImport(spineIds[0], top.candidateId);
+    setImport(earlier.id, { status: 'failed', error_kind: 'unavailable' });
+    setJobStatus(earlier.job_id, 'failed');
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    const { calls, itemId } = await resolveNext(() => ({
+      status: 200,
+      body: fixture('master-versions-canada.json'),
+    }));
+    expect(calls.length).toBe(1);
+    const imports = importsOf(spineIds[0]);
+    expect(imports).toHaveLength(2);
+    expect(imports[1]?.release_id).toBe(CANADIAN_ID);
+    expect(item(itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'preferred',
+      import_id: imports[1]?.id,
+    });
+  });
+
+  it('an open import or a not-on-Discogs mark skips the item as changed', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const a = seedTopCandidate(spineIds[0], { country: 'Canada' });
+    const b = seedTopCandidate(spineIds[1], { country: 'Canada' });
+    const open = earlierImport(spineIds[0], a.candidateId);
+    setJobStatus(open.job_id, 'cancelled');
+    db()
+      .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+      .run(spineIds[1]);
+    start([
+      { spineId: spineIds[0], candidateId: a.candidateId },
+      { spineId: spineIds[1], candidateId: b.candidateId },
+    ]);
+    const first = await resolveNext(() => ({ status: 500, body: '' }));
+    const second = await resolveNext(() => ({ status: 500, body: '' }));
+    for (const r of [first, second]) {
+      expect(item(r.itemId)).toMatchObject({
+        status: 'skipped',
+        skip_reason: 'changed',
+      });
+    }
+    expect(importsOf(spineIds[0])).toHaveLength(1);
+    expect(importsOf(spineIds[1])).toHaveLength(0);
+  });
+
+  it('a candidate that is gone skips the item as changed', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    db()
+      .prepare('DELETE FROM discogs_candidates WHERE id = ?')
+      .run(top.candidateId);
+    const { calls, itemId } = await resolveNext(() => ({
+      status: 500,
+      body: '',
+    }));
+    expect(calls.length).toBe(0);
+    expect(item(itemId)).toMatchObject({
+      status: 'skipped',
+      skip_reason: 'changed',
+    });
+  });
+
+  it('interleaves: lookup 1, add 1, lookup 2', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const a = seedTopCandidate(spineIds[0]);
+    const b = seedTopCandidate(spineIds[1], { releaseId: 5002 });
+    start([
+      { spineId: spineIds[0], candidateId: a.candidateId },
+      { spineId: spineIds[1], candidateId: b.candidateId },
+    ]);
+    const order: string[] = [];
+    const first = claimNext('discogs', LATER) as JobRow;
+    order.push(first.type);
+    const fake = fakeDiscogsDeps(() => ({
+      status: 200,
+      body: fixture('master-versions-canada.json'),
+    }));
+    await runResolvePressing(payloadOf(first), jobCtx(first), {
+      fetch: fake.deps,
+    });
+    expect(complete(first.id, LATER, first.attempts)).toBe(true);
+    const second = claimNext('discogs', LATER) as JobRow;
+    order.push(second.type);
+    const third = claimNext('discogs', LATER) as JobRow;
+    order.push(third.type);
+    expect(order.join(',')).toBe(
+      [
+        RESOLVE_PRESSING_JOB_TYPE,
+        ADD_TO_COLLECTION_JOB_TYPE,
+        RESOLVE_PRESSING_JOB_TYPE,
+      ].join(','),
+    );
+    expect(payloadOf(third).itemId).toBe(itemOfSpine(spineIds[1]).id);
   });
 });
