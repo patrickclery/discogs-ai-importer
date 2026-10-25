@@ -47,7 +47,7 @@ export type StartResult =
   | { ok: true; response: BulkStartResponse }
   | { ok: false; reason: string };
 
-/** POST /api/spines/bulk-import; a refusal reads the server's message. */
+/** Start the run; a refusal reads the server's message as the reason. */
 export async function startBulkImport(
   spines: readonly BulkPick[],
 ): Promise<StartResult> {
