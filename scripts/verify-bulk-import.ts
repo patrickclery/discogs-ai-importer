@@ -13,23 +13,38 @@
 // spine makes exactly one GET /masters/{m}/versions with country Canada and
 // format CD; consecutive Discogs requests during the run are at least
 // 900 ms apart; no stored error names the username.
+// Each later step scans a fresh, re-encoded photo of the same shelf, marks
+// the earlier photos' spines superseded in SQL (so their imports are no
+// local duplicates, D-09) and empties the fake collection (so no add is
+// held as already in the collection, D-05). (d) a second start while the
+// run is going answers 409 bulk_running and writes no run (T-06-16).
+// (e) Phase 4 D-07, BULK-11: the fake holds the run's first add POST after
+// carrying it out (hang-after-commit); the app is SIGKILLed and restarted
+// on the same data; the run finishes with every release added exactly
+// once, the held POST's copy adopted and never posted again.
 // Run: node scripts/verify-bulk-import.ts   (VERIFY_SKIP_BUILD=1 reuses
 // the build). The setup helpers live in scripts/lib/import-flow.ts.
 import fs from 'node:fs';
 import path from 'node:path';
 import type { SpinesResponse } from '../src/lib/scan-types.ts';
 import type { BulkItemDbRow } from '../src/server/bulk/store.ts';
+import { makeSyntheticShelf } from '../test/fixtures/vision/synthetic-shelf.mjs';
 import {
   connectAndScan,
+  discogsIdle,
   FAKE_USERNAME,
+  type FakePostMode,
   fakeLog,
   fakeState,
   type ImportCtx,
   type ImportDbRow,
+  type ImportFakeState,
   startImportStack,
+  TRACER,
+  withWritableDb,
 } from './lib/import-flow.ts';
 import { assert, check, step } from './lib/jobs.ts';
-import { withDb } from './lib/scan.ts';
+import { upload, waitPhotoDone, withDb } from './lib/scan.ts';
 import { runMain, waitFor } from './lib/server.ts';
 
 /** The fake's Canadian version of search release r is r + this. */
@@ -400,11 +415,196 @@ async function stepBulkRun(ctx: ImportCtx): Promise<void> {
   );
 }
 
+async function setPostMode(ctx: ImportCtx, postMode: FakePostMode) {
+  const state = (await ctx.fake.control({ postMode })) as { postMode?: string };
+  assert(
+    state.postMode === postMode,
+    `the fake's postMode is ${state.postMode}`,
+  );
+}
+
+function runCount(ctx: ImportCtx): number {
+  return withDb(
+    ctx,
+    (db) =>
+      (db.prepare('SELECT COUNT(*) AS n FROM bulk_runs').get() as { n: number })
+        .n,
+  );
+}
+
+/**
+ * Scans another tracer photo (re-encoded, so a new hash), waits for its
+ * searches, then retires every other photo's spines and empties the fake
+ * collection, so the new photo's spines are eligible and their releases
+ * are neither local duplicates nor already in the collection. The photo id.
+ */
+async function freshShelf(
+  ctx: ImportCtx,
+  quality: number,
+  filename: string,
+): Promise<string> {
+  const jpeg = new Uint8Array(
+    (await makeSyntheticShelf(TRACER, { quality })).jpeg,
+  );
+  const up = await upload(ctx, jpeg, { filename });
+  assert(up.status === 201, `upload returned ${up.status}`);
+  const photoId = String(up.body.photoId);
+  const photo = await waitPhotoDone(ctx, photoId);
+  assert(
+    photo.spineCount === TRACER.spines.length,
+    `spineCount ${photo.spineCount}, expected ${TRACER.spines.length}`,
+  );
+  await waitFor(
+    'the Discogs lane to drain',
+    async () => (discogsIdle(ctx) ? true : undefined),
+    { timeoutMs: 120_000, intervalMs: 250 },
+  );
+  withWritableDb(ctx, (db) =>
+    db
+      .prepare(
+        `UPDATE spines SET state = 'superseded'
+         WHERE photo_id <> @photoId AND state IN ('active', 'orphaned')`,
+      )
+      .run({ photoId }),
+  );
+  const state = await fakeState(ctx);
+  const emptied = (await ctx.fake.control({
+    collection: Object.fromEntries(
+      Object.keys(state.collection).map((id) => [id, []]),
+    ),
+  })) as ImportFakeState;
+  assert(
+    Object.values(emptied.collection).every((l) => l.length === 0),
+    'the fake collection is not empty',
+  );
+  return photoId;
+}
+
+/** Each resolved release has exactly one copy, posted once since before. */
+async function assertOneCopyEach(
+  ctx: ImportCtx,
+  resolved: BulkItemDbRow[],
+  before: { postsByRelease: Record<string, number> },
+): Promise<void> {
+  const state = await fakeState(ctx);
+  for (const item of resolved) {
+    const id = String(item.release_id);
+    const copies = state.collection[id] ?? [];
+    assert(copies.length === 1, `${copies.length} copies of ${id}`);
+    const posted =
+      (state.postsByRelease[id] ?? 0) - (before.postsByRelease[id] ?? 0);
+    assert(posted === 1, `${posted} add POSTs of ${id} during the run`);
+  }
+  assert(state.postsHeld === 0, `${state.postsHeld} add POSTs still held`);
+}
+
+// (d) T-06-16: one run at a time; a second start is refused and writes
+// nothing while the first is going.
+async function stepOneRunAtATime(ctx: ImportCtx): Promise<void> {
+  step('(d) a second start while the run is going answers 409 bulk_running');
+  // Pacing was proven in (c); the rest of the script runs at the default.
+  await ctx.fake.control({ limit: 600 });
+  const photoId = await freshShelf(ctx, 84, 'bulk-shelf-2.jpg');
+  const picks = await eligiblePicks(ctx, photoId);
+  assert(picks.length >= 2, `only ${picks.length} eligible spines`);
+  const before = await fakeState(ctx);
+  const runsBefore = runCount(ctx);
+  const first = await startBulk(ctx, picks);
+  const second = await startBulk(ctx, picks);
+  assert(
+    first.status === 201 && typeof first.body.runId === 'string',
+    `the first start answered ${first.status} ${JSON.stringify(first.body)}`,
+  );
+  assert(
+    second.status === 409 && second.body.error === 'bulk_running',
+    `the second start answered ${second.status} ${JSON.stringify(second.body)}`,
+  );
+  assert(
+    runCount(ctx) === runsBefore + 1,
+    `${runCount(ctx) - runsBefore} runs written by two starts`,
+  );
+  const runId = first.body.runId as string;
+  await waitRunDone(ctx, runId);
+  const resolved = assertRunItems(ctx, runId, picks);
+  await assertOneCopyEach(ctx, resolved, before);
+  check(
+    `first start 201, second 409 bulk_running with one run written; the run added ${resolved.length} releases once each`,
+  );
+}
+
+// (e) Phase 4 D-07, BULK-11: the app dies while Discogs holds an add it
+// already carried out; after a restart the run finishes and nothing is
+// added twice.
+async function stepCrashMidRun(ctx: ImportCtx): Promise<void> {
+  step('(e) SIGKILL mid-run while an add POST is held; restart; once each');
+  const photoId = await freshShelf(ctx, 83, 'bulk-shelf-3.jpg');
+  const picks = await eligiblePicks(ctx, photoId);
+  assert(picks.length >= 2, `only ${picks.length} eligible spines`);
+  const before = await fakeState(ctx);
+  await setPostMode(ctx, 'hang-after-commit');
+  const answer = await startBulk(ctx, picks);
+  assert(
+    answer.status === 201 && typeof answer.body.runId === 'string',
+    `start answered ${answer.status} ${JSON.stringify(answer.body)}`,
+  );
+  const runId = answer.body.runId as string;
+  const held = await waitFor(
+    "the fake to hold the run's first add POST",
+    async () => {
+      const s = await fakeState(ctx);
+      return s.postsHeld === 1 ? s : undefined;
+    },
+    { timeoutMs: 60_000, intervalMs: 100 },
+  );
+  const heldRelease = Object.keys(held.postsByRelease).find(
+    (id) =>
+      (held.postsByRelease[id] ?? 0) - (before.postsByRelease[id] ?? 0) === 1,
+  );
+  assert(heldRelease, 'no add POST was carried out before the hold');
+  const midRun = await getSpines(ctx);
+  assert(
+    midRun.bulk?.id === runId && midRun.bulk.running,
+    `the run is not going at the hold: ${JSON.stringify(midRun.bulk)}`,
+  );
+  const killed = await ctx.server.stop('SIGKILL');
+  assert(
+    killed.signal === 'SIGKILL',
+    `server exited ${JSON.stringify(killed)}`,
+  );
+  await setPostMode(ctx, 'ok');
+  await waitFor(
+    'the fake to drop the held add',
+    async () => ((await fakeState(ctx)).postsHeld === 0 ? true : undefined),
+    { timeoutMs: 10_000, intervalMs: 100 },
+  );
+  await ctx.restart('SIGKILL');
+  const summary = await waitRunDone(ctx, runId);
+  const resolved = assertRunItems(ctx, runId, picks);
+  await assertOneCopyEach(ctx, resolved, before);
+  const heldItem = resolved.find((i) => String(i.release_id) === heldRelease);
+  assert(heldItem, `no resolved item imports the held ${heldRelease}`);
+  const imp = importById(ctx, heldItem.import_id);
+  assert(
+    imp?.status === 'imported' && imp.adopted === 1 && imp.post_count === 1,
+    `the held import is ${JSON.stringify(imp)}`,
+  );
+  const state = await fakeState(ctx);
+  assert(
+    imp.instance_id === state.collection[heldRelease]?.[0]?.instance_id,
+    `instance ${imp.instance_id}, the fake's copy is ${JSON.stringify(state.collection[heldRelease])}`,
+  );
+  check(
+    `killed with ${heldRelease} held mid-run; after the restart the run finished (added ${summary.added}, duplicates ${summary.duplicates}); ${resolved.length} releases one copy and one add POST each; ${heldRelease} adopted with post_count 1`,
+  );
+}
+
 runMain('verify-bulk-import', async (onCleanup) => {
   const ctx = await startImportStack('verify-bulk-import', onCleanup);
   stepSchema(ctx);
   await stepConnectAndScan(ctx);
   await stepBulkRun(ctx);
+  await stepOneRunAtATime(ctx);
+  await stepCrashMidRun(ctx);
 
   step('stop');
   await ctx.server.stop('SIGTERM');
