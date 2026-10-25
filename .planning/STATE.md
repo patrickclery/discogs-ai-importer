@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: Completed 06-06-PLAN.md
-last_updated: "2026-10-25T02:45:05.817Z"
+stopped_at: Completed 06-08-PLAN.md
+last_updated: "2026-10-25T02:52:09.833Z"
 last_activity: 2026-10-24
 last_activity_desc: Phase 06 execution started
-state_head: 7e37cc32989cd96ed6d913afed181d7b3ece4d35
+state_head: 8ddda9e5cdd1790e1cc729518e911f196de125e0
 progress:
   total_phases: 2
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-23)
 ## Current Position
 
 Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-10-24 — Phase 06 execution started
 
@@ -116,6 +116,7 @@ Last activity: 2026-10-24 — Phase 06 execution started
 | Phase 06 P07 | 7 min | 2 tasks | 12 files |
 | Phase 06 P11 | 6min | 2 tasks | 10 files |
 | Phase 06 P06 | 12min | 2 tasks | 7 files |
+| Phase 06 P08 | 5 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -273,6 +274,8 @@ Recent decisions affecting current work:
 - [Phase 06]: Demo pressing candidate ids derive from the spine id so pristine shelf copies never collide
 - [Phase 06]: Demo retrySpine answers busy while a spine's pressing is being found, matching the real retrySpine
 - [Phase 06]: 06-06: bulk start re-checks each pick (eligibilityOf + still topMatchOf) inside one IMMEDIATE transaction with the busy check and startBulkRun; all-skipped answers 409 nothing_to_import with no run row
+- [Phase 06]: 06-08: NoticeLine switches on pure noticeLineKind (imported none, not connected, bulk line unless paused, Fields changed, paused, failed search)
+- [Phase 06]: 06-08: lookup failure kind rejected reads 'Discogs refused the request'; kind other with no reason reads 'something went wrong'
 
 ### Pending Todos
 
@@ -296,8 +299,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T02:45:05.718Z
-Stopped at: Completed 06-06-PLAN.md
+Last session: 2026-10-25T02:52:09.732Z
+Stopped at: Completed 06-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
