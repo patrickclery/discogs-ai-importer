@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { REVIEW_STATUSES } from '@/lib/import-types';
 import {
+  bulkShelf,
+  seedTopCandidate,
+  useBulkSecrets,
+} from '../../../test/helpers/bulk-seed';
+import {
   foreignCandidate,
   orphanScenario,
 } from '../../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../../test/helpers/temp-data-dir';
+import { failBulkItem, resolveBulkItem, startBulkRun } from '../bulk/store';
 import { getDb } from '../db/client';
 import { newId } from '../ids';
-import { getSpines } from './queries';
+import { setPreferredCountry } from '../settings';
+import { getSpines, parseFallbackParam } from './queries';
 
 // The /spines read model (REV-03, D-11, D-12): per-photo progress, counts
 // that ignore the status and review filters, list order under every filter,
@@ -244,5 +251,167 @@ describe('getSpines order, empty and polling', () => {
     seedImport(spineIds[1], 'failed', { jobStatus: 'failed' });
     seedImport(spineIds[2], 'imported', { instanceId: 9201 });
     expect(getSpines().discogsActive).toBe(false);
+  });
+});
+
+/** A Canada bulk run over the spines, each with its own top match. */
+function startRun(spineIds: string[]): void {
+  const res = startBulkRun(db(), {
+    items: spineIds.map((spineId, i) => ({
+      spineId,
+      candidateId: seedTopCandidate(spineId, { releaseId: 7000 + i })
+        .candidateId,
+    })),
+    country: 'Canada',
+    folderId: 1,
+  });
+  if (res.status !== 'ok') throw new Error('run did not start');
+}
+
+function itemIdOf(spineId: string): string {
+  return (
+    db()
+      .prepare(
+        'SELECT id FROM bulk_items WHERE spine_id = ? ORDER BY created_at DESC',
+      )
+      .get(spineId) as { id: string }
+  ).id;
+}
+
+/** The spine's bulk item resolved to a release in `country`, imported. */
+function bulkImported(spineId: string, country: string | null): void {
+  const importId = newId();
+  const now = Date.now();
+  db()
+    .prepare(
+      `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
+         linked, instance_id, job_id, created_at, updated_at)
+       VALUES (@importId, @spineId, 7100, 1, 'imported', 0, 31, NULL, @now,
+         @now)`,
+    )
+    .run({ importId, spineId, now });
+  resolveBulkItem(db(), itemIdOf(spineId), {
+    importId,
+    releaseId: 7100,
+    country,
+    outcome: country === 'US' ? 'fallback_no_version' : 'preferred',
+  });
+}
+
+describe('parseFallbackParam (T-06-12)', () => {
+  it("only the exact value '1' turns the filter on", () => {
+    expect(parseFallbackParam('1')).toBe(true);
+    for (const v of ['0', 'true', '', ' 1', null, undefined]) {
+      expect(parseFallbackParam(v)).toBe(false);
+    }
+  });
+});
+
+describe('getSpines bulk lookups and the Fallback filter', () => {
+  useTempDataDir();
+  useBulkSecrets();
+
+  it('a spine whose lookup runs reads matched; a failed lookup reads failed', async () => {
+    const { spineIds } = await bulkShelf();
+    const [s0, s1] = spineIds;
+    seedImport(s0, 'failed');
+    startRun([s0, s1]);
+    const r = getSpines();
+    expect(r.statusById[s0]).toBe('matched');
+    expect(r.statusById[s1]).toBe('matched');
+    failBulkItem(db(), itemIdOf(s1), { errorKind: 'unavailable', error: null });
+    expect(getSpines().statusById[s1]).toBe('failed');
+  });
+
+  it('discogsActive is true with one finding item and no import', async () => {
+    const { spineIds } = await bulkShelf();
+    seedTopCandidate(spineIds[0]);
+    expect(getSpines().discogsActive).toBe(false);
+    startRun([spineIds[0]]);
+    const r = getSpines();
+    expect(r.spines.find((s) => s.id === spineIds[0])?.import).toBeNull();
+    expect(r.discogsActive).toBe(true);
+  });
+
+  it('discogsActive stays true while the latest run runs, even for a spine the photo filter hides', async () => {
+    const { spineIds } = await bulkShelf();
+    const otherSpine = await foreignCandidate();
+    const otherPhotoId = (
+      db()
+        .prepare('SELECT photo_id FROM spines WHERE id = ?')
+        .get(otherSpine) as {
+        photo_id: string;
+      }
+    ).photo_id;
+    startRun([spineIds[0]]);
+    expect(getSpines({ photoId: otherPhotoId }).discogsActive).toBe(true);
+    failBulkItem(db(), itemIdOf(spineIds[0]), {
+      errorKind: 'unavailable',
+      error: null,
+    });
+    expect(getSpines({ photoId: otherPhotoId }).discogsActive).toBe(false);
+  });
+
+  it('?fallback=1 lists only fallback spines; USA & Canada is not one (D-19)', async () => {
+    const { spineIds } = await bulkShelf();
+    const [s0, s1, s2, s3] = spineIds;
+    startRun([s0, s1, s2, s3]);
+    bulkImported(s0, 'US');
+    bulkImported(s1, 'USA & Canada');
+    bulkImported(s2, 'Canada');
+    bulkImported(s3, null);
+    const r = getSpines({ fallback: true });
+    expect(r.spines.map((s) => s.id)).toEqual([s0, s3]);
+    expect(r.counts.fallback).toBe(2);
+    expect(r.counts).toEqual(getSpines().counts);
+  });
+
+  it('fallback ANDs with status, review and photo; its count covers the photo filter only', async () => {
+    const { photoId, spineIds } = await bulkShelf();
+    const otherSpine = await foreignCandidate();
+    const otherPhotoId = (
+      db()
+        .prepare('SELECT photo_id FROM spines WHERE id = ?')
+        .get(otherSpine) as {
+        photo_id: string;
+      }
+    ).photo_id;
+    startRun([spineIds[0]]);
+    bulkImported(spineIds[0], 'US');
+    expect(
+      getSpines({ fallback: true, status: 'imported' }).spines.map((s) => s.id),
+    ).toEqual([spineIds[0]]);
+    const pending = getSpines({ fallback: true, status: 'pending' });
+    expect(pending.spines).toEqual([]);
+    expect(pending.photos).toEqual([]);
+    expect(pending.counts.fallback).toBe(1);
+    expect(getSpines({ fallback: true, review: true }).counts.fallback).toBe(1);
+    expect(
+      getSpines({ fallback: true, photoId }).photos.map((p) => p.id),
+    ).toEqual([photoId]);
+    const other = getSpines({ fallback: true, photoId: otherPhotoId });
+    expect(other.spines).toEqual([]);
+    expect(other.counts.fallback).toBe(0);
+  });
+
+  it('a later manual import of a fallback spine leaves the Fallback filter', async () => {
+    const { spineIds } = await bulkShelf();
+    startRun([spineIds[0]]);
+    bulkImported(spineIds[0], 'US');
+    seedImport(spineIds[0], 'imported', { instanceId: 44 });
+    db()
+      .prepare(
+        'UPDATE imports SET created_at = created_at + 1000 WHERE release_id = 4242',
+      )
+      .run();
+    expect(getSpines({ fallback: true }).spines).toEqual([]);
+    expect(getSpines().counts.fallback).toBe(0);
+  });
+
+  it('the response names the preferred country', async () => {
+    await bulkShelf();
+    expect(getSpines().discogs.preferredCountry).toBe('Canada');
+    setPreferredCountry('germany');
+    expect(getSpines().discogs.preferredCountry).toBe('Germany');
   });
 });

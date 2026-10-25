@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { type RunItemSummary, summarizeRun } from './bulk-view';
+import type { BulkItemDto } from './bulk-types';
+import {
+  countryBadgeOf,
+  isFallbackSpine,
+  lookupOf,
+  type RunItemSummary,
+  summarizeRun,
+} from './bulk-view';
+import type { ImportDto } from './import-types';
+import type { SpineDto } from './scan-types';
 
 // How the /spines UI reads bulk state (D-15, D-19): the run summary behind
 // the progress line and the finished toast.
@@ -95,5 +104,95 @@ describe('summarizeRun', () => {
       done: 0,
       running: false,
     });
+  });
+});
+
+function item(over: Partial<BulkItemDto> = {}): BulkItemDto {
+  return {
+    id: 'item-1',
+    runId: 'run-1',
+    phase: 'resolved',
+    preferredCountry: 'Canada',
+    outcome: 'preferred',
+    releaseId: 6001,
+    country: 'Canada',
+    importId: 'imp-1',
+    skip: null,
+    failure: null,
+    createdAt: 1,
+    ...over,
+  };
+}
+
+function spine(
+  bulkItem: BulkItemDto | null,
+  importId: string | null = 'imp-1',
+): Pick<SpineDto, 'import' | 'bulk'> {
+  return {
+    import: importId === null ? null : ({ id: importId } as ImportDto),
+    bulk: { eligible: false, reason: 'imported', item: bulkItem },
+  };
+}
+
+describe('countryBadgeOf', () => {
+  it('a bulk import in the preferred country is preferred', () => {
+    expect(countryBadgeOf(spine(item()))).toEqual({
+      kind: 'preferred',
+      country: 'Canada',
+    });
+  });
+
+  it('another country is a fallback, naming it', () => {
+    expect(countryBadgeOf(spine(item({ country: 'US' })))).toEqual({
+      kind: 'fallback',
+      country: 'US',
+    });
+  });
+
+  it('an unknown country is a fallback with no country', () => {
+    expect(countryBadgeOf(spine(item({ country: null })))).toEqual({
+      kind: 'fallback',
+      country: null,
+    });
+  });
+
+  it("D-19: 'USA & Canada' reads as preferred", () => {
+    expect(countryBadgeOf(spine(item({ country: 'USA & Canada' })))).toEqual({
+      kind: 'preferred',
+      country: 'USA & Canada',
+    });
+  });
+
+  it('no badge once a later manual import replaced the bulk one', () => {
+    expect(countryBadgeOf(spine(item(), 'imp-2'))).toBeNull();
+    expect(countryBadgeOf(spine(item(), null))).toBeNull();
+  });
+
+  it('no badge for a finding, skipped or failed item, or no item', () => {
+    expect(countryBadgeOf(spine(item({ phase: 'finding' })))).toBeNull();
+    expect(countryBadgeOf(spine(item({ phase: 'failed' })))).toBeNull();
+    expect(countryBadgeOf(spine(item({ phase: 'skipped' })))).toBeNull();
+    expect(countryBadgeOf(spine(item({ importId: null }), 'x'))).toBeNull();
+    expect(countryBadgeOf(spine(null))).toBeNull();
+    expect(countryBadgeOf({ import: null, bulk: null })).toBeNull();
+  });
+
+  it('isFallbackSpine is true only for a fallback badge', () => {
+    expect(isFallbackSpine(spine(item({ country: 'US' })))).toBe(true);
+    expect(isFallbackSpine(spine(item()))).toBe(false);
+    expect(isFallbackSpine(spine(item({ country: 'USA & Canada' })))).toBe(
+      false,
+    );
+    expect(isFallbackSpine(spine(null))).toBe(false);
+  });
+});
+
+describe('lookupOf', () => {
+  it('finding and failed items name their lookup; others none', () => {
+    expect(lookupOf(item({ phase: 'finding' }))).toBe('finding');
+    expect(lookupOf(item({ phase: 'failed' }))).toBe('failed');
+    expect(lookupOf(item())).toBeNull();
+    expect(lookupOf(item({ phase: 'skipped' }))).toBeNull();
+    expect(lookupOf(null)).toBeNull();
   });
 });

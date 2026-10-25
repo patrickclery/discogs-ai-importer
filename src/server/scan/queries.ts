@@ -299,6 +299,10 @@ export function parseReviewParam(v: string | null | undefined): boolean {
   return v === '1';
 }
 
+export function parseFallbackParam(_v: string | null | undefined): boolean {
+  return false;
+}
+
 /**
  * The /spines read model (REV-01, D-07, D-10, D-11): photos newest first
  * (only `photoId` when given; an unknown id yields no photos), their active
@@ -312,7 +316,12 @@ export function parseReviewParam(v: string | null | undefined): boolean {
  * count stays visible while filtering.
  */
 export function getSpines(
-  opts: { photoId?: string; review?: boolean; status?: ReviewStatus } = {},
+  opts: {
+    photoId?: string;
+    review?: boolean;
+    status?: ReviewStatus;
+    fallback?: boolean;
+  } = {},
 ): SpinesResponse {
   const all = listPhotos();
   const photoOptions = all.map(({ id, filename, status }) => ({
@@ -345,6 +354,7 @@ export function getSpines(
       notOnDiscogs: s.notOnDiscogs,
       searchState: s.discogs?.state ?? null,
       candidateCount: s.discogs?.candidateCount ?? 0,
+      lookup: null,
     });
     s.reviewStatus = status;
     byStatus[status] += 1;
@@ -374,7 +384,12 @@ export function getSpines(
     photos,
     spines,
     photoOptions,
-    counts: { all: listed.length, needsReview: flagged.size, byStatus },
+    counts: {
+      all: listed.length,
+      needsReview: flagged.size,
+      byStatus,
+      fallback: 0,
+    },
     statusById,
     photoProgress,
     confidenceThreshold,
@@ -383,6 +398,7 @@ export function getSpines(
     discogs: {
       ...discogsConnection(),
       folder: { id: folderId, name: collectionFolderName(folderId) },
+      preferredCountry: '',
     },
     bulk: latestBulkRun(db),
   };

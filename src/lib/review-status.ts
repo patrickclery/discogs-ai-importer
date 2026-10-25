@@ -17,6 +17,7 @@ export type ReviewStatusInput = {
   /** The latest search state, or null outside the /spines read model. */
   searchState: SearchState | null;
   candidateCount: number;
+  lookup: 'finding' | 'failed' | null;
 };
 
 /**

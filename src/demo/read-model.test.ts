@@ -280,6 +280,19 @@ describe('bulk (eligibilityOf, Plan 06-04)', () => {
     }
     expect(r.spines.some((s) => s.bulk?.eligible)).toBe(true);
   });
+
+  it('serves the preferred country, an empty Fallback filter and its count', () => {
+    const state = getState();
+    const all = spinesAt(state, T0);
+    expect(all.discogs.preferredCountry).toBe('Canada');
+    state.account.preferredCountry = 'Germany';
+    expect(spinesAt(state, T0).discogs.preferredCountry).toBe('Germany');
+    const r = buildSpinesResponse(state, T0, { fallback: true });
+    expect(r.spines).toEqual([]);
+    expect(r.photos).toEqual([]);
+    expect(r.counts.fallback).toBe(0);
+    expect(r.counts).toEqual(all.counts);
+  });
 });
 
 describe('status response', () => {

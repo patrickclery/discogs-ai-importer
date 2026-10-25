@@ -16,11 +16,41 @@ const BASE: ReviewStatusInput = {
   notOnDiscogs: false,
   searchState: 'done',
   candidateCount: 3,
+  lookup: null,
 };
 
 function status(over: Partial<ReviewStatusInput>): ReviewStatus {
   return reviewStatusOf({ ...BASE, ...over });
 }
+
+describe('reviewStatusOf with a bulk lookup (BULK-11)', () => {
+  it('a lookup in progress beside an older failed import reads matched', () => {
+    expect(status({ lookup: 'finding', importPhase: 'failed' })).toBe(
+      'matched',
+    );
+  });
+
+  it('a lookup in progress with no import reads matched', () => {
+    expect(status({ lookup: 'finding' })).toBe('matched');
+  });
+
+  it('a failed lookup with no import reads failed', () => {
+    expect(status({ lookup: 'failed' })).toBe('failed');
+  });
+
+  it('imported and not on Discogs win over any lookup', () => {
+    expect(
+      status({
+        lookup: 'failed',
+        importPhase: 'imported',
+        importInstanceId: 3,
+      }),
+    ).toBe('imported');
+    expect(status({ lookup: 'finding', notOnDiscogs: true })).toBe(
+      'not_on_discogs',
+    );
+  });
+});
 
 describe('reviewStatusOf (D-10 order)', () => {
   it('an import with an instance id is imported', () => {

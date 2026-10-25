@@ -32,7 +32,12 @@ function renderOptions() {
       NuqsTestingAdapter,
       null,
       h(SpinesFilterBar, {
-        counts: { all: 0, needsReview: 0, byStatus: emptyByStatus() },
+        counts: {
+          all: 0,
+          needsReview: 0,
+          byStatus: emptyByStatus(),
+          fallback: 0,
+        },
         photoOptions: PHOTOS,
       }),
     ),

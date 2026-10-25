@@ -521,7 +521,12 @@ const ACTIVE_SEARCH_STATES: readonly SearchState[] = ['queued', 'searching'];
 export function buildSpinesResponse(
   state: DemoState,
   now: number,
-  opts: { photoId?: string; review?: boolean; status?: ReviewStatus } = {},
+  opts: {
+    photoId?: string;
+    review?: boolean;
+    status?: ReviewStatus;
+    fallback?: boolean;
+  } = {},
 ): SpinesResponse {
   const all = buildPhotosResponse(state, now).photos;
   const photoOptions: PhotoOption[] = all.map(({ id, filename, status }) => ({
@@ -545,6 +550,7 @@ export function buildSpinesResponse(
       notOnDiscogs: s.notOnDiscogs,
       searchState: s.discogs?.state ?? null,
       candidateCount: s.discogs?.candidateCount ?? 0,
+      lookup: null,
     });
     s.reviewStatus = status;
     byStatus[status] += 1;
@@ -579,7 +585,12 @@ export function buildSpinesResponse(
     photos,
     spines,
     photoOptions,
-    counts: { all: listed.length, needsReview: flagged.size, byStatus },
+    counts: {
+      all: listed.length,
+      needsReview: flagged.size,
+      byStatus,
+      fallback: 0,
+    },
     statusById,
     photoProgress,
     confidenceThreshold,
@@ -593,6 +604,7 @@ export function buildSpinesResponse(
         id: account.folderId,
         name: folder?.name ?? 'Uncategorized',
       },
+      preferredCountry: '',
     },
     bulk: null,
   };

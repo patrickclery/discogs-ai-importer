@@ -133,6 +133,7 @@ export type SpinesResponse = {
     all: number;
     needsReview: number;
     byStatus: Record<ReviewStatus, number>;
+    fallback: number;
   };
   /**
    * The review status of every spine under the photo filter, shown or not,
@@ -161,6 +162,7 @@ export type SpinesResponse = {
     pausedUntil: number | null;
     /** The folder new imports go to (D-03): the Add label names it. */
     folder: { id: number; name: string };
+    preferredCountry: string;
   };
   /** The latest bulk run's progress and result counts, or null (D-15). */
   bulk: BulkRunDto | null;

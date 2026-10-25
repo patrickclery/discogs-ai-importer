@@ -1,9 +1,15 @@
 // How the /spines UI reads bulk state (Phase 6): the run summary behind the
 // progress line and the finished toast (D-15). Pure and client-safe: the
 // read model and the demo compute it, the cards and the bar read it.
-import type { BulkItemPhase, BulkRunDto, BulkSkipReason } from './bulk-types';
+import type {
+  BulkItemDto,
+  BulkItemPhase,
+  BulkRunDto,
+  BulkSkipReason,
+} from './bulk-types';
 import type { ImportPhase } from './import-types';
 import { countryMatch } from './pressing';
+import type { SpineDto } from './scan-types';
 
 /** One item of a run as summarizeRun reads it. */
 export type RunItemSummary = {
@@ -70,4 +76,27 @@ export function summarizeRun(
   }
   out.running = out.done < out.total;
   return out;
+}
+
+export type CountryBadge = {
+  kind: 'preferred' | 'fallback';
+  country: string | null;
+};
+
+export function countryBadgeOf(
+  _spine: Pick<SpineDto, 'import' | 'bulk'>,
+): CountryBadge | null {
+  return null;
+}
+
+export function isFallbackSpine(
+  _spine: Pick<SpineDto, 'import' | 'bulk'>,
+): boolean {
+  return false;
+}
+
+export function lookupOf(
+  _item: BulkItemDto | null,
+): 'finding' | 'failed' | null {
+  return null;
 }
