@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { CandidateFormat } from '@/lib/discogs-types';
 import {
   choosePressing,
+  needsFallbackLookup,
   needsLookup,
   type TopMatchLite,
   type VersionLite,
@@ -37,13 +38,17 @@ import { type JobContext, JobDeferredError } from '../types';
 // One bulk item (D-08), on the discogs lane: the spine's top match becomes
 // the release to import, either as is (already in the preferred country,
 // D-02, or with no master, D-04) or as its pressing from one
-// GET /masters/{id}/versions (D-01), then createImport writes the import
+// GET /masters/{id}/versions for the preferred country (D-01) and, only
+// when needsFallbackLookup says it can change the result, one more GET in
+// the same D-01 shape for the run's fallback country (G-06-side-1). A
+// deferral re-runs the whole lookup, so both requests repeat. Then
+// createImport writes the import
 // and its add_to_collection job, whose run_after is this job's, so each
 // spine's add runs right after its own lookup. Release ids come only from
 // the spine's candidate row or the parsed versions answer (T-06-04), and
 // createImport never gets the allow-duplicate option (D-09, T-06-05).
 //
-// The lookup's failures, as in fetch-release: no sign-in or a refused one
+// Each request's failures, the same for both, as in fetch-release: no sign-in or a refused one
 // fails the item as auth with no request; a paused gate or a 429 defers
 // without spending an attempt; a 401 fails it as auth; a 404 counts as no
 // master (D-04); another 4xx fails it as rejected; a 5xx or anything else
@@ -229,20 +234,19 @@ export async function runResolvePressing(
     return;
   }
 
-  let versions: VersionLite[] | 'unusable' | undefined;
-  const masterId = top.masterId;
-  if (needsLookup(top, run.country) && masterId !== null) {
-    // Only a lookup needs the sign-in: the preferred short-circuit and the
-    // D-20 retry make no request, and the add job checks its own.
+  type Lookup =
+    | { failed: true }
+    | { failed: false; versions: VersionLite[] | 'unusable' | undefined };
+  /**
+   * One country's versions answer (D-01 shape). Both lookups go through
+   * here, so they share the isCurrent check, the paused-gate deferral and
+   * the error mapping. failed: the item already failed; the caller returns.
+   */
+  const lookupVersions = async (
+    masterId: number,
+    country: string,
+  ): Promise<Lookup> => {
     if (!ctx.isCurrent()) throw new NotCurrentError();
-    if (!getDiscogsAuth()) {
-      fail('auth', 'Discogs is not connected');
-      return;
-    }
-    if (isAuthInvalid()) {
-      fail('auth', 'Discogs refused the stored sign-in');
-      return;
-    }
     const pausedUntil = (deps.fetch?.gate ?? discogsGate()).pausedUntil();
     if (pausedUntil !== null) {
       throw new JobDeferredError(pausedUntil, 'Discogs rate limit pause');
@@ -252,13 +256,13 @@ export async function runResolvePressing(
       const res = await discogsFetch(
         {
           path: masterVersionsPath(masterId),
-          query: versionsQuery(run.country),
+          query: versionsQuery(country),
           auth: 'oauth',
           signal: ctx.signal,
         },
         deps.fetch,
       );
-      versions = parseVersions(res.json);
+      return { failed: false, versions: parseVersions(res.json) };
     } catch (err) {
       switch (errName(err)) {
         case 'NotCurrentError':
@@ -273,19 +277,19 @@ export async function runResolvePressing(
         case 'DiscogsAuthError':
           if (!ctx.isCurrent()) throw err;
           fail('auth', message(err));
-          return;
+          return { failed: true };
         case 'DiscogsNotFoundError':
-          // D-04: no such master is the same as no master.
+          // D-04: no such master is the same as no master (for the
+          // fallback lookup: no version from that country).
           if (!ctx.isCurrent()) throw err;
-          versions = undefined;
-          break;
+          return { failed: false, versions: undefined };
         case 'DiscogsRequestError':
         case 'DiscogsVersionsShapeError':
           // A refused request or a versions body of the wrong shape: the
           // same answer comes back on every attempt (WR-05), so no retry.
           if (!ctx.isCurrent()) throw err;
           fail('rejected', message(err));
-          return;
+          return { failed: true };
         case 'DiscogsUnavailableError':
           if (ctx.isCurrent()) {
             recordBulkItemError(db, itemId, {
@@ -304,9 +308,45 @@ export async function runResolvePressing(
           throw err;
       }
     }
+  };
+
+  let versions: VersionLite[] | 'unusable' | undefined;
+  let fallbackVersions: VersionLite[] | 'unusable' | undefined;
+  const masterId = top.masterId;
+  if (needsLookup(top, run.country) && masterId !== null) {
+    // Only a lookup needs the sign-in: the preferred short-circuit and the
+    // D-20 retry make no request, and the add job checks its own.
+    if (!ctx.isCurrent()) throw new NotCurrentError();
+    if (!getDiscogsAuth()) {
+      fail('auth', 'Discogs is not connected');
+      return;
+    }
+    if (isAuthInvalid()) {
+      fail('auth', 'Discogs refused the stored sign-in');
+      return;
+    }
+    const first = await lookupVersions(masterId, run.country);
+    if (first.failed) return;
+    versions = first.versions;
     if (!ctx.isCurrent()) return;
+    const fallback = run.fallback_country;
+    if (
+      fallback !== null &&
+      needsFallbackLookup({ top, preferred: run.country, fallback, versions })
+    ) {
+      const second = await lookupVersions(masterId, fallback);
+      if (second.failed) return;
+      fallbackVersions = second.versions;
+      if (!ctx.isCurrent()) return;
+    }
   }
-  const choice = choosePressing({ top, preferred: run.country, versions });
+  const choice = choosePressing({
+    top,
+    preferred: run.country,
+    versions,
+    fallback: run.fallback_country,
+    fallbackVersions,
+  });
   if (!ctx.isCurrent()) return;
 
   const runAfter = ctx.job.runAfter;

@@ -1,6 +1,7 @@
 import { connection } from 'next/server';
 import { z } from 'zod';
 import { BULK_START_BODY, type BulkStartResponse } from '@/lib/bulk-types';
+import { distinctFallback } from '@/lib/pressing';
 import { eligiblePicks } from '@/server/bulk/picks';
 import { latestBulkRun } from '@/server/bulk/queries';
 import { openBulkItemCount, startBulkRun } from '@/server/bulk/store';
@@ -8,7 +9,7 @@ import { getDb } from '@/server/db/client';
 import { getDiscogsAuth } from '@/server/discogs/auth';
 import { discogsReady } from '@/server/discogs/enqueue';
 import { getCollectionFolderId } from '@/server/discogs/folders';
-import { getPreferredCountry } from '@/server/settings';
+import { getFallbackCountry, getPreferredCountry } from '@/server/settings';
 
 // Start a bulk import (D-07, D-08, BULK-05): the owner's picks, as spine and
 // candidate ids only (never a release id or a country, T-06-17), are
@@ -92,9 +93,13 @@ export async function POST(req: Request) {
     }
     const picks = eligiblePicks(db, parsed.data.items);
     if (picks.accepted.length === 0) return { status: 'nothing' };
+    // The run snapshots both countries (WR-01, G-06-side-1): a fallback
+    // equal to the preferred country means no second tier.
+    const preferred = getPreferredCountry();
     const run = startBulkRun(db, {
       items: picks.accepted,
-      country: getPreferredCountry(),
+      country: preferred,
+      fallbackCountry: distinctFallback(preferred, getFallbackCountry()),
       folderId: getCollectionFolderId(),
     });
     if (run.status === 'busy') return { status: 'busy' };

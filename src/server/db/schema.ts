@@ -368,6 +368,12 @@ export const bulkRuns = sqliteTable('bulk_runs', {
   /** Items started. */
   total: integer('total').notNull(),
   createdAt: integer('created_at').notNull(),
+  /**
+   * The fallback country at start, in the exact Discogs spelling
+   * (G-06-side-1). Null when the run had none distinct from the preferred
+   * country, and for runs started before migration 0005.
+   */
+  fallbackCountry: text('fallback_country'),
 });
 
 /** One selected spine of a bulk run and its resolve_pressing job. */

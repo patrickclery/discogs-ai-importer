@@ -694,7 +694,11 @@ describe('resolve_pressing fallback country (G-06-side-1)', () => {
     const { spineIds } = await bulkShelf();
     connectDiscogs();
     const top = seedTopCandidate(spineIds[0], { country: 'Hong Kong' });
-    start([{ spineId: spineIds[0], candidateId: top.candidateId }], START, 'US');
+    start(
+      [{ spineId: spineIds[0], candidateId: top.candidateId }],
+      START,
+      'US',
+    );
     const { calls, itemId } = await resolveNext((url) =>
       url.searchParams.get('country') === 'US'
         ? { status: 200, body: US_VERSIONS }

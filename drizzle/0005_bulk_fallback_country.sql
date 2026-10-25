@@ -1,0 +1,1 @@
+ALTER TABLE `bulk_runs` ADD `fallback_country` text;

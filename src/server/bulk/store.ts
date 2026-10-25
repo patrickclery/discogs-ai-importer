@@ -47,6 +47,8 @@ export type BulkRunDbRow = {
   country: string;
   total: number;
   created_at: number;
+  /** Null: no second-choice country for this run (G-06-side-1). */
+  fallback_country: string | null;
 };
 
 export type StartBulkRunResult =
@@ -101,7 +103,10 @@ function isRefusedPick(err: unknown): boolean {
  * run_after is start + its index, so the lane claims them in pick order and
  * each spine's add job, which inherits its lookup's run_after, runs right
  * after that lookup. A pick the index or a foreign key refuses rolls back
- * alone and counts as skipped. One IMMEDIATE transaction.
+ * alone and counts as skipped. The run snapshots the preferred country, the
+ * folder and the fallback country (G-06-side-1; null, the default, means no
+ * second tier), so a later Settings change never alters a run in progress
+ * or its Retry. One IMMEDIATE transaction.
  */
 export function startBulkRun(
   db: Database.Database,
@@ -109,6 +114,7 @@ export function startBulkRun(
     items: Array<{ spineId: string; candidateId: string }>;
     country: string;
     folderId: number;
+    fallbackCountry?: string | null;
     now?: number;
   },
 ): StartBulkRunResult {
@@ -117,12 +123,14 @@ export function startBulkRun(
     if (openBulkItemCount(db) > 0) return { status: 'busy' };
     const runId = newId();
     db.prepare(
-      `INSERT INTO bulk_runs (id, folder_id, country, total, created_at)
-       VALUES (@runId, @folderId, @country, 0, @start)`,
+      `INSERT INTO bulk_runs (id, folder_id, country, fallback_country,
+         total, created_at)
+       VALUES (@runId, @folderId, @country, @fallbackCountry, 0, @start)`,
     ).run({
       runId,
       folderId: input.folderId,
       country: input.country,
+      fallbackCountry: input.fallbackCountry ?? null,
       start,
     });
     const insertItem = db.prepare(

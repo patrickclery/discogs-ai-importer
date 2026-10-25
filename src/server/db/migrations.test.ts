@@ -114,7 +114,7 @@ describe('migration 0004_bulk_import', () => {
     const applied = db
       .prepare('SELECT COUNT(*) AS n FROM __drizzle_migrations')
       .get() as { n: number };
-    expect(applied.n).toBe(5);
+    expect(applied.n).toBe(6);
     expect(() => runMigrations()).not.toThrow();
     expect(rows()).toBe(before);
   });
