@@ -264,6 +264,43 @@ describe('startBulk', () => {
   });
 });
 
+describe('the fallback tier (G-06-side-1, D-17)', () => {
+  it('the run snapshots the demo fallback country', () => {
+    startBulk(getState(), runPicks(), T0);
+    expect(getState().bulkRuns[0].fallbackCountry).toBe('US');
+  });
+
+  it('the run has no fallback country when it equals the preferred one', () => {
+    getState().account.fallbackCountry = 'Canada';
+    startBulk(getState(), runPicks(), T0);
+    expect(getState().bulkRuns[0].fallbackCountry).toBeNull();
+  });
+
+  it('a canned US pressing imports the US release through a hidden candidate', () => {
+    const top = pick('53');
+    startBulk(getState(), [pick('53')], T0);
+    const item = itemOf('53');
+    expect(item).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_country',
+      releaseId: 2848589,
+      country: 'US',
+      candidateId: top.candidateId,
+    });
+    const imp = getState().imports.find((i) => i.id === item.importId);
+    expect(imp?.releaseId).toBe(2848589);
+    const cand = getState().candidates.find((c) => c.id === imp?.candidateId);
+    expect(cand).toMatchObject({
+      id: 'demo-cand-53-pressing-2848589',
+      source: 'pressing',
+      spineId: id('53'),
+      releaseId: 2848589,
+      country: 'US',
+      addedAt: item.readyAt,
+    });
+  });
+});
+
 describe('demo/fixtures/pressings.json', () => {
   type Entry = { outcome: string; releaseId?: number };
   const byKey = (pressingsJson as { byKey: Record<string, Entry> }).byKey;
@@ -275,19 +312,26 @@ describe('demo/fixtures/pressings.json', () => {
       '16',
       '17',
       '40',
+      '53',
       '55',
     ]);
   });
 
-  it('every pressing names a recorded Canadian candidate with a cover', () => {
+  it('every pressing names a recorded candidate of its key with a cover', () => {
     for (const [key, entry] of Object.entries(byKey)) {
-      if (entry.outcome !== 'pressing') {
-        expect(entry.outcome).toBe('fallback_no_master');
-        continue;
-      }
+      if (entry.outcome === 'fallback_no_master') continue;
+      expect(['pressing', 'fallback_pressing'], `key ${key}`).toContain(
+        entry.outcome,
+      );
       const rec = recordingFor(key);
       const cand = rec?.candidates.find((c) => c.releaseId === entry.releaseId);
-      expect(cand?.country, `key ${key}`).toBe('Canada');
+      expect(cand, `key ${key}`).toBeDefined();
+      // A Canadian pressing is from Canada; a fallback one from elsewhere.
+      if (entry.outcome === 'pressing') {
+        expect(cand?.country, `key ${key}`).toBe('Canada');
+      } else {
+        expect(cand?.country, `key ${key}`).not.toBe('Canada');
+      }
       expect(
         fs.existsSync(path.join(COVERS, `${entry.releaseId}.svg`)),
         `cover ${entry.releaseId}`,
