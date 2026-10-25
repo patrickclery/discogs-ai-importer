@@ -12,12 +12,14 @@ import {
 import { useTempDataDir } from '../../../../test/helpers/temp-data-dir';
 import {
   type BulkItemDbRow,
+  failBulkItem,
   getBulkItem,
   RESOLVE_PRESSING_JOB_TYPE,
   startBulkRun,
 } from '../../bulk/store';
 import { getDb } from '../../db/client';
 import type { JobRow } from '../../db/schema';
+import { markAuthInvalid } from '../../discogs/auth';
 import { ADD_TO_COLLECTION_JOB_TYPE, createImport } from '../../imports/store';
 import { claimNext, complete } from '../queue';
 import { runResolvePressing } from './resolve-pressing';
@@ -598,5 +600,230 @@ describe('resolve_pressing with a versions lookup', () => {
       ].join(','),
     );
     expect(payloadOf(third).itemId).toBe(itemOfSpine(spineIds[1]).id);
+  });
+});
+
+type Outcome = { error: { name?: string; runAfter?: number } | null };
+
+/** Runs the next resolve job; a rejection is returned, not thrown. */
+async function attempt(
+  answer: (url: URL) => {
+    status: number;
+    body: unknown;
+    headers?: Record<string, string>;
+  },
+  opts: {
+    current?: () => boolean;
+    pausedFor?: number;
+    afterAnswer?: () => void;
+  } = {},
+) {
+  const job = claim();
+  const fake = fakeDiscogsDeps((url) => {
+    const a = answer(url);
+    opts.afterAnswer?.();
+    return a;
+  });
+  if (opts.pausedFor) fake.deps.gate?.pause(opts.pausedFor);
+  const out: Outcome = { error: null };
+  await runResolvePressing(payloadOf(job), jobCtx(job, opts.current), {
+    fetch: fake.deps,
+  }).catch((e: unknown) => {
+    out.error = e as Outcome['error'];
+  });
+  return {
+    ...out,
+    job,
+    calls: fake.calls,
+    clock: fake.clock,
+    itemId: payloadOf(job).itemId,
+  };
+}
+
+describe('resolve_pressing refusals and Discogs errors', () => {
+  useTempDataDir();
+  useBulkSecrets();
+
+  /** One US top match with a master: a lookup is needed. */
+  async function lookupSpine(connect = true): Promise<string> {
+    const { spineIds } = await bulkShelf();
+    if (connect) connectDiscogs();
+    const top = seedTopCandidate(spineIds[0]);
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }]);
+    return spineIds[0];
+  }
+
+  const canada = () => ({
+    status: 200,
+    body: fixture('master-versions-canada.json'),
+  });
+
+  function tables(): string {
+    return JSON.stringify([
+      db().prepare('SELECT * FROM bulk_items ORDER BY id').all(),
+      db().prepare('SELECT * FROM imports ORDER BY id').all(),
+      db().prepare('SELECT * FROM discogs_candidates ORDER BY id').all(),
+    ]);
+  }
+
+  it('no Discogs sign-in fails the item as auth with no request', async () => {
+    await lookupSpine(false);
+    const r = await attempt(canada);
+    expect(r.error).toBeNull();
+    expect(r.calls.length).toBe(0);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'failed',
+      error_kind: 'auth',
+    });
+  });
+
+  it('a sign-in Discogs refused fails the item as auth with no request', async () => {
+    await lookupSpine();
+    markAuthInvalid();
+    const r = await attempt(canada);
+    expect(r.calls.length).toBe(0);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'failed',
+      error_kind: 'auth',
+    });
+  });
+
+  it('a paused gate defers with no request and leaves the item queued', async () => {
+    await lookupSpine();
+    const r = await attempt(canada, { pausedFor: 5000 });
+    expect(r.error?.name).toBe('JobDeferredError');
+    expect(r.calls.length).toBe(0);
+    expect(item(r.itemId).status).toBe('queued');
+  });
+
+  it('a 429 defers to the resume time without recording an error', async () => {
+    await lookupSpine();
+    const r = await attempt(() => ({
+      status: 429,
+      body: '',
+      headers: { 'retry-after': '4' },
+    }));
+    expect(r.error?.name).toBe('JobDeferredError');
+    expect(r.error?.runAfter).toBe(r.clock.t + 4000);
+    expect(item(r.itemId)).toMatchObject({
+      status: 'queued',
+      error_kind: null,
+      error: null,
+    });
+  });
+
+  it('a 401 fails the item as auth with no username in the reason', async () => {
+    await lookupSpine();
+    const r = await attempt(() => ({ status: 401, body: '{"message":"no"}' }));
+    expect(r.error).toBeNull();
+    const row = item(r.itemId);
+    expect(row).toMatchObject({ status: 'failed', error_kind: 'auth' });
+    expect(row.error).toBeTruthy();
+    expect(row.error).not.toContain('fake-owner');
+  });
+
+  it('D-04: a 404 counts as no master and imports the top match', async () => {
+    const spineId = await lookupSpine();
+    const r = await attempt(() => ({ status: 404, body: '{"message":"no"}' }));
+    expect(r.error?.name ?? null).toBeNull();
+    expect(r.calls.length).toBe(1);
+    expect(
+      importsOf(spineId)
+        .map((i) => i.release_id)
+        .join(','),
+    ).toBe('5001');
+    expect(item(r.itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_no_master',
+      release_id: 5001,
+    });
+  });
+
+  it('another 4xx fails the item as rejected', async () => {
+    await lookupSpine();
+    const r = await attempt(() => ({ status: 422, body: '{"message":"no"}' }));
+    expect(r.error).toBeNull();
+    const row = item(r.itemId);
+    expect(row).toMatchObject({ status: 'failed', error_kind: 'rejected' });
+    expect(row.error).toContain('422');
+  });
+
+  it('a 5xx is recorded as unavailable and rethrown for the worker', async () => {
+    const spineId = await lookupSpine();
+    const r = await attempt(() => ({ status: 502, body: '' }));
+    expect(r.error?.name).toBe('DiscogsUnavailableError');
+    expect(item(r.itemId)).toMatchObject({
+      status: 'queued',
+      error_kind: 'unavailable',
+    });
+    expect(importsOf(spineId)).toHaveLength(0);
+  });
+
+  it('an unexpected answer is recorded as other and rethrown', async () => {
+    await lookupSpine();
+    const r = await attempt(() => ({ status: 200, body: { nope: 1 } }));
+    expect(r.error).not.toBeNull();
+    expect(item(r.itemId)).toMatchObject({
+      status: 'queued',
+      error_kind: 'other',
+    });
+  });
+
+  it('a run that is no longer current throws before the request and writes nothing', async () => {
+    await lookupSpine();
+    const before = tables();
+    const r = await attempt(canada, { current: () => false });
+    expect(r.error?.name).toBe('NotCurrentError');
+    expect(r.calls.length).toBe(0);
+    expect(tables()).toBe(before);
+    expect(db().prepare('SELECT COUNT(*) AS n FROM imports').get()).toEqual({
+      n: 0,
+    });
+  });
+
+  it('a run that stops being current during the request writes nothing', async () => {
+    await lookupSpine();
+    const before = tables();
+    let current = true;
+    const r = await attempt(canada, {
+      current: () => current,
+      afterAnswer: () => {
+        current = false;
+      },
+    });
+    expect(r.calls.length).toBe(1);
+    expect(tables()).toBe(before);
+    expect(db().prepare('SELECT COUNT(*) AS n FROM imports').get()).toEqual({
+      n: 0,
+    });
+  });
+
+  it.each(['orphaned', 'superseded', 'dismissed'])(
+    'a spine that became %s is skipped as changed with no request',
+    async (state) => {
+      const spineId = await lookupSpine();
+      db()
+        .prepare('UPDATE spines SET state = ? WHERE id = ?')
+        .run(state, spineId);
+      const r = await attempt(canada);
+      expect(r.calls.length).toBe(0);
+      expect(item(r.itemId)).toMatchObject({
+        status: 'skipped',
+        skip_reason: 'changed',
+      });
+    },
+  );
+
+  it('failBulkItem cuts the reason to 160 code points', async () => {
+    await lookupSpine();
+    const itemId = itemOfSpine(
+      (
+        db().prepare('SELECT spine_id FROM bulk_items').get() as {
+          spine_id: string;
+        }
+      ).spine_id,
+    ).id;
+    failBulkItem(db(), itemId, { errorKind: 'other', error: '😀'.repeat(300) });
+    expect([...(item(itemId).error ?? '')].length).toBe(160);
   });
 });
