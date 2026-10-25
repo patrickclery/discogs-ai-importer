@@ -126,13 +126,15 @@ export type SpinesResponse = {
   /** Every photo, newest first, for the photo Select and polling. */
   photoOptions: PhotoOption[];
   /**
-   * Within the photo filter, ignoring the status and review filters (D-11):
+   * Within the photo filter, ignoring the status, review and fallback
+   * filters (D-11):
    * active and orphaned spines only, so the six byStatus counts sum to all.
    */
   counts: {
     all: number;
     needsReview: number;
     byStatus: Record<ReviewStatus, number>;
+    /** Spines bulk-imported from another country (the Fallback filter). */
     fallback: number;
   };
   /**
@@ -148,8 +150,10 @@ export type SpinesResponse = {
   confidenceThreshold: number;
   densityMaxSpines: number;
   /**
-   * A search for a listed spine is queued or running, or a listed spine's
-   * import is waiting or importing (poll while true).
+   * A search for a listed spine is queued or running, a listed spine's
+   * import is waiting or importing, a listed spine's pressing lookup is
+   * queued or running, or the latest bulk run is still running (poll while
+   * true).
    */
   discogsActive: boolean;
   /**
@@ -162,6 +166,7 @@ export type SpinesResponse = {
     pausedUntil: number | null;
     /** The folder new imports go to (D-03): the Add label names it. */
     folder: { id: number; name: string };
+    /** The preferred country, in Discogs' spelling (D-14). */
     preferredCountry: string;
   };
   /** The latest bulk run's progress and result counts, or null (D-15). */

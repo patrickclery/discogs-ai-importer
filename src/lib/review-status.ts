@@ -17,6 +17,10 @@ export type ReviewStatusInput = {
   /** The latest search state, or null outside the /spines read model. */
   searchState: SearchState | null;
   candidateCount: number;
+  /**
+   * The spine's current bulk lookup (lookupOf). Current means newer than
+   * its latest import, so it supersedes that import's phase.
+   */
   lookup: 'finding' | 'failed' | null;
 };
 
@@ -30,13 +34,19 @@ export type ReviewStatusInput = {
  * else. An import replaces the search on the card, so an older failed
  * search beside an open import reads matched (WR-06, revises A-04-09):
  * the card shows no search failure and Retry all failed has nothing to
- * clear.
+ * clear. A current bulk lookup (BULK-11) comes right after not_on_discogs
+ * and supersedes the latest import: a failed or abandoned lookup is
+ * failed, and one still finding its pressing is matched (UI-SPEC E6).
  */
 export function reviewStatusOf(x: ReviewStatusInput): ReviewStatus {
   if (x.importInstanceId !== null || x.importPhase === 'imported') {
     return 'imported';
   }
   if (x.notOnDiscogs) return 'not_on_discogs';
+  // A current lookup is newer than the latest import (BULK-11). A spine
+  // whose pressing is being found is committed to an import (UI-SPEC E6).
+  if (x.lookup === 'failed') return 'failed';
+  if (x.lookup === 'finding') return 'matched';
   if (
     x.importPhase === 'failed' ||
     (x.importPhase === null && x.searchState === 'failed')

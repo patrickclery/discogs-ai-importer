@@ -1,5 +1,6 @@
 import 'server-only';
 import { eligibilityOf } from '@/lib/bulk-eligibility';
+import { isFallbackSpine, lookupOf } from '@/lib/bulk-view';
 import type { ReviewStatus } from '@/lib/import-types';
 import { emptyByStatus, reviewStatusOf } from '@/lib/review-status';
 import {
@@ -36,6 +37,7 @@ import { importsForSpines } from '../imports/queries';
 import {
   getConfidenceThreshold,
   getDensityThresholds,
+  getPreferredCountry,
   VISION_MODELS,
 } from '../settings';
 
@@ -299,8 +301,9 @@ export function parseReviewParam(v: string | null | undefined): boolean {
   return v === '1';
 }
 
-export function parseFallbackParam(_v: string | null | undefined): boolean {
-  return false;
+/** True only for the exact `?fallback=1` value (T-06-12). */
+export function parseFallbackParam(v: string | null | undefined): boolean {
+  return v === '1';
 }
 
 /**
@@ -308,12 +311,15 @@ export function parseFallbackParam(_v: string | null | undefined): boolean {
  * (only `photoId` when given; an unknown id yields no photos), their active
  * spines in detection order then their orphaned spines (D-16), and the
  * counts the filter bar shows. Every listed spine gets one review status.
- * `status` keeps only spines with that status and `review` only spines that
- * need review (orphaned, or a non-empty unedited field below the threshold);
- * both must hold, listed order is kept, and photos without a shown spine are
- * omitted while either is set. `counts`, `statusById` and `photoProgress`
- * cover the photo filter and ignore the status and review filters, so every
- * count stays visible while filtering.
+ * `status` keeps only spines with that status, `review` only spines that
+ * need review (orphaned, or a non-empty unedited field below the threshold)
+ * and `fallback` only spines bulk-imported from another country than the
+ * preferred one (D-15, D-19); all must hold, listed order is kept, and
+ * photos without a shown spine are omitted while any is set. `counts`,
+ * `statusById` and `photoProgress` cover the photo filter and ignore the
+ * status, review and fallback filters, so every count stays visible while
+ * filtering. Each spine carries its bulk eligibility and current item
+ * (D-06), and the response the latest run's summary.
  */
 export function getSpines(
   opts: {
@@ -339,10 +345,12 @@ export function getSpines(
   const summaries = discogsForSpines(db, listed);
   const imports = importsForSpines(db, listed);
   const bulkItems = bulkForSpines(db, listed);
+  const run = latestBulkRun(db);
   const byStatus = emptyByStatus();
   const statusById: Record<string, ReviewStatus> = {};
   const photoProgress: Record<string, { imported: number; total: number }> = {};
   let importActive = false;
+  let fallbackCount = 0;
   for (const s of listed) {
     s.discogs = summaries.get(s.id) ?? null;
     s.import = imports.get(s.id) ?? null;
@@ -354,7 +362,7 @@ export function getSpines(
       notOnDiscogs: s.notOnDiscogs,
       searchState: s.discogs?.state ?? null,
       candidateCount: s.discogs?.candidateCount ?? 0,
-      lookup: null,
+      lookup: lookupOf(item),
     });
     s.reviewStatus = status;
     byStatus[status] += 1;
@@ -363,9 +371,14 @@ export function getSpines(
     progress.total += 1;
     if (status === 'imported') progress.imported += 1;
     photoProgress[s.photoId] = progress;
-    if (s.import?.phase === 'waiting' || s.import?.phase === 'importing') {
+    if (
+      s.import?.phase === 'waiting' ||
+      s.import?.phase === 'importing' ||
+      item?.phase === 'finding'
+    ) {
       importActive = true;
     }
+    if (isFallbackSpine(s)) fallbackCount += 1;
   }
   const confidenceThreshold = getConfidenceThreshold();
   const folderId = getCollectionFolderId();
@@ -375,9 +388,11 @@ export function getSpines(
   const spines = listed.filter(
     (s) =>
       (opts.status === undefined || s.reviewStatus === opts.status) &&
-      (!opts.review || flagged.has(s.id)),
+      (!opts.review || flagged.has(s.id)) &&
+      (!opts.fallback || isFallbackSpine(s)),
   );
-  const filtered = opts.review || opts.status !== undefined;
+  const filtered =
+    opts.review || opts.status !== undefined || opts.fallback === true;
   const withSpines = new Set(spines.map((s) => s.photoId));
   const photos = filtered ? scoped.filter((p) => withSpines.has(p.id)) : scoped;
   return {
@@ -388,18 +403,21 @@ export function getSpines(
       all: listed.length,
       needsReview: flagged.size,
       byStatus,
-      fallback: 0,
+      fallback: fallbackCount,
     },
     statusById,
     photoProgress,
     confidenceThreshold,
     densityMaxSpines: getDensityThresholds().maxSpines,
-    discogsActive: importActive || anyDiscogsActive(summaries.values()),
+    discogsActive:
+      importActive ||
+      run?.running === true ||
+      anyDiscogsActive(summaries.values()),
     discogs: {
       ...discogsConnection(),
       folder: { id: folderId, name: collectionFolderName(folderId) },
-      preferredCountry: '',
+      preferredCountry: getPreferredCountry(),
     },
-    bulk: latestBulkRun(db),
+    bulk: run,
   };
 }

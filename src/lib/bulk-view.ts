@@ -78,25 +78,52 @@ export function summarizeRun(
   return out;
 }
 
+/** The country badge on a bulk-imported card (D-15, D-19). */
 export type CountryBadge = {
   kind: 'preferred' | 'fallback';
+  /** The imported release's country, or null when Discogs gave none. */
   country: string | null;
 };
 
+/**
+ * The badge for a spine whose current import came from a bulk run: its
+ * item resolved and created the spine's latest import. Preferred when the
+ * release's country is the run's (a combined country naming it counts,
+ * D-19), fallback otherwise. Null for every other spine, including one a
+ * later manual import replaced.
+ */
 export function countryBadgeOf(
-  _spine: Pick<SpineDto, 'import' | 'bulk'>,
+  spine: Pick<SpineDto, 'import' | 'bulk'>,
 ): CountryBadge | null {
-  return null;
+  const item = spine.bulk?.item;
+  if (item?.phase !== 'resolved' || item.importId === null) {
+    return null;
+  }
+  if (item.importId !== spine.import?.id) return null;
+  return {
+    kind:
+      countryMatch(item.country, item.preferredCountry) === 'none'
+        ? 'fallback'
+        : 'preferred',
+    country: item.country,
+  };
 }
 
+/** The spine was bulk-imported from another country (the Fallback filter). */
 export function isFallbackSpine(
-  _spine: Pick<SpineDto, 'import' | 'bulk'>,
+  spine: Pick<SpineDto, 'import' | 'bulk'>,
 ): boolean {
-  return false;
+  return countryBadgeOf(spine)?.kind === 'fallback';
 }
 
+/**
+ * The spine's current lookup for reviewStatusOf: finding while its job is
+ * queued or running, failed once it failed or was abandoned, else null.
+ */
 export function lookupOf(
-  _item: BulkItemDto | null,
+  item: BulkItemDto | null,
 ): 'finding' | 'failed' | null {
+  if (item?.phase === 'finding') return 'finding';
+  if (item?.phase === 'failed') return 'failed';
   return null;
 }

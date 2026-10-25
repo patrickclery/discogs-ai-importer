@@ -278,18 +278,33 @@ function itemIdOf(spineId: string): string {
   ).id;
 }
 
-/** The spine's bulk item resolved to a release in `country`, imported. */
-function bulkImported(spineId: string, country: string | null): void {
+let nextInstance = 3100;
+
+/**
+ * The spine's bulk item resolved to a release in `country` with its own
+ * import, imported unless `status` says otherwise.
+ */
+function bulkImported(
+  spineId: string,
+  country: string | null,
+  status: 'imported' | 'failed' = 'imported',
+): void {
   const importId = newId();
   const now = Date.now();
   db()
     .prepare(
       `INSERT INTO imports (id, spine_id, release_id, folder_id, status,
          linked, instance_id, job_id, created_at, updated_at)
-       VALUES (@importId, @spineId, 7100, 1, 'imported', 0, 31, NULL, @now,
-         @now)`,
+       VALUES (@importId, @spineId, 7100, 1, @status, 0, @instanceId, NULL,
+         @now, @now)`,
     )
-    .run({ importId, spineId, now });
+    .run({
+      importId,
+      spineId,
+      status,
+      instanceId: status === 'imported' ? nextInstance++ : null,
+      now,
+    });
   resolveBulkItem(db(), itemIdOf(spineId), {
     importId,
     releaseId: 7100,
@@ -397,7 +412,8 @@ describe('getSpines bulk lookups and the Fallback filter', () => {
   it('a later manual import of a fallback spine leaves the Fallback filter', async () => {
     const { spineIds } = await bulkShelf();
     startRun([spineIds[0]]);
-    bulkImported(spineIds[0], 'US');
+    bulkImported(spineIds[0], 'US', 'failed');
+    expect(getSpines().counts.fallback).toBe(1);
     seedImport(spineIds[0], 'imported', { instanceId: 44 });
     db()
       .prepare(

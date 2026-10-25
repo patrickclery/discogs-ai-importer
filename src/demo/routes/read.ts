@@ -18,6 +18,7 @@ export const routes: DemoRoute[] = [
         photoId: req.query.get('photo') || undefined,
         review: req.query.get('review') === '1',
         status: parseStatusParam(req.query.get('status')),
+        fallback: req.query.get('fallback') === '1',
       }),
     }),
   },

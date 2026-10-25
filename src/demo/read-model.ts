@@ -3,6 +3,7 @@
 // src/app/api/status/route.ts). Every rule that decides what a card shows
 // comes from the pure src/lib functions the real read model uses.
 import { eligibilityOf } from '@/lib/bulk-eligibility';
+import { isFallbackSpine } from '@/lib/bulk-view';
 import {
   type CandidateDto,
   INLINE_CANDIDATES,
@@ -574,9 +575,11 @@ export function buildSpinesResponse(
   const spines = listed.filter(
     (s) =>
       (opts.status === undefined || s.reviewStatus === opts.status) &&
-      (!opts.review || flagged.has(s.id)),
+      (!opts.review || flagged.has(s.id)) &&
+      (!opts.fallback || isFallbackSpine(s)),
   );
-  const filtered = opts.review || opts.status !== undefined;
+  const filtered =
+    opts.review || opts.status !== undefined || opts.fallback === true;
   const withSpines = new Set(spines.map((s) => s.photoId));
   const photos = filtered ? scoped.filter((p) => withSpines.has(p.id)) : scoped;
   const { account } = state;
@@ -589,7 +592,7 @@ export function buildSpinesResponse(
       all: listed.length,
       needsReview: flagged.size,
       byStatus,
-      fallback: 0,
+      fallback: listed.filter(isFallbackSpine).length,
     },
     statusById,
     photoProgress,
@@ -604,7 +607,7 @@ export function buildSpinesResponse(
         id: account.folderId,
         name: folder?.name ?? 'Uncategorized',
       },
-      preferredCountry: '',
+      preferredCountry: account.preferredCountry,
     },
     bulk: null,
   };
