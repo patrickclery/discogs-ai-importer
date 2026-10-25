@@ -3,6 +3,8 @@
 // the seed (buildSeed). Times are epoch ms from now(); every in-flight thing has a
 // readyAt-style timestamp so the read model derives its state lazily from
 // now() instead of timers (RESEARCH Pattern 3).
+
+import type { PressingOutcome } from '@/lib/bulk-types';
 import type {
   CandidateFormat,
   SearchFailure,
@@ -76,7 +78,11 @@ export type DemoCandidate = {
   labels: string[];
   catno: string | null;
   formats: CandidateFormat[];
-  source: 'auto' | 'manual';
+  /**
+   * pressing: a bulk lookup's chosen release (D-02), never listed on the
+   * card; the import points at it.
+   */
+  source: 'auto' | 'manual' | 'pressing';
   catnoMatch: boolean;
   stage: SearchStage | null;
   rank: number;
@@ -143,6 +149,39 @@ export type DemoAccount = {
   preferredCountry: string;
 };
 
+/** One demo bulk import (D-08, D-17). */
+export type DemoBulkRun = {
+  id: string;
+  /** The preferred country when it started (D-14). */
+  country: string;
+  folderId: number;
+  total: number;
+  createdAt: number;
+};
+
+/**
+ * One spine of a demo bulk run. Its lookup is queued until lookupAt and
+ * running until readyAt (it reads finding until then); status, outcome and
+ * the rest are the item's state from readyAt on, decided up front.
+ */
+export type DemoBulkItem = {
+  id: string;
+  runId: string;
+  spineId: string;
+  candidateId: string;
+  createdAt: number;
+  lookupAt: number;
+  readyAt: number;
+  status: 'resolved' | 'skipped';
+  outcome: PressingOutcome | null;
+  skipReason: 'duplicate' | 'changed' | null;
+  /** For duplicate: the spine already holding the release. */
+  dupSpineId: string | null;
+  releaseId: number | null;
+  country: string | null;
+  importId: string | null;
+};
+
 export type DemoState = {
   initAt: number;
   photos: DemoPhoto[];
@@ -153,6 +192,8 @@ export type DemoState = {
   /** Copies "already in the owner's Discogs collection", by release id. */
   collection: Record<number, ExistingInstance[]>;
   account: DemoAccount;
+  bulkRuns: DemoBulkRun[];
+  bulkItems: DemoBulkItem[];
   seq: number;
 };
 

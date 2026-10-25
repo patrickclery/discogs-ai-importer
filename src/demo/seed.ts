@@ -346,6 +346,8 @@ export function buildSeed(initAt: number): DemoState {
     imports: [],
     collection: {},
     account: defaultAccount(),
+    bulkRuns: [],
+    bulkItems: [],
     seq: 0,
   };
   for (const spine of SHELF.spines) {
