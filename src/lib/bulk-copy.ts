@@ -310,27 +310,59 @@ export function selectAllLabel(e: number) {
 
 // Selection reasons, disabled Import tooltips and the last-result line.
 
-export const ELIGIBILITY_REASON_TEXT = {} as Record<EligibilityReason, string>;
+/**
+ * Why a card's checkbox is disabled (D-06, UI-SPEC "Ineligible reasons").
+ * A failed import has no entry: it is selectable (D-20).
+ */
+export const ELIGIBILITY_REASON_TEXT: Readonly<
+  Record<EligibilityReason, string>
+> = {
+  orphaned: 'No longer detected. Re-attach it first.',
+  not_on_discogs: 'Marked not on Discogs.',
+  imported: 'Already in your collection.',
+  import_open: 'Already being added.',
+  import_held: 'Waiting for your choice on this card.',
+  finding: 'Already being added.',
+  skipped_duplicate:
+    'Already imported from another spine. Open the card to add another copy.',
+  searching: 'Still looking it up on Discogs.',
+  no_match: 'No match to import yet. Search Discogs on this card first.',
+};
 
-export function eligibilityReasonText(_reason: EligibilityReason): string {
-  return '';
+export function eligibilityReasonText(reason: EligibilityReason): string {
+  return ELIGIBILITY_REASON_TEXT[reason];
 }
 
-export function importDisabledReason(_x: {
+/** Why Import is disabled, or null when it can open the dialog. */
+export function importDisabledReason(x: {
   selected: number;
   connected: boolean;
   needsReconnect: boolean;
   running: boolean;
 }): string | null {
+  if (x.selected === 0) return 'Select spines to import first';
+  if (x.needsReconnect) return 'Reconnect Discogs in Settings first';
+  if (!x.connected) return 'Connect Discogs in Settings first';
+  if (x.running) return 'Wait for the current bulk import to finish';
   return null;
 }
 
-export function lastResultLine(
-  _run: Pick<BulkRunDto, 'added' | 'fallbacks' | 'failed'>,
-): string {
-  return '';
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
 }
 
-export function startSkipsToast(_started: number, _skipped: number): string {
-  return '';
+/** `Last bulk import: {a} added · {f} fallbacks · {x} failed`, zeros after added left out. */
+export function lastResultLine(
+  run: Pick<BulkRunDto, 'added' | 'fallbacks' | 'failed'>,
+): string {
+  const parts = [`${run.added} added`];
+  if (run.fallbacks > 0)
+    parts.push(plural(run.fallbacks, 'fallback', 'fallbacks'));
+  if (run.failed > 0) parts.push(`${run.failed} failed`);
+  return `Last bulk import: ${parts.join(' · ')}`;
+}
+
+/** The start-with-skips toast: picks that changed before Start. */
+export function startSkipsToast(started: number, skipped: number): string {
+  return `Started ${started}. ${skipped} skipped because they changed since you picked them.`;
 }

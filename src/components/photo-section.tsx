@@ -11,6 +11,7 @@ import { ImportStateBadge } from '@/components/import-state-badge';
 import { PhotoStatusBadge } from '@/components/photo-status-badge';
 import { RescanButton } from '@/components/rescan-button';
 import { OrphanFooter, SpineCard } from '@/components/spine-card';
+import { SpineSelectCheckbox } from '@/components/spine-selection';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Empty,
@@ -151,6 +152,7 @@ export function SpineView({
     <SpineCard
       spine={spine}
       threshold={threshold}
+      leading={<SpineSelectCheckbox spine={spine} />}
       statusSlot={
         <>
           <CountryBadge spine={spine} />

@@ -16,6 +16,7 @@ import { CountryBadge } from '@/components/country-badge';
 import { useExpandedCard } from '@/components/expanded-cards';
 import { ImportStateBadge } from '@/components/import-state-badge';
 import { SpineCrop } from '@/components/spine-crop';
+import { SpineSelectCheckbox } from '@/components/spine-selection';
 import { TopMatchRow } from '@/components/top-match-row';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ function PlaceholderLine({ text }: { text: string }) {
 
 /**
  * One spine in the compact grid (D-10, D-16, UI-SPEC Compact card): the
- * header (#n, the worst-field badge, Edited, the orphan badge and the state
+ * header (the select checkbox, #n, the worst-field badge, Edited, the orphan badge and the state
  * badge last, after the bulk country badge), the spine crop, then directly
  * under it the top or confirmed match and at most one bulk status line. No field inputs, external link or Add button while collapsed: those
  * live in the full card (D-11).
@@ -141,6 +142,7 @@ export function CompactSpineCard({
       className={cn('gap-2 rounded-xl p-4', orphaned && 'border-warning/60')}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <SpineSelectCheckbox spine={spine} />
         <span className="font-mono text-muted-foreground tabular-nums">
           #{number}
         </span>

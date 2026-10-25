@@ -59,6 +59,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { eligibleShownIds, pruneSelection } from '@/lib/bulk-selection';
 import { REVIEW_STATUS_LABELS, type ReviewStatus } from '@/lib/import-types';
 import { spinesRefetchInterval } from '@/lib/photo-status';
 import { pressingPhrase } from '@/lib/pressing';
@@ -411,9 +412,22 @@ export function SpinesView({
   const data = query.data;
   const byPhoto = useMemo(() => groupByPhoto(data?.spines ?? []), [data]);
 
-  // The bulk selection (D-05): client state, never in the URL.
+  // The bulk selection (D-05, D-06): client state, never in the URL. It
+  // only ever holds shown, eligible spines: after every data update (poll,
+  // filter or photo change) the rest drop, so the count matches the cards.
   const [selected, setSelected] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
+  );
+  const allowed = useMemo(() => eligibleShownIds(data?.spines ?? []), [data]);
+  useEffect(() => {
+    setSelected((prev) => {
+      const next = pruneSelection(prev, allowed);
+      return next.size === prev.size ? prev : next;
+    });
+  }, [allowed]);
+  const shownSelected = useMemo(
+    () => pruneSelection(selected, allowed),
+    [selected, allowed],
   );
 
   // Leaving the current filter (UI-SPEC, D-11): an owner action announced
@@ -558,7 +572,7 @@ export function SpinesView({
         {!data.discogs.connected && data.spines.length > 0 ? (
           <DiscogsNotConnectedAlert reconnect={data.discogs.needsReconnect} />
         ) : null}
-        <SelectionProvider selected={selected} onChange={setSelected}>
+        <SelectionProvider selected={shownSelected} onChange={setSelected}>
           <ImportUiProvider value={importUi}>
             {/* Expanded compact cards, keyed by spine id so polls and filter
                 refetches keep them open; a layout switch closes them all. */}
