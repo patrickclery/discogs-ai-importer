@@ -11,6 +11,7 @@ import {
   type BulkItemDbRow,
   failBulkItem,
   getBulkItem,
+  getBulkRun,
   latestBulkItemFor,
   RESOLVE_PRESSING_JOB_TYPE,
   retryBulkItem,
@@ -155,5 +156,32 @@ describe('latestBulkItemFor', () => {
     expect(latest?.id).toBe(itemId);
     expect(latest?.job_status).toBe('failed');
     expect(latestBulkItemFor(db(), 'no-such-spine')).toBeUndefined();
+  });
+});
+
+describe('startBulkRun fallback country (G-06-side-1)', () => {
+  useTempDataDir();
+  useBulkSecrets();
+
+  async function runWith(fallbackCountry?: string | null) {
+    const { spineIds } = await bulkShelf();
+    const top = seedTopCandidate(spineIds[0]);
+    const res = startBulkRun(db(), {
+      items: [{ spineId: spineIds[0], candidateId: top.candidateId }],
+      country: 'Canada',
+      folderId: 1,
+      now: START,
+      ...(fallbackCountry === undefined ? {} : { fallbackCountry }),
+    });
+    if (res.status !== 'ok') throw new Error(`start: ${res.status}`);
+    return getBulkRun(db(), res.runId);
+  }
+
+  it('stores the fallback country it is given', async () => {
+    expect((await runWith('US'))?.fallback_country).toBe('US');
+  });
+
+  it('stores null when no fallback country is given', async () => {
+    expect((await runWith())?.fallback_country).toBeNull();
   });
 });

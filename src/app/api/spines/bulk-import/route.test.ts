@@ -19,6 +19,7 @@ import { markAuthInvalid } from '@/server/discogs/auth';
 import { createImport } from '@/server/imports/store';
 import { runResolvePressing } from '@/server/jobs/handlers/resolve-pressing';
 import { claimNext, complete } from '@/server/jobs/queue';
+import { setFallbackCountry } from '@/server/settings';
 import { POST } from './route';
 
 // POST /api/spines/bulk-import (D-07, D-08, BULK-05, T-06-15..17): the
@@ -137,6 +138,25 @@ describe('POST /api/spines/bulk-import', () => {
         }[]
       ).map((r) => r.spine_id),
     ).toEqual(picks.map((p) => p.spineId).sort());
+  });
+
+  it('G-06-side-1: the run snapshots the fallback country, US by default', async () => {
+    const { picks } = await shelfWithPicks(1);
+    const res = await start({ items: picks });
+    expect(res.status).toBe(201);
+    expect(
+      db().prepare('SELECT country, fallback_country FROM bulk_runs').all(),
+    ).toEqual([{ country: 'Canada', fallback_country: 'US' }]);
+  });
+
+  it('G-06-side-1: a fallback equal to the preferred country is stored as none', async () => {
+    const { picks } = await shelfWithPicks(1);
+    setFallbackCountry('canada');
+    const res = await start({ items: picks });
+    expect(res.status).toBe(201);
+    expect(
+      db().prepare('SELECT country, fallback_country FROM bulk_runs').all(),
+    ).toEqual([{ country: 'Canada', fallback_country: null }]);
   });
 
   it('415 for a non-JSON content type and 400 for bodies the schema refuses; nothing is written', async () => {

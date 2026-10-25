@@ -133,3 +133,68 @@ describe('migration 0004_bulk_import', () => {
     expect(names.sort()).toEqual(['bulk_items', 'bulk_runs']);
   });
 });
+
+// Migration 0005 (G-06-side-1) is additive: one nullable fallback_country
+// column on bulk_runs. A run started before it reads null (no second tier).
+describe('migration 0005_bulk_fallback_country', () => {
+  let dir = '';
+  let previous: string | undefined;
+
+  beforeEach(() => {
+    previous = process.env.DATA_DIR;
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dai-migrate-'));
+    process.env.DATA_DIR = path.join(dir, 'data');
+    fs.mkdirSync(process.env.DATA_DIR);
+    closeDb();
+  });
+
+  afterEach(() => {
+    closeDb();
+    if (previous === undefined) delete process.env.DATA_DIR;
+    else process.env.DATA_DIR = previous;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** The repo's drizzle folder without migration 0005. */
+  function before0005(): string {
+    const copy = path.join(dir, 'drizzle-0004');
+    fs.cpSync(REPO_DRIZZLE, copy, { recursive: true });
+    fs.rmSync(path.join(copy, '0005_bulk_fallback_country.sql'), {
+      force: true,
+    });
+    fs.rmSync(path.join(copy, 'meta', '0005_snapshot.json'), { force: true });
+    const journalPath = path.join(copy, 'meta', '_journal.json');
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { idx: number }[];
+    };
+    journal.entries = journal.entries.filter((e) => e.idx < 5);
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2));
+    return copy;
+  }
+
+  it('adds fallback_country, null for a run started before it', () => {
+    expect(
+      fs.existsSync(path.join(REPO_DRIZZLE, '0005_bulk_fallback_country.sql')),
+    ).toBe(true);
+    migrate(getDb(), { migrationsFolder: before0005() });
+    const db = getDb().$client;
+    db.prepare(
+      `INSERT INTO bulk_runs (id, folder_id, country, total, created_at)
+       VALUES ('r1', 1, 'Canada', 3, 1790000000000)`,
+    ).run();
+
+    runMigrations();
+
+    expect(db.prepare('SELECT * FROM bulk_runs').all()).toEqual([
+      {
+        id: 'r1',
+        folder_id: 1,
+        country: 'Canada',
+        total: 3,
+        created_at: 1_790_000_000_000,
+        fallback_country: null,
+      },
+    ]);
+    expect(() => runMigrations()).not.toThrow();
+  });
+});

@@ -86,12 +86,14 @@ function itemOfSpine(spineId: string): BulkItemDbRow {
 function start(
   picks: Array<{ spineId: string; candidateId: string }>,
   now = START,
+  fallback?: string | null,
 ): string {
   const res = startBulkRun(db(), {
     items: picks,
     country: 'Canada',
     folderId: 1,
     now,
+    fallbackCountry: fallback,
   });
   if (res.status !== 'ok') throw new Error(`start: ${res.status}`);
   return res.runId;
@@ -287,6 +289,30 @@ const NO_CANADIAN = {
   pagination: { page: 1, pages: 0, per_page: 100, items: 0 },
   versions: [],
 };
+
+/** An official US CD of Nevermind, as a fallback-country answer lists it. */
+const US_ID = 5101;
+
+function versionsAnswer(versions: unknown[]) {
+  return {
+    pagination: { page: 1, pages: 1, per_page: 100, items: versions.length },
+    versions,
+  };
+}
+
+const US_VERSIONS = versionsAnswer([
+  {
+    id: US_ID,
+    title: 'Nevermind',
+    label: 'DGC',
+    country: 'US',
+    major_formats: ['CD'],
+    format: 'Album',
+    catno: 'DGCD-24425',
+    released: '1991',
+    thumb: '',
+  },
+]);
 
 type CandidateDb = {
   id: string;
@@ -659,6 +685,57 @@ async function attempt(
     itemId: payloadOf(job).itemId,
   };
 }
+
+describe('resolve_pressing fallback country (G-06-side-1)', () => {
+  useTempDataDir();
+  useBulkSecrets();
+
+  it('tracer: a Hong Kong top match with no Canadian CD imports its US pressing', async () => {
+    const { spineIds } = await bulkShelf();
+    connectDiscogs();
+    const top = seedTopCandidate(spineIds[0], { country: 'Hong Kong' });
+    start([{ spineId: spineIds[0], candidateId: top.candidateId }], START, 'US');
+    const { calls, itemId } = await resolveNext((url) =>
+      url.searchParams.get('country') === 'US'
+        ? { status: 200, body: US_VERSIONS }
+        : { status: 200, body: NO_CANADIAN },
+    );
+    expect(calls.length).toBe(2);
+    expect(calls.map((u) => u.pathname)).toEqual([
+      '/masters/13814/versions',
+      '/masters/13814/versions',
+    ]);
+    expect(
+      calls.map((u) => [
+        u.searchParams.get('country'),
+        u.searchParams.get('format'),
+      ]),
+    ).toEqual([
+      ['Canada', 'CD'],
+      ['US', 'CD'],
+    ]);
+    const pressing = pressingRows(spineIds[0]);
+    expect(pressing).toHaveLength(1);
+    expect(pressing[0]).toMatchObject({
+      release_id: US_ID,
+      country: 'US',
+      title: 'Nirvana - Nevermind',
+    });
+    const imports = importsOf(spineIds[0]);
+    expect(imports).toHaveLength(1);
+    expect(imports[0]).toMatchObject({
+      release_id: US_ID,
+      candidate_id: pressing[0]?.id,
+    });
+    expect(item(itemId)).toMatchObject({
+      status: 'resolved',
+      outcome: 'fallback_country',
+      release_id: US_ID,
+      country: 'US',
+      import_id: imports[0]?.id,
+    });
+  });
+});
 
 describe('resolve_pressing refusals and Discogs errors', () => {
   useTempDataDir();
