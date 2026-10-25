@@ -1,8 +1,18 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { SearchStatus } from '@/lib/discogs-types';
+import type { BulkItemDto } from '@/lib/bulk-types';
+import type {
+  CandidateDto,
+  SearchStatus,
+  SpineDiscogsDto,
+} from '@/lib/discogs-types';
+import type { ImportDto } from '@/lib/import-types';
+import type { SpineDto } from '@/lib/scan-types';
 import { getDb } from '@/server/db/client';
 import { clearAuthInvalid, saveDiscogsAuth } from '@/server/discogs/auth';
 import {
@@ -17,13 +27,18 @@ import { SECRET_ENV_NAMES, saveSecrets } from '@/server/secrets';
 import { fieldOf, orphanScenario } from '../../test/helpers/scan-runs';
 import { useTempDataDir } from '../../test/helpers/temp-data-dir';
 import {
+  bulkNoticeKind,
+  FIELDS_CHANGED_LINE,
   matchesAction,
   NOT_SEARCHED_LINE,
+  noticeLineKind,
   notSearchedLine,
   ORPHANED_LINE,
   showsFieldsChanged,
   UNSURE_MEDIA_LINE,
 } from './discogs-matches';
+import { SpineView } from './photo-section';
+import { TooltipProvider } from './ui/tooltip';
 
 // The card state of a spine whose latest auto search ended skipped (DISC-03):
 // the read model shows it as not searched, and the header offers no action
@@ -405,5 +420,291 @@ describe('waiting its turn only when the maintenance hook will queue it', () => 
       true,
     );
     expect(enqueueAutoSearch(db, s0)).toBe(true);
+  });
+});
+
+// Phase 6 bulk states on Detailed and expanded cards (UI-SPEC Detailed
+// layout): the country badge before the state badge, the fallback line in
+// the confirmed panel, and the skipped / lookup-failure line as the Discogs
+// section's notice line, which loses to not connected and the paused
+// countdown and wins over Fields changed.
+
+function bulkItem(over: Partial<BulkItemDto> = {}): BulkItemDto {
+  return {
+    id: 'bi1',
+    runId: 'run1',
+    phase: 'resolved',
+    preferredCountry: 'Canada',
+    outcome: 'preferred',
+    releaseId: 777,
+    country: 'Canada',
+    importId: 'i1',
+    skip: null,
+    failure: null,
+    createdAt: 10,
+    ...over,
+  };
+}
+
+const FAILED_ITEM = bulkItem({
+  phase: 'failed',
+  importId: null,
+  outcome: null,
+  country: null,
+  failure: { kind: 'unavailable', reason: null },
+});
+
+const SKIPPED_ITEM = bulkItem({
+  phase: 'skipped',
+  importId: null,
+  outcome: null,
+  country: null,
+  skip: {
+    reason: 'duplicate',
+    photo: 'IMG_1.jpg',
+    spineNumber: 4,
+    samePhoto: true,
+  },
+});
+
+function cand(over: Partial<CandidateDto> = {}): CandidateDto {
+  return {
+    id: 'cand-1',
+    releaseId: 1234,
+    title: 'Nirvana - Nevermind',
+    year: 1991,
+    country: 'US',
+    labels: ['DGC'],
+    catno: 'DGCD-24425',
+    formats: [],
+    hasThumb: false,
+    source: 'auto',
+    catnoMatch: false,
+    stage: null,
+    ...over,
+  };
+}
+
+function discogsDto(over: Partial<SpineDiscogsDto> = {}): SpineDiscogsDto {
+  return {
+    state: 'done',
+    candidateCount: 1,
+    topCandidates: [cand()],
+    failure: null,
+    fieldsChanged: false,
+    ...over,
+  };
+}
+
+function imp(over: Partial<ImportDto> = {}): ImportDto {
+  return {
+    id: 'i1',
+    phase: 'waiting',
+    releaseId: 777,
+    candidateId: 'cand-1',
+    candidate: {
+      title: 'Nirvana - Nevermind',
+      year: 1991,
+      country: 'US',
+      labels: ['DGC'],
+      catno: 'DGCD-24425',
+      formats: [],
+    },
+    hasThumb: false,
+    folderId: 1,
+    folderName: 'Uncategorized',
+    instanceId: null,
+    linked: false,
+    adopted: false,
+    importedAt: null,
+    existing: null,
+    failure: null,
+    canChangeMatch: true,
+    canRetry: false,
+    checking: false,
+    ...over,
+  };
+}
+
+function card(over: Partial<SpineDto> = {}): SpineDto {
+  return {
+    id: 'sp-1',
+    photoId: 'p1',
+    index: 0,
+    state: 'active',
+    legibility: null,
+    crop: { url: '/api/files/crops/sp-1.jpg', width: 400, height: 60 },
+    fields: [],
+    createdRunId: 'r1',
+    orphanedRunNo: null,
+    mediaKind: 'cd',
+    discogs: discogsDto(),
+    import: null,
+    notOnDiscogs: false,
+    reviewStatus: 'pending',
+    bulk: null,
+    ...over,
+  };
+}
+
+const withItem = (item: BulkItemDto, over: Partial<SpineDto> = {}) =>
+  card({ ...over, bulk: { eligible: false, reason: null, item } });
+
+function detailed(s: SpineDto, connected = true): string {
+  return renderToStaticMarkup(
+    h(
+      QueryClientProvider,
+      { client: new QueryClient() },
+      h(
+        TooltipProvider,
+        null,
+        h(SpineView, {
+          spine: s,
+          threshold: 0.7,
+          discogs: { connected, needsReconnect: false, pausedUntil: null },
+        }),
+      ),
+    ),
+  );
+}
+
+describe('bulkNoticeKind', () => {
+  it('a failed lookup and a skipped duplicate are notice lines', () => {
+    expect(bulkNoticeKind(withItem(FAILED_ITEM))).toBe('failed');
+    expect(bulkNoticeKind(withItem(SKIPPED_ITEM))).toBe('skipped');
+  });
+
+  it('a fallback, a finding item and no item are not', () => {
+    const fallback = withItem(
+      bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
+      { import: imp() },
+    );
+    expect(bulkNoticeKind(fallback)).toBeNull();
+    expect(
+      bulkNoticeKind(withItem(bulkItem({ phase: 'finding', importId: null }))),
+    ).toBeNull();
+    expect(bulkNoticeKind(card())).toBeNull();
+  });
+});
+
+describe('noticeLineKind precedence', () => {
+  const on = { connected: true, pausedSeconds: 0 };
+
+  it('not connected wins over a failed lookup', () => {
+    expect(
+      noticeLineKind(withItem(FAILED_ITEM), {
+        connected: false,
+        pausedSeconds: 0,
+      }),
+    ).toBe('not_connected');
+  });
+
+  it('the paused countdown wins over a skipped duplicate', () => {
+    expect(
+      noticeLineKind(withItem(SKIPPED_ITEM), {
+        connected: true,
+        pausedSeconds: 12,
+      }),
+    ).toBe('paused');
+  });
+
+  it('a bulk line wins over Fields changed', () => {
+    const changed = discogsDto({ fieldsChanged: true });
+    expect(
+      noticeLineKind(withItem(FAILED_ITEM, { discogs: changed }), on),
+    ).toBe('lookup_failed');
+    expect(
+      noticeLineKind(withItem(SKIPPED_ITEM, { discogs: changed }), on),
+    ).toBe('skipped');
+    expect(noticeLineKind(card({ discogs: changed }), on)).toBe(
+      'fields_changed',
+    );
+  });
+
+  it('an imported card shows no notice line', () => {
+    expect(
+      noticeLineKind(
+        withItem(FAILED_ITEM, { import: imp({ phase: 'imported' }) }),
+        {
+          connected: false,
+          pausedSeconds: 0,
+        },
+      ),
+    ).toBeNull();
+  });
+
+  it('a failed search with no import still reads search_failed', () => {
+    expect(
+      noticeLineKind(
+        card({
+          discogs: discogsDto({
+            state: 'failed',
+            failure: { kind: 'unavailable', reason: null },
+          }),
+        }),
+        on,
+      ),
+    ).toBe('search_failed');
+  });
+});
+
+describe('Detailed card bulk states', () => {
+  it('a resolved fallback shows Fallback: US before the state badge, and the fallback line between the box and the state line', () => {
+    const html = detailed(
+      withItem(bulkItem({ outcome: 'fallback_no_version', country: 'US' }), {
+        import: imp({ phase: 'waiting' }),
+      }),
+    );
+    const badge = html.indexOf('Fallback: US');
+    expect(badge).toBeGreaterThan(-1);
+    expect(badge).toBeLessThan(html.indexOf('Waiting to import'));
+    const line = html.indexOf('No Canadian pressing, used US');
+    expect(line).toBeGreaterThan(html.indexOf('Nirvana - Nevermind'));
+    expect(line).toBeLessThan(html.lastIndexOf('Change match'));
+  });
+
+  it('a skipped duplicate shows the skipped line above the candidate list', () => {
+    const html = detailed(withItem(SKIPPED_ITEM));
+    const line = html.indexOf('Already imported from spine #4');
+    expect(line).toBeGreaterThan(-1);
+    expect(line).toBeLessThan(html.indexOf('Nirvana - Nevermind'));
+  });
+
+  it('a failed lookup shows its line and Retry import above an older failed import panel', () => {
+    const html = detailed(
+      withItem(FAILED_ITEM, {
+        import: imp({
+          phase: 'failed',
+          canRetry: true,
+          failure: { kind: 'unavailable', reason: null },
+        }),
+      }),
+    );
+    const line = html.indexOf(
+      'Couldn&#x27;t look up pressings: Discogs didn&#x27;t respond.',
+    );
+    expect(line).toBeGreaterThan(-1);
+    expect(line).toBeLessThan(html.indexOf('Nirvana - Nevermind'));
+    expect(html).toContain('Retry import');
+  });
+
+  it('not connected replaces the failed lookup line', () => {
+    const html = detailed(withItem(FAILED_ITEM), false);
+    expect(html).toContain('Connect Discogs to find matches.');
+    expect(html).not.toContain('Couldn&#x27;t look up pressings');
+  });
+
+  it('a bulk line replaces Fields changed', () => {
+    const html = detailed(
+      withItem(SKIPPED_ITEM, { discogs: discogsDto({ fieldsChanged: true }) }),
+    );
+    expect(html).toContain('Already imported from spine #4');
+    expect(html).not.toContain(FIELDS_CHANGED_LINE);
+  });
+
+  it('a manual import shows no country badge', () => {
+    const html = detailed(card({ import: imp({ phase: 'waiting' }) }));
+    expect(html).not.toContain('Fallback:');
+    expect(html).not.toContain('No Canadian pressing');
   });
 });

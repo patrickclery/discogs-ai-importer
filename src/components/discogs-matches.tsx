@@ -93,6 +93,30 @@ export function showsFieldsChanged(
   return !!discogs && discogs.fieldsChanged && discogs.state !== 'not_searched';
 }
 
+/** The notice line a Detailed or expanded card shows, at most one. */
+export type NoticeKind =
+  | 'not_connected'
+  | 'paused'
+  | 'lookup_failed'
+  | 'skipped'
+  | 'fields_changed'
+  | 'search_failed';
+
+/** The bulk line the Discogs section shows as its notice: failed or skipped. */
+export function bulkNoticeKind(
+  _spine: Pick<SpineDto, 'import' | 'bulk'>,
+): 'failed' | 'skipped' | null {
+  return null;
+}
+
+/** Which notice line the card shows (UI-SPEC Detailed layout precedence). */
+export function noticeLineKind(
+  _spine: Pick<SpineDto, 'import' | 'bulk' | 'discogs'>,
+  _view: { connected: boolean; pausedSeconds: number },
+): NoticeKind | null {
+  return null;
+}
+
 /**
  * The not-connected, fields-changed, paused or failed line, at most one
  * (UI-SPEC order). Fields changed follows showsFieldsChanged (WR-01).
