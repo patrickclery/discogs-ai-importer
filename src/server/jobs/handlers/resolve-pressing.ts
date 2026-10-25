@@ -8,13 +8,17 @@ import {
   type VersionLite,
 } from '@/lib/pressing';
 import {
+  failBulkItem,
   getBulkItem,
   getBulkRun,
+  recordBulkItemError,
   resolveBulkItem,
   skipBulkItem,
 } from '../../bulk/store';
 import { getDb } from '../../db/client';
+import { getDiscogsAuth, isAuthInvalid } from '../../discogs/auth';
 import { type DiscogsFetchDeps, discogsFetch } from '../../discogs/client';
+import { discogsGate } from '../../discogs/gate';
 import { upsertPressingCandidate } from '../../discogs/store';
 import {
   masterVersionsPath,
@@ -28,7 +32,7 @@ import {
   mustRetryFirst,
   retryImport,
 } from '../../imports/store';
-import type { JobContext } from '../types';
+import { type JobContext, JobDeferredError } from '../types';
 
 // One bulk item (D-08), on the discogs lane: the spine's top match becomes
 // the release to import, either as is (already in the preferred country,
@@ -36,7 +40,15 @@ import type { JobContext } from '../types';
 // GET /masters/{id}/versions (D-01), then createImport writes the import
 // and its add_to_collection job, whose run_after is this job's, so each
 // spine's add runs right after its own lookup. Release ids come only from
-// the spine's candidate row or the parsed versions answer (T-06-04).
+// the spine's candidate row or the parsed versions answer (T-06-04), and
+// createImport never gets the allow-duplicate option (D-09, T-06-05).
+//
+// The lookup's failures, as in fetch-release: no sign-in or a refused one
+// fails the item as auth with no request; a paused gate or a 429 defers
+// without spending an attempt; a 401 fails it as auth; a 404 counts as no
+// master (D-04); another 4xx fails it as rejected; a 5xx or anything else
+// is recorded on the still-queued item and rethrown for the worker's retry.
+// A run that stops being current writes nothing (WR-04).
 
 export const ResolvePressingPayload = z.object({
   itemId: z.string().min(1),
@@ -75,6 +87,15 @@ class RefusedImport extends Error {
     this.name = 'RefusedImport';
     this.result = result;
   }
+}
+
+function message(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function errName(err: unknown): string {
+  const name = (err as { name?: unknown } | null)?.name;
+  return typeof name === 'string' ? name : '';
 }
 
 function jsonArray(json: string): unknown[] {
@@ -188,6 +209,11 @@ export async function runResolvePressing(
     return;
   }
   const top = topOf(candidate);
+  // The lookup failed for good; the worker finishes the job (Plan 06-05's
+  // retry frees its dedupe key before re-enqueueing).
+  const fail = (errorKind: 'auth' | 'rejected', error: string): void => {
+    failBulkItem(db, itemId, { errorKind, error });
+  };
 
   // D-20: a failed add that may have reached Discogs is retried through
   // reconcile on its own row, never replaced and never looked up again.
@@ -206,18 +232,76 @@ export async function runResolvePressing(
   let versions: VersionLite[] | 'unusable' | undefined;
   const masterId = top.masterId;
   if (needsLookup(top, run.country) && masterId !== null) {
+    // Only a lookup needs the sign-in: the preferred short-circuit and the
+    // D-20 retry make no request, and the add job checks its own.
     if (!ctx.isCurrent()) throw new NotCurrentError();
-    const res = await discogsFetch(
-      {
-        path: masterVersionsPath(masterId),
-        query: versionsQuery(run.country),
-        auth: 'oauth',
-        signal: ctx.signal,
-      },
-      deps.fetch,
-    );
+    if (!getDiscogsAuth()) {
+      fail('auth', 'Discogs is not connected');
+      return;
+    }
+    if (isAuthInvalid()) {
+      fail('auth', 'Discogs refused the stored sign-in');
+      return;
+    }
+    const pausedUntil = (deps.fetch?.gate ?? discogsGate()).pausedUntil();
+    if (pausedUntil !== null) {
+      throw new JobDeferredError(pausedUntil, 'Discogs rate limit pause');
+    }
+    try {
+      if (!ctx.isCurrent()) throw new NotCurrentError();
+      const res = await discogsFetch(
+        {
+          path: masterVersionsPath(masterId),
+          query: versionsQuery(run.country),
+          auth: 'oauth',
+          signal: ctx.signal,
+        },
+        deps.fetch,
+      );
+      versions = parseVersions(res.json);
+    } catch (err) {
+      switch (errName(err)) {
+        case 'NotCurrentError':
+          throw err;
+        case 'DiscogsRateLimitedError': {
+          const resumeAt = (err as { resumeAt?: unknown }).resumeAt;
+          throw new JobDeferredError(
+            typeof resumeAt === 'number' ? resumeAt : Date.now() + 60_000,
+            message(err),
+          );
+        }
+        case 'DiscogsAuthError':
+          if (!ctx.isCurrent()) throw err;
+          fail('auth', message(err));
+          return;
+        case 'DiscogsNotFoundError':
+          // D-04: no such master is the same as no master.
+          if (!ctx.isCurrent()) throw err;
+          versions = undefined;
+          break;
+        case 'DiscogsRequestError':
+          if (!ctx.isCurrent()) throw err;
+          fail('rejected', message(err));
+          return;
+        case 'DiscogsUnavailableError':
+          if (ctx.isCurrent()) {
+            recordBulkItemError(db, itemId, {
+              errorKind: 'unavailable',
+              error: message(err),
+            });
+          }
+          throw err;
+        default:
+          if (ctx.isCurrent()) {
+            recordBulkItemError(db, itemId, {
+              errorKind: 'other',
+              error: errName(err) || 'Error',
+            });
+          }
+          throw err;
+      }
+    }
     if (!ctx.isCurrent()) return;
-    versions = parseVersions(res.json);
   }
   const choice = choosePressing({ top, preferred: run.country, versions });
   if (!ctx.isCurrent()) return;
