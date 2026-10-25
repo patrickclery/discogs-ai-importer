@@ -18,14 +18,16 @@ function DemoSpines() {
   const photo = sp.get('photo') || null;
   const review = sp.get('review') === '1';
   const status = parseStatusParam(sp.get('status')) ?? null;
+  const fallback = sp.get('fallback') === '1';
   const select = useCallback(
     (state: DemoState, now: number) =>
       buildSpinesResponse(state, now, {
         photoId: photo ?? undefined,
         review,
         status: status ?? undefined,
+        fallback,
       }),
-    [photo, review, status],
+    [photo, review, status, fallback],
   );
   const initialData = useDemoSnapshot(select);
   if (!initialData) return <SpinesLoading />;
@@ -35,6 +37,7 @@ function DemoSpines() {
       initialPhoto={photo}
       initialReview={review}
       initialStatus={status}
+      initialFallback={fallback}
     />
   );
 }

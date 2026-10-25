@@ -15,6 +15,7 @@ import {
   ListChecks,
   ListFilter,
   type LucideIcon,
+  MapPin,
   Rows3,
   SearchX,
 } from 'lucide-react';
@@ -51,6 +52,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { REVIEW_STATUS_LABELS, type ReviewStatus } from '@/lib/import-types';
 import { spinesRefetchInterval } from '@/lib/photo-status';
+import { pressingPhrase } from '@/lib/pressing';
 import {
   filterEmptyOf,
   leftCount,
@@ -281,16 +283,40 @@ const STATUS_EMPTY: Record<
   },
 };
 
-/** RED stub. */
+/** Body of the combined filters empty state (UI-SPEC Copywriting). */
 export const COMBINED_FILTERS_BODY =
-  'Turn off Needs review or pick another status.';
+  'Turn off Needs review or Fallback, or pick another status.';
 
-/** RED stub. */
-export function NoFallbacks(_props: {
+/**
+ * Fallback alone with nothing to show (D-15, UI-SPEC E7): every bulk import
+ * got its preferred-country pressing. Show all spines turns Fallback off
+ * and keeps the other filters.
+ */
+export function NoFallbacks({
+  country,
+  onShowAll,
+}: {
   country: string;
   onShowAll: () => void;
 }) {
-  return null;
+  return (
+    <Empty className="pt-16 pb-12">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <MapPin className="size-5" />
+        </EmptyMedia>
+        <EmptyTitle className="text-base font-medium">No fallbacks</EmptyTitle>
+        <EmptyDescription>
+          {`Every bulk-imported spine got its ${pressingPhrase(country, false)}.`}
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button variant="outline" onClick={onShowAll}>
+          Show all spines
+        </Button>
+      </EmptyContent>
+    </Empty>
+  );
 }
 
 /** An empty filtered list: icon, heading, body and one outline action. */
@@ -336,18 +362,18 @@ export function SpinesView({
   initialPhoto,
   initialReview,
   initialStatus,
-  initialFallback = false,
+  initialFallback,
 }: {
   initialData: SpinesResponse;
   initialPhoto: string | null;
   initialReview: boolean;
   initialStatus: ReviewStatus | null;
-  initialFallback?: boolean;
+  initialFallback: boolean;
 }) {
   const [photo, setPhoto] = usePhotoFilter();
   const [review, setReview] = useReviewFilter();
   const [status, setStatus] = useStatusFilter();
-  const [fallback] = useFallbackFilter();
+  const [fallback, setFallback] = useFallbackFilter();
   const [layout] = useCardLayout();
   const queryClient = useQueryClient();
   const queryKey = useMemo(
@@ -465,8 +491,8 @@ export function SpinesView({
     </Alert>
   ) : null;
 
-  // D-11: an empty status or Needs review filter says so instead of
-  // showing a blank list.
+  // D-11, D-15: an empty status, Needs review or Fallback filter says so
+  // instead of showing a blank list.
   const filterEmpty = data
     ? filterEmptyOf(status, review, fallback, data.spines.length)
     : null;
@@ -479,6 +505,13 @@ export function SpinesView({
     body = <NoSpinesYet />;
   } else if (filterEmpty?.kind === 'review') {
     body = <NothingNeedsReview onShowAll={() => void setReview(false)} />;
+  } else if (filterEmpty?.kind === 'fallback') {
+    body = (
+      <NoFallbacks
+        country={data.discogs.preferredCountry}
+        onShowAll={() => void setFallback(false)}
+      />
+    );
   } else if (filterEmpty?.kind === 'combined') {
     body = (
       <FilterEmptyState
@@ -489,6 +522,7 @@ export function SpinesView({
         onAction={() => {
           void setStatus(null);
           void setReview(false);
+          void setFallback(false);
         }}
       />
     );

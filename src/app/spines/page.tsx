@@ -1,7 +1,11 @@
 import { connection } from 'next/server';
 import { SpinesView } from '@/components/spines-view';
 import { parseStatusParam } from '@/lib/review-status';
-import { getSpines, parseReviewParam } from '@/server/scan/queries';
+import {
+  getSpines,
+  parseFallbackParam,
+  parseReviewParam,
+} from '@/server/scan/queries';
 
 // /spines (REV-01): the server render already holds the title block and the
 // list, then SpinesView polls GET /api/spines while a photo is analyzed.
@@ -18,12 +22,14 @@ export default async function SpinesPage({
   const photoId = first(params.photo) || undefined;
   const review = parseReviewParam(first(params.review));
   const status = parseStatusParam(first(params.status));
+  const fallback = parseFallbackParam(first(params.fallback));
   return (
     <SpinesView
-      initialData={getSpines({ photoId, review, status })}
+      initialData={getSpines({ photoId, review, status, fallback })}
       initialPhoto={photoId ?? null}
       initialReview={review}
       initialStatus={status ?? null}
+      initialFallback={fallback}
     />
   );
 }
