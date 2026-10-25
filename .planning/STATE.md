@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 06
 current_phase_name: Bulk Canada auto-import with compact review cards
 status: executing
-stopped_at: "Phase 6: research + UI-SPEC + context committed; next: VALIDATION.md, pattern-mapper, planner"
-last_updated: "2026-10-25T01:38:03.749Z"
-last_activity: 2026-10-23
-last_activity_desc: Phase 05 complete, transitioned to Phase 06
-state_head: 0421a57341bfeaf3220a152778100c0a965975a9
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-10-25T01:45:31.561Z"
+last_activity: 2026-10-24
+last_activity_desc: Phase 06 execution started
+state_head: ed66491e7527ecb3c513d6b13907200431ebe321
 progress:
   total_phases: 2
   completed_phases: 4
   total_plans: 21
   completed_plans: 50
-  percent: 43
+  percent: 100
 ---
 
 # Project State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-23)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 05 — Stubbed Demo Site
+**Current focus:** Phase 06 — Bulk Canada auto-import with compact review cards
 
 ## Current Position
 
-Phase: 06 (Bulk Canada auto-import with compact review cards) — READY TO EXECUTE
-Plan: Not started
+Phase: 06 (Bulk Canada auto-import with compact review cards) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
-Last activity: 2026-10-23 — Phase 05 complete, transitioned to Phase 06
+Last activity: 2026-10-24 — Phase 06 execution started
 
 ## Performance Metrics
 
@@ -108,6 +108,7 @@ Last activity: 2026-10-23 — Phase 05 complete, transitioned to Phase 06
 | Phase 4 P14 | 7 min | 2 tasks | 7 files |
 | Phase 4 P09 | 12min | 3 tasks | 13 files |
 | Phase 05 P09 | 5 min | 2 tasks | 1 files |
+| Phase 06 P01 | 8min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -249,6 +250,8 @@ Recent decisions affecting current work:
 - [Phase 4]: 04-09: imports.failed uses the card's importPhaseOf rule and leaves out spines marked not on Discogs, matching the Failed filter
 - [Phase 4]: 04-09: status SQL uses the add_to_collection literal; the IMP-01 one-enqueue-site guard forbids type: 'add_to_collection' outside imports/store.ts
 - [Phase 05]: Demo published: Pages build_type workflow, live at http://patrickclery.com/discogs-ai-importer/ (github.io 301s there); Enforce HTTPS left to owner
+- [Phase 06]: Pressing rank key [official, exact country, CD, same label, year, id]; a combined-country top joins the pool as a synthetic entry (D-18, D-19, D-03)
+- [Phase 06]: titleMatches: a missing version title never passes the D-21 guard against a real title
 
 ### Pending Todos
 
@@ -272,9 +275,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-24T04:31:45.373Z
-Stopped at: Phase 6: research + UI-SPEC + context committed; next: VALIDATION.md, pattern-mapper, planner
-Resume file: .planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-RESEARCH.md
+Last session: 2026-10-25T01:45:31.518Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
