@@ -358,20 +358,32 @@ describe('fallbackLine', () => {
     ).toBe('No Canadian pressing, used US');
   });
 
-  it('the master, retry and no-country lines ignore the fallback country', () => {
-    expect(
-      fallbackLine(
-        item({
-          outcome: 'fallback_no_master',
-          fallbackCountry: 'US',
-          country: 'UK',
-        }),
-      ),
-    ).toBe('No Canadian pressing listed for this release, used UK');
+  it('IN-01: an unusable master names both countries the run looked for', () => {
     expect(
       fallbackLine(
         item({
           outcome: 'fallback_unusable_master',
+          fallbackCountry: 'US',
+          country: 'UK',
+        }),
+      ),
+    ).toBe('No Canadian or US pressing listed for this release, used UK');
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_unusable_master',
+          fallbackCountry: 'canada',
+          country: 'UK',
+        }),
+      ),
+    ).toBe('No Canadian pressing listed for this release, used UK');
+  });
+
+  it('the no-master, retry and no-country lines ignore the fallback country', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_no_master',
           fallbackCountry: 'US',
           country: 'UK',
         }),
