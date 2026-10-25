@@ -41,27 +41,62 @@ const IMPORTS_LEFT_SQL = `
   WHERE lane = @lane AND type IN ('add_to_collection', 'resolve_pressing')
     AND status IN ('queued', 'running')`;
 
-// The latest import per active or orphaned spine not marked not on Discogs
-// (the marked line wins on the card); it counts as failed when it ended
-// failed, or is still pending or importing while its job failed, was
-// cancelled or is missing (importPhaseOf, the card's own rule).
+// Active or orphaned spines not marked not on Discogs (the marked line wins
+// on the card) that read Failed, mirroring reviewStatusOf (WR-04):
+// - an imported spine (latest import imported or holding an instance) never
+//   counts;
+// - else the spine's current bulk item comes first (isCurrentBulkItem: no
+//   import came after it, or the latest import is its own): a failed lookup,
+//   or a queued one whose job is no longer queued or running
+//   (bulkItemPhaseOf), counts; a lookup still finding does not;
+// - else the latest import counts when it ended failed, or is still pending
+//   or importing while its job failed, was cancelled or is missing
+//   (importPhaseOf, the card's own rule).
 const IMPORTS_FAILED_SQL = `
-  WITH latest AS (
-    SELECT i.status, i.job_id,
+  WITH latest_import AS (
+    SELECT i.id, i.spine_id, i.status, i.job_id, i.instance_id, i.created_at,
       ROW_NUMBER() OVER (
         PARTITION BY i.spine_id ORDER BY i.created_at DESC, i.id DESC
       ) AS rn
     FROM imports i
-    JOIN spines sp ON sp.id = i.spine_id
+  ),
+  latest_item AS (
+    SELECT b.id, b.spine_id, b.status, b.job_id, b.import_id, b.created_at,
+      ROW_NUMBER() OVER (
+        PARTITION BY b.spine_id ORDER BY b.created_at DESC, b.id DESC
+      ) AS rn
+    FROM bulk_items b
+  ),
+  per_spine AS (
+    SELECT li.status AS import_status, li.instance_id,
+      li.id AS import_id, ij.status AS import_job_status,
+      CASE
+        WHEN bi.id IS NULL THEN NULL
+        WHEN li.id IS NOT NULL
+          AND (bi.import_id IS NULL OR bi.import_id <> li.id)
+          AND bi.created_at <= li.created_at THEN NULL
+        WHEN bi.status = 'failed' THEN 'failed'
+        WHEN bi.status <> 'queued' THEN NULL
+        WHEN bj.status IN ('queued', 'running') THEN 'finding'
+        ELSE 'failed'
+      END AS lookup
+    FROM spines sp
+    LEFT JOIN latest_import li ON li.spine_id = sp.id AND li.rn = 1
+    LEFT JOIN jobs ij ON ij.id = li.job_id
+    LEFT JOIN latest_item bi ON bi.spine_id = sp.id AND bi.rn = 1
+    LEFT JOIN jobs bj ON bj.id = bi.job_id
     WHERE sp.state IN ('active', 'orphaned') AND sp.not_on_discogs = 0
   )
   SELECT COUNT(*) AS n
-  FROM latest l
-  LEFT JOIN jobs j ON j.id = l.job_id
-  WHERE l.rn = 1
-    AND (l.status = 'failed'
-      OR (l.status IN ('pending', 'importing')
-        AND (j.id IS NULL OR j.status IN ('failed', 'cancelled'))))`;
+  FROM per_spine
+  WHERE instance_id IS NULL
+    AND (import_status IS NULL OR import_status <> 'imported')
+    AND (lookup = 'failed'
+      OR (lookup IS NULL
+        AND (import_status = 'failed'
+          OR (import_status IN ('pending', 'importing')
+            AND (import_job_status IS NULL
+              OR import_job_status IN ('failed', 'cancelled'))))))`;
 
 /** A secrets file that cannot be read means not connected, never a 500. */
 function isConnected(): boolean {

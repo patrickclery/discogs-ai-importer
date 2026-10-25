@@ -62,13 +62,14 @@ function job(lane: string, status: string, type = 'x'): string {
   return id;
 }
 
-/** An imports row; jobStatus null leaves job_id empty. */
+/** An imports row; jobStatus null leaves job_id empty. Returns its id. */
 function importRow(
   spineId: string,
   status: string,
   jobStatus: string | null = null,
-): void {
+): string {
   clock += 1000;
+  const id = newId();
   const jobId = jobStatus
     ? job('discogs', jobStatus, 'add_to_collection')
     : null;
@@ -79,7 +80,36 @@ function importRow(
        VALUES (@id, @spineId, 1031, 1, @status, @jobId, @createdAt,
          @createdAt)`,
     )
-    .run({ id: newId(), spineId, status, jobId, createdAt: clock });
+    .run({ id, spineId, status, jobId, createdAt: clock });
+  return id;
+}
+
+/** A bulk_items row (and its run); jobStatus null leaves job_id empty. */
+function bulkItem(
+  spineId: string,
+  status: string,
+  jobStatus: string | null,
+  importId: string | null = null,
+): void {
+  clock += 1000;
+  const runId = newId();
+  db()
+    .prepare(
+      `INSERT INTO bulk_runs (id, folder_id, country, total, created_at)
+       VALUES (@runId, 1, 'Canada', 1, @clock)`,
+    )
+    .run({ runId, clock });
+  const jobId = jobStatus
+    ? job('discogs', jobStatus, 'resolve_pressing')
+    : null;
+  db()
+    .prepare(
+      `INSERT INTO bulk_items (id, run_id, spine_id, candidate_id, status,
+         import_id, job_id, created_at, updated_at)
+       VALUES (@id, @runId, @spineId, 'c1', @status, @importId, @jobId,
+         @clock, @clock)`,
+    )
+    .run({ id: newId(), runId, spineId, status, importId, jobId, clock });
 }
 
 function search(
@@ -232,6 +262,57 @@ describe('discogsStatus', () => {
       .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
       .run(marked);
     expect(discogsStatus(db()).imports?.failed).toBe(1);
+  });
+
+  it('WR-04: imports.failed counts a failed or abandoned current lookup', () => {
+    bulkItem(spine(), 'failed', 'failed');
+    bulkItem(spine(), 'queued', 'failed');
+    bulkItem(spine(), 'queued', 'succeeded');
+    bulkItem(spine(), 'queued', null);
+    bulkItem(spine(), 'queued', 'queued');
+    bulkItem(spine(), 'queued', 'running');
+    bulkItem(spine(), 'skipped', 'succeeded');
+    expect(discogsStatus(db()).imports?.failed).toBe(4);
+  });
+
+  it('WR-04: a current lookup newer than a failed import replaces it', () => {
+    const finding = spine();
+    importRow(finding, 'failed');
+    bulkItem(finding, 'queued', 'running');
+    const failed = spine();
+    importRow(failed, 'failed');
+    bulkItem(failed, 'failed', 'failed');
+    expect(discogsStatus(db()).imports?.failed).toBe(1);
+  });
+
+  it('WR-04: a lookup an import came after is ignored, and the import rules apply', () => {
+    const replaced = spine();
+    bulkItem(replaced, 'failed', 'failed');
+    importRow(replaced, 'pending', 'queued');
+    const failedImport = spine();
+    bulkItem(failedImport, 'failed', 'failed');
+    importRow(failedImport, 'failed');
+    expect(discogsStatus(db()).imports?.failed).toBe(1);
+  });
+
+  it("WR-04: a resolved item counts through its own import's phase", () => {
+    const ok = spine();
+    const okImport = importRow(ok, 'pending', 'queued');
+    bulkItem(ok, 'resolved', 'succeeded', okImport);
+    const bad = spine();
+    const badImport = importRow(bad, 'failed');
+    bulkItem(bad, 'resolved', 'succeeded', badImport);
+    expect(discogsStatus(db()).imports?.failed).toBe(1);
+  });
+
+  it('WR-04: a marked or superseded spine with a failed lookup does not count', () => {
+    const marked = spine();
+    bulkItem(marked, 'failed', 'failed');
+    db()
+      .prepare('UPDATE spines SET not_on_discogs = 1 WHERE id = ?')
+      .run(marked);
+    bulkItem(spine('superseded'), 'failed', 'failed');
+    expect(discogsStatus(db()).imports?.failed).toBe(0);
   });
 
   it('imports carries counts only', () => {
