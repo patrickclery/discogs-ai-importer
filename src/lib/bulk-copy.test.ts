@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import type { BulkItemDto } from '@/lib/bulk-types';
 import type { CandidateDto, SpineDiscogsDto } from '@/lib/discogs-types';
 import type { ImportDto } from '@/lib/import-types';
-import { matchDetails, matchSlotOf } from './bulk-copy';
+import {
+  bulkStatusLineOf,
+  countryBadgeText,
+  fallbackLine,
+  findingLine,
+  lookupFailureLine,
+  matchDetails,
+  matchSlotOf,
+  skippedLine,
+} from './bulk-copy';
 
 // The compact card's match slot (D-10, UI-SPEC "Match slot labels" and
 // "Match slot placeholders"): the confirmed import's release, else the
@@ -182,5 +192,243 @@ describe('matchSlotOf', () => {
         },
       );
     }
+  });
+});
+
+// Bulk-state copy (UI-SPEC Per-spine bulk states, D-04, D-09, D-15,
+// BULK-11): the country badge text and the card's one status line.
+
+function item(over: Partial<BulkItemDto> = {}): BulkItemDto {
+  return {
+    id: 'bi1',
+    runId: 'run1',
+    phase: 'resolved',
+    preferredCountry: 'Canada',
+    outcome: 'preferred',
+    releaseId: 777,
+    country: 'Canada',
+    importId: 'i1',
+    skip: null,
+    failure: null,
+    createdAt: 1,
+    ...over,
+  };
+}
+
+function bulk(it: BulkItemDto | null) {
+  return { eligible: false, reason: null, item: it };
+}
+
+describe('countryBadgeText', () => {
+  it('reads the preferred country verbatim', () => {
+    expect(countryBadgeText({ kind: 'preferred', country: 'Canada' })).toBe(
+      'Canada',
+    );
+  });
+
+  it('reads Fallback: {country}, or no country listed', () => {
+    expect(countryBadgeText({ kind: 'fallback', country: 'US' })).toBe(
+      'Fallback: US',
+    );
+    expect(countryBadgeText({ kind: 'fallback', country: null })).toBe(
+      'Fallback: no country listed',
+    );
+  });
+});
+
+describe('fallbackLine', () => {
+  it('no version in the preferred country', () => {
+    expect(
+      fallbackLine(item({ outcome: 'fallback_no_version', country: 'US' })),
+    ).toBe('No Canadian pressing, used US');
+  });
+
+  it('no master, or an unusable master', () => {
+    expect(
+      fallbackLine(item({ outcome: 'fallback_no_master', country: 'US' })),
+    ).toBe('No Canadian pressing listed for this release, used US');
+    expect(
+      fallbackLine(
+        item({ outcome: 'fallback_unusable_master', country: 'US' }),
+      ),
+    ).toBe('No Canadian pressing listed for this release, used US');
+  });
+
+  it('a top match with no country', () => {
+    expect(
+      fallbackLine(item({ outcome: 'fallback_no_version', country: null })),
+    ).toBe('No Canadian pressing, used the top match (no country listed)');
+  });
+
+  it('a retried earlier import', () => {
+    expect(
+      fallbackLine(item({ outcome: 'retried_earlier', country: 'UK' })),
+    ).toBe('Retried the earlier import of this spine, used UK');
+  });
+
+  it('an unknown demonym reads pressing from {country}', () => {
+    expect(
+      fallbackLine(
+        item({
+          preferredCountry: 'Hong Kong',
+          outcome: 'fallback_no_version',
+          country: 'US',
+        }),
+      ),
+    ).toBe('No pressing from Hong Kong, used US');
+  });
+});
+
+describe('skippedLine', () => {
+  it('same photo names only the spine number', () => {
+    expect(
+      skippedLine({
+        reason: 'duplicate',
+        photo: 'IMG_1.jpg',
+        spineNumber: 12,
+        samePhoto: true,
+      }),
+    ).toBe('Already imported from spine #12');
+  });
+
+  it('another photo names the photo too', () => {
+    expect(
+      skippedLine({
+        reason: 'duplicate',
+        photo: 'IMG_1.jpg',
+        spineNumber: 12,
+        samePhoto: false,
+      }),
+    ).toBe('Already imported from IMG_1.jpg, spine #12');
+  });
+
+  it('a holder that is gone reads another spine', () => {
+    expect(
+      skippedLine({
+        reason: 'duplicate',
+        photo: null,
+        spineNumber: null,
+        samePhoto: false,
+      }),
+    ).toBe('Already imported from another spine');
+  });
+});
+
+describe('lookupFailureLine', () => {
+  it('no response', () => {
+    expect(lookupFailureLine({ kind: 'unavailable', reason: null })).toEqual({
+      text: "Couldn't look up pressings: Discogs didn't respond. Retry the import.",
+      link: null,
+    });
+  });
+
+  it('a rejected connection links to Settings', () => {
+    const line = lookupFailureLine({ kind: 'auth', reason: null });
+    expect(line.text).toBe(
+      "Couldn't look up pressings: Discogs rejected the connection.",
+    );
+    expect(line.link?.label).toBe('Open Settings');
+    expect(line.link?.href).toBe('/settings');
+    expect(line.link?.tail).toBe(' to reconnect, then retry.');
+  });
+
+  it('other carries its short reason', () => {
+    expect(
+      lookupFailureLine({ kind: 'other', reason: 'bad request' }).text,
+    ).toBe("Couldn't look up pressings: bad request. Retry the import.");
+  });
+
+  it('an interrupted lookup says the app stopped', () => {
+    expect(lookupFailureLine({ kind: 'interrupted', reason: null }).text).toBe(
+      "Couldn't look up pressings: the app stopped before it finished. Retry the import.",
+    );
+  });
+});
+
+describe('findingLine', () => {
+  it('names the preferred pressing', () => {
+    expect(findingLine({ preferredCountry: 'Canada' })).toBe(
+      'Looking for the Canadian pressing…',
+    );
+  });
+});
+
+describe('bulkStatusLineOf', () => {
+  const imp = importDto({ id: 'i1', phase: 'waiting' });
+
+  it('a failed lookup comes first', () => {
+    const line = bulkStatusLineOf({
+      import: imp,
+      bulk: bulk(
+        item({
+          phase: 'failed',
+          importId: null,
+          failure: { kind: 'unavailable', reason: null },
+        }),
+      ),
+    });
+    expect(line?.kind).toBe('failed');
+  });
+
+  it('a resolved fallback import reads the fallback line', () => {
+    const line = bulkStatusLineOf({
+      import: imp,
+      bulk: bulk(item({ outcome: 'fallback_no_version', country: 'US' })),
+    });
+    expect(line?.kind).toBe('fallback');
+    expect(line?.text).toBe('No Canadian pressing, used US');
+  });
+
+  it('a skipped duplicate reads the skipped line', () => {
+    const line = bulkStatusLineOf({
+      import: null,
+      bulk: bulk(
+        item({
+          phase: 'skipped',
+          importId: null,
+          outcome: null,
+          country: null,
+          skip: {
+            reason: 'duplicate',
+            photo: 'IMG_1.jpg',
+            spineNumber: 3,
+            samePhoto: true,
+          },
+        }),
+      ),
+    });
+    expect(line?.kind).toBe('skipped');
+    expect(line?.text).toBe('Already imported from spine #3');
+  });
+
+  it('a finding item reads the finding line', () => {
+    const line = bulkStatusLineOf({
+      import: null,
+      bulk: bulk(item({ phase: 'finding', importId: null, outcome: null })),
+    });
+    expect(line?.kind).toBe('finding');
+    expect(line?.text).toBe('Looking for the Canadian pressing…');
+  });
+
+  it('a changed skip, a preferred import and a manual import show none', () => {
+    expect(
+      bulkStatusLineOf({
+        import: null,
+        bulk: bulk(
+          item({
+            phase: 'skipped',
+            importId: null,
+            skip: {
+              reason: 'changed',
+              photo: null,
+              spineNumber: null,
+              samePhoto: false,
+            },
+          }),
+        ),
+      }),
+    ).toBeNull();
+    expect(bulkStatusLineOf({ import: imp, bulk: bulk(item()) })).toBeNull();
+    expect(bulkStatusLineOf({ import: imp, bulk: null })).toBeNull();
   });
 });
