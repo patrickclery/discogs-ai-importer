@@ -7,12 +7,15 @@
 // owner's tracer-shelf scan finishes and its searches drain, with the fake
 // limit at 60/min so the shared gate paces about one request a second;
 // (c) every eligible spine is bulk-imported with its top candidate: each
-// spine's Canadian CD version is added when its master lists one, the top
-// match otherwise (TR-201, fallback_no_version), each release exactly once
-// (the second TR-200 spine is skipped as a duplicate); every looked-up
-// spine makes exactly one GET /masters/{m}/versions with country Canada and
-// format CD; consecutive Discogs requests during the run are at least
-// 900 ms apart; no stored error names the username.
+// spine's Canadian CD version is added when its master lists one; TR-201,
+// whose master lists none, gets its US CD version (Plan 06-16: the run
+// snapshots fallback_country 'US', the default, and the outcome is
+// fallback_country); each release exactly once (the second TR-200 spine is
+// skipped as a duplicate); every looked-up spine makes exactly one
+// GET /masters/{m}/versions with country Canada and format CD, plus exactly
+// one with country US and format CD for master 51011 only, after its Canada
+// request; consecutive Discogs requests during the run are at least 900 ms
+// apart; no stored error names the username.
 // Each later step scans a fresh, re-encoded photo of the same shelf, marks
 // the earlier photos' spines superseded in SQL (so their imports are no
 // local duplicates, D-09) and empties the fake collection (so no add is
@@ -51,6 +54,8 @@ import { runMain, waitFor } from './lib/server.ts';
 const CANADIAN_OFFSET = 700_000;
 /** The one tracer release whose master lists no Canadian version. */
 const NO_CANADIAN = 1011;
+/** The fake's US version of NO_CANADIAN is NO_CANADIAN + this. */
+const US_OFFSET = 800_000;
 /** Spacing the gate keeps at 60/min is 1112 ms; allow some jitter. */
 const MIN_GAP_MS = 900;
 const RUN_TIMEOUT_MS = 180_000;
@@ -166,7 +171,9 @@ function importById(
 
 /** The release the fake makes the bulk run add for this top match. */
 const expectedRelease = (topReleaseId: number) =>
-  topReleaseId === NO_CANADIAN ? topReleaseId : topReleaseId + CANADIAN_OFFSET;
+  topReleaseId === NO_CANADIAN
+    ? topReleaseId + US_OFFSET
+    : topReleaseId + CANADIAN_OFFSET;
 
 /**
  * Each pick's item: the first pick of a release resolves to the expected
@@ -210,8 +217,8 @@ function assertRunItems(
       `item for top ${pick.releaseId} chose ${item.release_id}, expected ${want}`,
     );
     const outcome =
-      pick.releaseId === NO_CANADIAN ? 'fallback_no_version' : 'preferred';
-    const country = pick.releaseId === NO_CANADIAN ? 'UK' : 'Canada';
+      pick.releaseId === NO_CANADIAN ? 'fallback_country' : 'preferred';
+    const country = pick.releaseId === NO_CANADIAN ? 'US' : 'Canada';
     assert(
       item.outcome === outcome && item.country === country,
       `item for top ${pick.releaseId}: outcome ${item.outcome}, country ${item.country}`,
@@ -324,6 +331,19 @@ async function stepBulkRun(ctx: ImportCtx): Promise<void> {
     `start answered ${answer.status} ${JSON.stringify(answer.body)}`,
   );
   const runId = answer.body.runId as string;
+  const fallbackCountry = withDb(
+    ctx,
+    (db) =>
+      (
+        db
+          .prepare('SELECT fallback_country FROM bulk_runs WHERE id = @runId')
+          .get({ runId }) as { fallback_country: string | null } | undefined
+      )?.fallback_country,
+  );
+  assert(
+    fallbackCountry === 'US',
+    `the run's fallback_country is ${fallbackCountry}`,
+  );
   const summary = await waitRunDone(ctx, runId);
   const runEnd = Date.now();
 
@@ -356,19 +376,38 @@ async function stepBulkRun(ctx: ImportCtx): Promise<void> {
   );
   const versions = log.filter((e) => /^\/masters\/\d+\/versions$/.test(e.path));
   assert(
-    versions.length === picks.length,
-    `${versions.length} versions requests for ${picks.length} looked-up spines`,
+    versions.length === picks.length + 1,
+    `${versions.length} versions requests for ${picks.length} looked-up spines plus one US request`,
   );
-  const byMaster = new Map<string, number>();
   for (const v of versions) {
     assert(
       v.method === 'GET' && v.status === 200,
       `versions request ${v.method} ${v.path} answered ${v.status}`,
     );
     assert(
-      v.query.country === 'Canada' && v.query.format === 'CD',
+      (v.query.country === 'Canada' || v.query.country === 'US') &&
+        v.query.format === 'CD',
       `versions query ${JSON.stringify(v.query)}`,
     );
+  }
+  // G-06-side-1: one US request, for the no-Canadian master only, sent
+  // after its Canada answer came back empty.
+  const noCanadianPath = `/masters/${NO_CANADIAN + 50_000}/versions`;
+  const us = versions.filter((v) => v.query.country === 'US');
+  assert(
+    us.length === 1 && us[0].path === noCanadianPath,
+    `US versions requests: ${us.map((v) => v.path).join(', ') || 'none'}`,
+  );
+  const canadaFirst = versions.find(
+    (v) => v.path === noCanadianPath && v.query.country === 'Canada',
+  );
+  assert(
+    canadaFirst && versions.indexOf(canadaFirst) < versions.indexOf(us[0]),
+    `the US request for ${noCanadianPath} was not logged after its Canada request`,
+  );
+  const byMaster = new Map<string, number>();
+  for (const v of versions) {
+    if (v.query.country !== 'Canada') continue;
     byMaster.set(v.path, (byMaster.get(v.path) ?? 0) + 1);
   }
   for (const p of picks) {
@@ -411,7 +450,7 @@ async function stepBulkRun(ctx: ImportCtx): Promise<void> {
       .map((i) => `${i.release_id} ${i.outcome}`)
       .join(
         ', ',
-      )}), ${picks.length - resolved.length} duplicate skipped; ${versions.length} versions requests (country Canada, format CD); ${times.length} requests at least ${minGap} ms apart; run summary added ${summary.added}, fallbacks ${summary.fallbacks}`,
+      )}), ${picks.length - resolved.length} duplicate skipped; ${versions.length} versions requests (one country Canada per looked-up spine plus one country US for ${noCanadianPath}, format CD); fallback_country ${fallbackCountry}; ${times.length} requests at least ${minGap} ms apart; run summary added ${summary.added}, fallbacks ${summary.fallbacks}`,
   );
 }
 

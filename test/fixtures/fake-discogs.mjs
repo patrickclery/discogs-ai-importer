@@ -44,7 +44,9 @@
 //        '{r.catno}-CA' } then { id r.id, country 'UK', catno r.catno },
 //        both title r.title, label 'Fake Label', major_formats ['CD'],
 //        format 'Album', released '1999', status 'Accepted'. Master 51011
-//        lists only its UK version. Any other master answers 200 with
+//        lists no Canadian version: its UK version, then a US version
+//        { id 1011 + 800000, country 'US', catno '{r.catno}-US' } (Plan
+//        06-16, the fallback-country tier). Any other master answers 200 with
 //        pagination.items 8135288 and three unrelated Canadian CDs (the
 //        live unknown-master shape). The country filter is exact and
 //        case-sensitive (country=canada matches nothing, as live) and the
@@ -585,6 +587,9 @@ const SEARCH_RELEASES = new Map(
 /** The id the Canadian version of a search release gets. */
 const CANADIAN_OFFSET = 700_000;
 
+/** The id the US version of the no-Canadian release (1011) gets. */
+const US_OFFSET = 800_000;
+
 /** Unknown masters answer with the whole database (RESEARCH Pitfall 2). */
 const UNKNOWN_MASTER_ITEMS = 8_135_288;
 
@@ -628,7 +633,14 @@ function masterVersions(base, masterId) {
     return { versions: unrelated, items: UNKNOWN_MASTER_ITEMS };
   }
   const uk = versionEntry(base, r, { id: r.id, country: 'UK', catno: r.catno });
-  if (r.id === 1011) return { versions: [uk], items: null };
+  if (r.id === 1011) {
+    const us = versionEntry(base, r, {
+      id: r.id + US_OFFSET,
+      country: 'US',
+      catno: `${r.catno}-US`,
+    });
+    return { versions: [uk, us], items: null };
+  }
   const ca = versionEntry(base, r, {
     id: r.id + CANADIAN_OFFSET,
     country: 'Canada',
