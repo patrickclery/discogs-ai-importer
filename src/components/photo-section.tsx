@@ -1,7 +1,7 @@
 'use client';
 
 import { CircleX, ImageIcon, ScanSearch } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import type { CardLayout } from '@/components/card-layout-toggle';
 import { CompactSpineCard } from '@/components/compact-spine-card';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
@@ -133,7 +133,7 @@ type DiscogsView = {
  * footer holding the orphan row first (when orphaned, RESEARCH Pitfall 3)
  * and then the Discogs matches section, so every card offers its matches.
  */
-function SpineView({
+export function SpineView({
   spine,
   threshold,
   discogs,
@@ -141,6 +141,7 @@ function SpineView({
   spine: SpineDto;
   threshold: number;
   discogs: DiscogsView;
+  trailing?: ReactNode;
 }) {
   return (
     <SpineCard

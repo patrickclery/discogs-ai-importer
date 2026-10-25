@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type FC, createElement as h, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -7,6 +8,13 @@ import type { CandidateDto } from '@/lib/discogs-types';
 import type { SpineDto } from '@/lib/scan-types';
 import { layoutOf, layoutParamOf, useCardLayout } from './card-layout-toggle';
 import { CompactSpineCard } from './compact-spine-card';
+import {
+  ExpandedCardsProvider,
+  layoutReset,
+  toggleExpanded,
+} from './expanded-cards';
+import { SpineView } from './photo-section';
+import { SpineCard } from './spine-card';
 
 // The compact card (D-10, UI-SPEC Compact card): #n and the header badges,
 // the spine crop, then the top match with its cover, title and details. No
@@ -157,5 +165,118 @@ describe('useCardLayout', () => {
     expect(layoutOf(null)).toBe('compact');
     expect(layoutParamOf('detailed')).toBe('detailed');
     expect(layoutParamOf('compact')).toBeNull();
+  });
+});
+
+// D-11: Edit spine expands a card in place into the full card; Show less
+// collapses it. Expanded ids are client state keyed by spine id.
+
+const DISCOGS_VIEW = {
+  connected: true,
+  needsReconnect: false,
+  pausedUntil: null,
+};
+
+/** Renders the compact card under a provider, optionally already expanded. */
+function renderInGrid(s: SpineDto, expanded: string[]): string {
+  return renderToStaticMarkup(
+    h(
+      QueryClientProvider,
+      { client: new QueryClient() },
+      h(
+        ExpandedCardsProvider,
+        { layout: 'compact', initial: expanded },
+        h(CompactSpineCard, {
+          spine: s,
+          threshold: 0.7,
+          renderFull: (trailing: ReactNode) =>
+            h(SpineView, {
+              spine: s,
+              threshold: 0.7,
+              discogs: DISCOGS_VIEW,
+              trailing,
+            }),
+        }),
+      ),
+    ),
+  );
+}
+
+describe('toggleExpanded', () => {
+  it('adds and removes one id, leaving the others', () => {
+    expect([...toggleExpanded(new Set(), 'a', true)]).toEqual(['a']);
+    const both = new Set(['a', 'b']);
+    expect([...toggleExpanded(both, 'a', false)]).toEqual(['b']);
+    expect([...toggleExpanded(both, 'c', true)].sort()).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+    // The input set is never mutated.
+    expect([...both].sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('layoutReset', () => {
+  it('clears every expanded id when the layout changes', () => {
+    const state = { layout: 'compact' as const, ids: new Set(['a', 'b']) };
+    expect(layoutReset(state, 'compact')).toBe(state);
+    const next = layoutReset(state, 'detailed');
+    expect(next.layout).toBe('detailed');
+    expect(next.ids.size).toBe(0);
+  });
+});
+
+describe('CompactSpineCard expand toggle', () => {
+  it('a collapsed card offers Edit spine and no field inputs', () => {
+    const html = renderInGrid(spine(), []);
+    expect(html).toContain('Edit spine');
+    expect(html).toContain('aria-label="Edit spine #7"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('aria-controls="spine-card-sp-1"');
+    expect(html).not.toContain('Show less');
+    expect(html).not.toContain('<input');
+  });
+
+  it('an expanded card renders the full card across the row, ending with Show less', () => {
+    const html = renderInGrid(spine(), ['sp-1']);
+    expect(html).toContain('col-span-full');
+    expect(html).toContain('<input');
+    expect(html).toContain('Show less');
+    expect(html).toContain('aria-label="Show less of spine #7"');
+    expect(html).toContain('aria-expanded="true"');
+    expect(html).toContain('id="spine-card-sp-1"');
+    expect(html).not.toContain('aria-label="Edit spine #7"');
+    // Show less is the last control of the card.
+    const label = html.indexOf('aria-label="Show less of spine #7"');
+    expect(html.lastIndexOf('<button')).toBe(
+      html.lastIndexOf('<button', label),
+    );
+  });
+
+  it('another spine id stays collapsed', () => {
+    const html = renderInGrid(spine(), ['other']);
+    expect(html).toContain('aria-label="Edit spine #7"');
+    expect(html).not.toContain('<input');
+  });
+});
+
+describe('SpineCard leading slot', () => {
+  it('renders the leading slot before #n', () => {
+    const html = renderToStaticMarkup(
+      h(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        h(SpineCard, {
+          spine: spine(),
+          threshold: 0.7,
+          leading: h('span', { 'data-lead': '1' }),
+        }),
+      ),
+    );
+    const lead = html.indexOf('data-lead="1"');
+    expect(lead).toBeGreaterThan(-1);
+    expect(lead).toBeLessThan(html.indexOf('#7'));
+    expect(html).toContain('id="spine-card-sp-1"');
   });
 });

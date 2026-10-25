@@ -8,6 +8,7 @@ import {
   SearchX,
   TriangleAlert,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { ImportStateBadge } from '@/components/import-state-badge';
 import { SpineCrop } from '@/components/spine-crop';
 import { TopMatchRow } from '@/components/top-match-row';
@@ -57,6 +58,7 @@ export function CompactSpineCard({
   spine: SpineDto;
   /** The confidence_threshold setting (D-09). */
   threshold: number;
+  renderFull?: (trailing: ReactNode) => ReactNode;
 }) {
   const number = spineNumber(spine);
   const rawText =
