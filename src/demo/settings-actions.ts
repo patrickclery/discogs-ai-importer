@@ -138,18 +138,36 @@ export async function saveCollectionFolder(
   return { ok: true, name: folder.name };
 }
 
-export async function savePreferredCountry(
+type CountrySaveResult =
+  | { ok: true; country: string }
+  | { ok: false; formError: string };
+
+/** The real saveCountry answers; writes only the named account field. */
+async function saveCountry(
   country: string,
-): Promise<{ ok: true; country: string } | { ok: false; formError: string }> {
+  field: 'preferredCountry' | 'fallbackCountry',
+): Promise<CountrySaveResult> {
   await delay(SETTINGS_DELAY_MS);
   const trimmed = country.trim();
   if (trimmed.length === 0) return { ok: false, formError: 'enter a country' };
   if (trimmed.length > COUNTRY_MAX)
     return { ok: false, formError: COUNTRY_TOO_LONG };
   const stored = canonicalCountry(trimmed) ?? trimmed;
-  getState().account.preferredCountry = stored;
+  getState().account[field] = stored;
   emit();
   return { ok: true, country: stored };
+}
+
+export async function savePreferredCountry(
+  country: string,
+): Promise<CountrySaveResult> {
+  return saveCountry(country, 'preferredCountry');
+}
+
+export async function saveFallbackCountry(
+  country: string,
+): Promise<CountrySaveResult> {
+  return saveCountry(country, 'fallbackCountry');
 }
 
 /** The real success answer for the stored model (D-12: CLI always ready). */

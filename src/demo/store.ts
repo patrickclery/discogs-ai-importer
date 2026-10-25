@@ -147,6 +147,8 @@ export type DemoAccount = {
   pendingConnectAt: number | null;
   /** Discogs' spelling of the bulk-import country (D-14). */
   preferredCountry: string;
+  /** Discogs' spelling of the second-tier country (G-06-side-1). */
+  fallbackCountry: string;
 };
 
 /** One demo bulk import (D-08, D-17). */

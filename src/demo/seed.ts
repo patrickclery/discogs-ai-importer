@@ -171,6 +171,7 @@ export function defaultAccount(): DemoAccount {
     consumerSecretTail: '••••demo',
     pendingConnectAt: null,
     preferredCountry: 'Canada',
+    fallbackCountry: 'US',
   };
 }
 

@@ -21,6 +21,7 @@ import {
 } from '@/server/secrets';
 import {
   getVisionModel,
+  setFallbackCountry,
   setPreferredCountry,
   setVisionModel,
   VisionModelSchema,
@@ -162,14 +163,20 @@ export async function saveCollectionFolder(
   return { ok: true, name: collectionFolderName(parsed.data) };
 }
 
+type CountrySaveResult =
+  | { ok: true; country: string }
+  | { ok: false; formError: string };
+
 /**
- * Saves the preferred country (D-14, T-06-09) in Discogs' spelling and
- * answers the stored value. The field wraps formError in its own sentence,
- * so the reason here is bare (Phase 4 decision 04-06).
+ * Shared by the country actions: trims, refuses an empty or over-long value,
+ * stores through `set` and answers Discogs' spelling. The field wraps
+ * formError in its own sentence, so the reason here is bare (Phase 4
+ * decision 04-06). Not exported: a 'use server' module exports only actions.
  */
-export async function savePreferredCountry(
+async function saveCountry(
   country: string,
-): Promise<{ ok: true; country: string } | { ok: false; formError: string }> {
+  set: (input: string) => string,
+): Promise<CountrySaveResult> {
   const trimmed = country.trim();
   if (trimmed.length === 0) return { ok: false, formError: 'enter a country' };
   if (trimmed.length > 40) {
@@ -177,7 +184,7 @@ export async function savePreferredCountry(
   }
   let stored: string;
   try {
-    stored = setPreferredCountry(country);
+    stored = set(country);
   } catch (err) {
     const reason = (err instanceof Error ? err.message : String(err))
       .replace(/\.\s*$/, '')
@@ -186,6 +193,20 @@ export async function savePreferredCountry(
   }
   revalidatePath('/settings');
   return { ok: true, country: stored };
+}
+
+/** Saves the preferred country (D-14, T-06-09) in Discogs' spelling. */
+export async function savePreferredCountry(
+  country: string,
+): Promise<CountrySaveResult> {
+  return saveCountry(country, setPreferredCountry);
+}
+
+/** Saves the fallback country (G-06-side-1, T-06-28) in Discogs' spelling. */
+export async function saveFallbackCountry(
+  country: string,
+): Promise<CountrySaveResult> {
+  return saveCountry(country, setFallbackCountry);
 }
 
 /** One headless Claude call with the stored vision model (D-10, D-18). */

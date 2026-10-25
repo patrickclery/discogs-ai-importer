@@ -141,3 +141,30 @@ export function setPreferredCountry(input: string): string {
   setSetting(PREFERRED_COUNTRY_KEY, stored);
   return stored;
 }
+
+// Fallback country (G-06-side-1): when Discogs lists no CD pressing from the
+// preferred country, bulk import tries this country's CD pressing next.
+// Stored in Discogs' exact spelling, because the versions filter is
+// case-sensitive (RESEARCH Pitfall 1). It may equal the preferred country,
+// which simply means no second tier (distinctFallback decides that).
+
+export const FALLBACK_COUNTRY_KEY = 'fallback_country';
+export const DEFAULT_FALLBACK_COUNTRY = 'US';
+
+export function getFallbackCountry(): string {
+  return (
+    getSetting(FALLBACK_COUNTRY_KEY, PreferredCountrySchema) ??
+    DEFAULT_FALLBACK_COUNTRY
+  );
+}
+
+/**
+ * Stores and returns Discogs' spelling of the country ("usa" -> "US").
+ * Throws on an empty value or one over 40 characters; nothing is stored.
+ */
+export function setFallbackCountry(input: string): string {
+  const parsed = PreferredCountrySchema.parse(input);
+  const stored = canonicalCountry(parsed) ?? parsed;
+  setSetting(FALLBACK_COUNTRY_KEY, stored);
+  return stored;
+}
