@@ -32,7 +32,13 @@ export const SEARCH_STAGES = [
 ] as const;
 export type SearchStage = (typeof SEARCH_STAGES)[number];
 
-export const CANDIDATE_SOURCES = ['auto', 'manual'] as const;
+/**
+ * Where a candidate row came from. auto: a cascade search. manual: the
+ * Search Discogs dialog. pressing: a hidden bulk-import pick, the chosen
+ * preferred-country version (stored by Plan 06-02, excluded from every
+ * candidate list).
+ */
+export const CANDIDATE_SOURCES = ['auto', 'manual', 'pressing'] as const;
 export type CandidateSource = (typeof CANDIDATE_SOURCES)[number];
 
 /** One entry of a Discogs release's formats list. */
