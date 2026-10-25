@@ -16,6 +16,7 @@ import {
   focusInCard,
 } from '@/components/add-to-collection-button';
 import { AlreadyInCollection } from '@/components/already-in-collection';
+import { BulkStatusLine } from '@/components/bulk-status-line';
 import { CandidateRowContent } from '@/components/candidate-row';
 import { announceSpineAction } from '@/components/import-ui-context';
 import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
@@ -27,6 +28,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSecondsUntil } from '@/components/use-seconds-until';
+import { countryBadgeOf } from '@/lib/bulk-view';
 import { pausedLine } from '@/lib/candidate-format';
 import type { CandidateDto } from '@/lib/discogs-types';
 import { failureReason, UNREACHABLE_REASON } from '@/lib/failure-reason';
@@ -364,6 +366,9 @@ export function ConfirmedMatch({
       <div className="flex items-start gap-4 rounded-lg border p-2">
         <CandidateRowContent candidate={candidate} />
       </div>
+      {countryBadgeOf(spine)?.kind === 'fallback' ? (
+        <BulkStatusLine spine={spine} kinds={['fallback']} />
+      ) : null}
       {decision ? (
         <AlreadyInCollection
           spineId={spine.id}

@@ -4,6 +4,7 @@ import { CircleX, ImageIcon, ScanSearch } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import type { CardLayout } from '@/components/card-layout-toggle';
 import { CompactSpineCard } from '@/components/compact-spine-card';
+import { CountryBadge } from '@/components/country-badge';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
 import { DiscogsMatches } from '@/components/discogs-matches';
 import { ImportStateBadge } from '@/components/import-state-badge';
@@ -129,9 +130,9 @@ export type DiscogsView = {
 };
 
 /**
- * A /spines card: the import or search state badge last in the status slot, and a
- * footer holding the orphan row first (when orphaned, RESEARCH Pitfall 3)
- * and then the Discogs matches section, so every card offers its matches.
+ * A /spines card: the bulk country badge, then the import or search state
+ * badge last in the status slot, and a footer holding the orphan row first
+ * (when orphaned, RESEARCH Pitfall 3) and then the Discogs matches section, so every card offers its matches.
  * `trailing` is appended as the footer's last row (the expanded compact
  * card's Show less, D-11). The one full-card renderer for both layouts.
  */
@@ -150,7 +151,12 @@ export function SpineView({
     <SpineCard
       spine={spine}
       threshold={threshold}
-      statusSlot={<ImportStateBadge spine={spine} />}
+      statusSlot={
+        <>
+          <CountryBadge spine={spine} />
+          <ImportStateBadge spine={spine} />
+        </>
+      }
       footer={
         <div className="flex flex-col gap-4">
           {spine.state === 'orphaned' ? <OrphanFooter spine={spine} /> : null}

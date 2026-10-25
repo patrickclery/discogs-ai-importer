@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
+import { BulkStatusLine } from '@/components/bulk-status-line';
 import { CandidateList } from '@/components/candidate-list';
 import { ConfirmedMatch } from '@/components/confirmed-match';
 import { DiscogsSearchDialog } from '@/components/discogs-search-dialog';
@@ -25,6 +26,7 @@ import { STATUS_REFRESH_EVENT } from '@/components/status-indicator';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useSecondsUntil } from '@/components/use-seconds-until';
+import { bulkStatusLineOf } from '@/lib/bulk-copy';
 import {
   pausedLine,
   QUEUED_LINE,
@@ -102,24 +104,50 @@ export type NoticeKind =
   | 'fields_changed'
   | 'search_failed';
 
-/** The bulk line the Discogs section shows as its notice: failed or skipped. */
+/**
+ * The bulk line the Discogs section shows as its notice (UI-SPEC Detailed
+ * layout): a failed lookup or a skipped duplicate. A fallback sits in the
+ * confirmed panel instead, and a lookup in progress only in the badge.
+ */
 export function bulkNoticeKind(
-  _spine: Pick<SpineDto, 'import' | 'bulk'>,
+  spine: Pick<SpineDto, 'import' | 'bulk'>,
 ): 'failed' | 'skipped' | null {
-  return null;
+  const kind = bulkStatusLineOf(spine)?.kind;
+  return kind === 'failed' || kind === 'skipped' ? kind : null;
 }
 
-/** Which notice line the card shows (UI-SPEC Detailed layout precedence). */
+/**
+ * Which notice line the card shows, at most one: none on an imported card;
+ * else not connected, then the bulk line unless the paused countdown runs,
+ * then Fields changed (no import, showsFieldsChanged, WR-01), the paused
+ * countdown, and a failed search with no import.
+ */
 export function noticeLineKind(
-  _spine: Pick<SpineDto, 'import' | 'bulk' | 'discogs'>,
-  _view: { connected: boolean; pausedSeconds: number },
+  spine: Pick<SpineDto, 'import' | 'bulk' | 'discogs'>,
+  view: { connected: boolean; pausedSeconds: number },
 ): NoticeKind | null {
+  const importPhase = spine.import?.phase ?? null;
+  if (importPhase === 'imported') return null;
+  if (!view.connected) return 'not_connected';
+  const bulk = bulkNoticeKind(spine);
+  if (bulk !== null && view.pausedSeconds <= 0) {
+    return bulk === 'failed' ? 'lookup_failed' : 'skipped';
+  }
+  if (importPhase === null && showsFieldsChanged(spine.discogs)) {
+    return 'fields_changed';
+  }
+  if (view.pausedSeconds > 0) return 'paused';
+  if (importPhase === null && spine.discogs?.state === 'failed') {
+    return 'search_failed';
+  }
   return null;
 }
 
 /**
- * The not-connected, fields-changed, paused or failed line, at most one
- * (UI-SPEC order). Fields changed follows showsFieldsChanged (WR-01).
+ * The notice line, at most one, in noticeLineKind's order (UI-SPEC Notice
+ * line and Detailed layout). A card with an open import keeps not
+ * connected, the bulk lines and the paused countdown (the panel's state
+ * line carries the countdown while the import waits).
  */
 function NoticeLine({
   spine,
@@ -134,62 +162,61 @@ function NoticeLine({
 }) {
   const queued = connected && spine.discogs?.state === 'queued';
   const pausedSeconds = useSecondsUntil(pausedUntil, queued);
-  // UI-SPEC Notice line: an imported card shows none; a card with an open
-  // import keeps only not connected and the paused countdown (the panel's
-  // state line carries the countdown while the import waits).
-  const importPhase = spine.import?.phase ?? null;
-  if (importPhase === 'imported') return null;
-  if (!connected) {
-    return (
-      <Line
-        icon={<Unplug aria-hidden="true" className="mt-px size-4 shrink-0" />}
-      >
-        {needsReconnect
-          ? 'Reconnect Discogs to find matches.'
-          : 'Connect Discogs to find matches.'}{' '}
-        <Link
-          href="/settings"
-          className="rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+  switch (noticeLineKind(spine, { connected, pausedSeconds })) {
+    case 'not_connected':
+      return (
+        <Line
+          icon={<Unplug aria-hidden="true" className="mt-px size-4 shrink-0" />}
         >
-          Open Settings
-        </Link>
-      </Line>
-    );
+          {needsReconnect
+            ? 'Reconnect Discogs to find matches.'
+            : 'Connect Discogs to find matches.'}{' '}
+          <Link
+            href="/settings"
+            className="rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            Open Settings
+          </Link>
+        </Line>
+      );
+    case 'lookup_failed':
+    case 'skipped':
+      return <BulkStatusLine spine={spine} kinds={['failed', 'skipped']} />;
+    case 'fields_changed':
+      return (
+        <Line
+          icon={
+            <PencilLine
+              aria-hidden="true"
+              className="mt-px size-4 shrink-0 text-warning"
+            />
+          }
+        >
+          {FIELDS_CHANGED_LINE}
+        </Line>
+      );
+    case 'paused':
+      return (
+        <Line
+          icon={<Clock aria-hidden="true" className="mt-px size-4 shrink-0" />}
+        >
+          {pausedLine(pausedSeconds)}
+        </Line>
+      );
+    case 'search_failed':
+      return (
+        <Line
+          className="text-destructive"
+          icon={
+            <CircleX aria-hidden="true" className="mt-px size-4 shrink-0" />
+          }
+        >
+          {searchFailureText(spine.discogs?.failure ?? null)}
+        </Line>
+      );
+    default:
+      return null;
   }
-  if (importPhase === null && showsFieldsChanged(spine.discogs)) {
-    return (
-      <Line
-        icon={
-          <PencilLine
-            aria-hidden="true"
-            className="mt-px size-4 shrink-0 text-warning"
-          />
-        }
-      >
-        {FIELDS_CHANGED_LINE}
-      </Line>
-    );
-  }
-  if (pausedSeconds > 0) {
-    return (
-      <Line
-        icon={<Clock aria-hidden="true" className="mt-px size-4 shrink-0" />}
-      >
-        {pausedLine(pausedSeconds)}
-      </Line>
-    );
-  }
-  if (importPhase === null && spine.discogs?.state === 'failed') {
-    return (
-      <Line
-        className="text-destructive"
-        icon={<CircleX aria-hidden="true" className="mt-px size-4 shrink-0" />}
-      >
-        {searchFailureText(spine.discogs.failure)}
-      </Line>
-    );
-  }
-  return null;
 }
 
 /**
