@@ -15,7 +15,10 @@ import { z } from 'zod';
  * was implausible or its pick did not match the top match's title, so no
  * fallback-country request was sent. fallback_country_unusable: the same,
  * but for the fallback-country answer, so both countries were tried
- * (WR-01). retried_earlier: the item reuses the release an earlier attempt
+ * (WR-01). fallback_country_unchecked: the preferred country had no
+ * version, but the fallback-country lookup never answered (it failed, so the
+ * item degraded to its top match), so that country is unknown, not empty
+ * (IN-01). retried_earlier: the item reuses the release an earlier attempt
  * chose.
  */
 export const PRESSING_OUTCOMES = [
@@ -25,6 +28,7 @@ export const PRESSING_OUTCOMES = [
   'fallback_no_master',
   'fallback_unusable_master',
   'fallback_country_unusable',
+  'fallback_country_unchecked',
   'retried_earlier',
 ] as const;
 export type PressingOutcome = (typeof PRESSING_OUTCOMES)[number];

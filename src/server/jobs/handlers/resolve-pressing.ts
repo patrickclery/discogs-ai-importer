@@ -54,11 +54,13 @@ import { type JobContext, JobDeferredError } from '../types';
 // master (D-04); another 4xx fails it as rejected; a 5xx or anything else
 // is recorded on the still-queued item and rethrown for the worker's retry.
 // The fallback request is optional (WR-01): the preferred answer is already
-// usable, so a 4xx or a wrong-shaped body there counts as no fallback
-// version, and so does a 5xx or anything else on the job's last attempt.
-// The item then imports its top match as fallback_no_version, as it did
-// before the fallback tier existed. Auth, 429 and the paused gate behave
-// the same for both requests.
+// usable, so a 4xx or a wrong-shaped body there, or a 5xx or anything else
+// on the job's last attempt, imports the top match without failing the
+// item. That answer is unknown, not empty, so the outcome is
+// fallback_country_unchecked and the card never says the fallback country
+// was checked (IN-01). A 404 there is an answer: no version from that
+// country (fallback_no_version). Auth, 429 and the paused gate behave the
+// same for both requests.
 // A run that stops being current writes nothing (WR-04).
 
 export const ResolvePressingPayload = z.object({
@@ -242,15 +244,25 @@ export async function runResolvePressing(
 
   type Lookup =
     | { failed: true }
-    | { failed: false; versions: VersionLite[] | 'unusable' | undefined };
+    | {
+        failed: false;
+        versions: VersionLite[] | 'unusable' | undefined;
+        /** An optional request that brought no answer (IN-01). */
+        unchecked?: true;
+      };
   /**
    * One country's versions answer (D-01 shape). Both lookups go through
    * here, so they share the isCurrent check, the paused-gate deferral and
    * the error mapping. failed: the item already failed; the caller returns.
    * optional (the fallback request, WR-01): a deterministic error, or a
-   * retryable one on the last attempt, answers no versions instead of
-   * failing the item.
+   * retryable one on the last attempt, answers unchecked instead of failing
+   * the item.
    */
+  const UNCHECKED: Lookup = {
+    failed: false,
+    versions: undefined,
+    unchecked: true,
+  };
   const lookupVersions = async (
     masterId: number,
     country: string,
@@ -299,13 +311,13 @@ export async function runResolvePressing(
           // A refused request or a versions body of the wrong shape: the
           // same answer comes back on every attempt (WR-05), so no retry.
           if (!ctx.isCurrent()) throw err;
-          if (optional) return { failed: false, versions: undefined };
+          if (optional) return UNCHECKED;
           fail('rejected', message(err));
           return { failed: true };
         case 'DiscogsUnavailableError':
           if (optional && lastAttempt) {
             if (!ctx.isCurrent()) throw err;
-            return { failed: false, versions: undefined };
+            return UNCHECKED;
           }
           if (ctx.isCurrent()) {
             recordBulkItemError(db, itemId, {
@@ -317,7 +329,7 @@ export async function runResolvePressing(
         default:
           if (optional && lastAttempt) {
             if (!ctx.isCurrent()) throw err;
-            return { failed: false, versions: undefined };
+            return UNCHECKED;
           }
           if (ctx.isCurrent()) {
             recordBulkItemError(db, itemId, {
@@ -331,7 +343,7 @@ export async function runResolvePressing(
   };
 
   let versions: VersionLite[] | 'unusable' | undefined;
-  let fallbackVersions: VersionLite[] | 'unusable' | undefined;
+  let fallbackVersions: VersionLite[] | 'unusable' | 'failed' | undefined;
   const masterId = top.masterId;
   if (needsLookup(top, run.country) && masterId !== null) {
     // Only a lookup needs the sign-in: the preferred short-circuit and the
@@ -358,7 +370,9 @@ export async function runResolvePressing(
         optional: true,
       });
       if (second.failed) return;
-      fallbackVersions = second.versions;
+      // A 404 is Discogs answering "none from that country"; an unchecked
+      // answer is not (IN-01).
+      fallbackVersions = second.unchecked ? 'failed' : (second.versions ?? []);
       if (!ctx.isCurrent()) return;
     }
   }

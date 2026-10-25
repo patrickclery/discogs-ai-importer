@@ -150,6 +150,9 @@ function recordedCandidate(
  * candidate (an exact version ranks above a combined top match, D-19); else
  * a top match whose combined country names it is kept; else the top match
  * is kept with fallback_no_version. No fallback country: straight to that.
+ * The demo's canned fallback lookup always answers and is always usable, so
+ * it never yields fallback_country_unusable or fallback_country_unchecked
+ * (WR-01, IN-01); fallback_no_version here always means an examined answer.
  */
 function fallbackTier(
   state: DemoState,

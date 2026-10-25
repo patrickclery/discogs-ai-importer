@@ -478,11 +478,26 @@ describe('choosePressing fallback tier rules (G-06-side-1)', () => {
     expect(needsFallbackLookup({ ...base, versions: 'unusable' })).toBe(false);
   });
 
-  it('no fallback answer, or none from the fallback country: fallback_no_version', () => {
+  it('IN-01: no fallback answer (never sent, or failed) is fallback_country_unchecked, never fallback_no_version', () => {
     expect(choosePressing(base)).toEqual({
       use: 'top',
-      outcome: 'fallback_no_version',
+      outcome: 'fallback_country_unchecked',
     });
+    expect(choosePressing({ ...base, fallbackVersions: 'failed' })).toEqual({
+      use: 'top',
+      outcome: 'fallback_country_unchecked',
+    });
+    expect(
+      choosePressing({
+        ...base,
+        top: { ...TOP, country: 'US & Europe' },
+        fallbackVersions: 'failed',
+      }),
+    ).toEqual({ use: 'top', outcome: 'fallback_country' });
+  });
+
+  it('an examined answer with none from the fallback country: fallback_no_version', () => {
+    expect(pick([])).toEqual({ use: 'top', outcome: 'fallback_no_version' });
     expect(pick([version({ id: 4, country: 'UK' })])).toEqual({
       use: 'top',
       outcome: 'fallback_no_version',

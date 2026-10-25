@@ -267,8 +267,12 @@ type PressingInput = {
   fallback?: string | null;
   /** The preferred-country versions answer (D-01). */
   versions?: VersionLite[] | 'unusable';
-  /** A second versions answer, filtered to the fallback country. */
-  fallbackVersions?: VersionLite[] | 'unusable';
+  /**
+   * A second versions answer, filtered to the fallback country. failed: the
+   * request was sent but brought no answer (IN-01). undefined: it was never
+   * sent. Neither one counts as that country having no version.
+   */
+  fallbackVersions?: VersionLite[] | 'unusable' | 'failed';
 };
 
 /**
@@ -291,7 +295,10 @@ function chooseFallbackTier(input: PressingInput): PressingChoice {
     outcome: topMatch === 'combined' ? 'fallback_country' : outcome,
   });
 
-  if (fallbackVersions === undefined) return keep('fallback_no_version');
+  // No answer to examine: the fallback country is unknown, not empty.
+  if (fallbackVersions === undefined || fallbackVersions === 'failed') {
+    return keep('fallback_country_unchecked');
+  }
   if (fallbackVersions === 'unusable') {
     return keep('fallback_country_unusable');
   }

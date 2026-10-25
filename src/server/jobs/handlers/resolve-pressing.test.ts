@@ -1168,7 +1168,7 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     });
   });
 
-  it('WR-01: another 4xx on the second request imports the top match with fallback_no_version', async () => {
+  it('WR-01: another 4xx on the second request imports the top match as fallback_country_unchecked (IN-01)', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(
       byCountry({ status: 422, body: '{"message":"no"}' }),
@@ -1178,13 +1178,13 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     expect(importedReleases(spineId)).toEqual([5001]);
     expect(item(r.itemId)).toMatchObject({
       status: 'resolved',
-      outcome: 'fallback_no_version',
+      outcome: 'fallback_country_unchecked',
       error_kind: null,
       error: null,
     });
   });
 
-  it('WR-01: a wrong-shaped second body imports the top match with fallback_no_version', async () => {
+  it('WR-01: a wrong-shaped second body imports the top match as fallback_country_unchecked (IN-01)', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(byCountry({ status: 200, body: { nope: 1 } }));
     expect(countries(r.calls)).toEqual(['Canada', 'US']);
@@ -1192,11 +1192,11 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     expect(importedReleases(spineId)).toEqual([5001]);
     expect(item(r.itemId)).toMatchObject({
       status: 'resolved',
-      outcome: 'fallback_no_version',
+      outcome: 'fallback_country_unchecked',
     });
   });
 
-  it('WR-01: a 5xx on the second request on the last attempt imports the top match', async () => {
+  it('WR-01: a 5xx on the second request on the last attempt imports the top match as fallback_country_unchecked (IN-01)', async () => {
     const spineId = await fallbackSpine();
     const r = await attempt(byCountry({ status: 502, body: '' }), {
       lastAttempt: true,
@@ -1206,7 +1206,7 @@ describe('resolve_pressing fallback lookup: when it is sent and how it fails', (
     expect(importedReleases(spineId)).toEqual([5001]);
     expect(item(r.itemId)).toMatchObject({
       status: 'resolved',
-      outcome: 'fallback_no_version',
+      outcome: 'fallback_country_unchecked',
       error_kind: null,
       error: null,
     });

@@ -391,6 +391,40 @@ describe('fallbackLine', () => {
     ).toBe('No Canadian pressing listed for this release, used UK');
   });
 
+  it('IN-01: an unchecked fallback country is named as not checked, never as having no pressing', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_country_unchecked',
+          fallbackCountry: 'US',
+          country: 'Hong Kong',
+        }),
+      ),
+    ).toBe(
+      "No Canadian pressing, couldn't check for US pressings, used Hong Kong",
+    );
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_country_unchecked',
+          fallbackCountry: 'Hong Kong',
+          country: 'Japan',
+        }),
+      ),
+    ).toBe(
+      "No Canadian pressing, couldn't check for pressings from Hong Kong, used Japan",
+    );
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_country_unchecked',
+          fallbackCountry: null,
+          country: 'Japan',
+        }),
+      ),
+    ).toBe('No Canadian pressing, used Japan');
+  });
+
   it('the no-master, retry and no-country lines ignore the fallback country', () => {
     expect(
       fallbackLine(
