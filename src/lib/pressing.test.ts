@@ -2,10 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseVersions } from '@/server/discogs/versions';
+import { PRESSING_OUTCOMES } from './bulk-types';
 import {
   canonicalCountry,
   choosePressing,
   countryMatch,
+  distinctFallback,
   needsLookup,
   pressingPhrase,
   releaseTitleOf,
@@ -289,5 +291,55 @@ describe('choosePressing', () => {
         ],
       }),
     ).toEqual({ use: 'top', outcome: 'fallback_unusable_master' });
+  });
+});
+
+describe('distinctFallback (G-06-side-1)', () => {
+  it.each([
+    ['Canada', 'US', 'US'],
+    ['Canada', '  us ', 'US'],
+    ['Canada', 'canada', null],
+    ['US', 'USA', null],
+    ['Canada', '   ', null],
+    ['Canada', null, null],
+    ['Canada', undefined, null],
+  ] as const)('distinctFallback(%j, %j) = %j', (preferred, fallback, want) => {
+    expect(distinctFallback(preferred, fallback)).toBe(want);
+  });
+});
+
+describe('choosePressing fallback tier (G-06-side-1)', () => {
+  const HK: TopMatchLite = { ...TOP, country: 'Hong Kong' };
+
+  it('PRESSING_OUTCOMES includes fallback_country', () => {
+    expect(PRESSING_OUTCOMES).toContain('fallback_country');
+  });
+
+  it('tracer: a Hong Kong top with no Canadian version takes the US version', () => {
+    const us = version({ id: 31, country: 'US' });
+    expect(
+      choosePressing({
+        top: HK,
+        preferred: 'Canada',
+        fallback: 'US',
+        versions: [],
+        fallbackVersions: [us],
+      }),
+    ).toEqual({ use: 'version', version: us, outcome: 'fallback_country' });
+  });
+
+  it('without a fallback the answer is unchanged (fallback_no_version)', () => {
+    const us = version({ id: 31, country: 'US' });
+    for (const fallback of [undefined, null]) {
+      expect(
+        choosePressing({
+          top: HK,
+          preferred: 'Canada',
+          fallback,
+          versions: [],
+          fallbackVersions: [us],
+        }),
+      ).toEqual({ use: 'top', outcome: 'fallback_no_version' });
+    }
   });
 });
