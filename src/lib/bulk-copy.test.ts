@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BulkItemDto } from '@/lib/bulk-types';
+import { type BulkItemDto, ELIGIBILITY_REASONS } from '@/lib/bulk-types';
 import type { CandidateDto, SpineDiscogsDto } from '@/lib/discogs-types';
 import type { ImportDto } from '@/lib/import-types';
 import {
@@ -7,9 +7,13 @@ import {
   countryBadgeText,
   dialogBody,
   dialogTitle,
+  ELIGIBILITY_REASON_TEXT,
+  eligibilityReasonText,
   fallbackLine,
   findingLine,
   importButtonLabel,
+  importDisabledReason,
+  lastResultLine,
   lookupFailureLine,
   matchDetails,
   matchSlotOf,
@@ -18,6 +22,7 @@ import {
   selectedCountText,
   skippedLine,
   startErrorText,
+  startSkipsToast,
 } from './bulk-copy';
 
 // The compact card's match slot (D-10, UI-SPEC "Match slot labels" and
@@ -502,5 +507,108 @@ describe('bulk bar copy', () => {
     expect(selectedCountText(3)).toBe('3 selected');
     expect(importButtonLabel(3)).toBe('Import 3 selected');
     expect(selectAllLabel(12)).toBe('Select all shown (12)');
+  });
+});
+
+// Why a card can't be picked, why Import is disabled, and the last result
+// (D-06, D-15, D-20, UI-SPEC Copywriting Contract).
+
+describe('eligibilityReasonText', () => {
+  it('reads each ineligible reason', () => {
+    expect(eligibilityReasonText('no_match')).toBe(
+      'No match to import yet. Search Discogs on this card first.',
+    );
+    expect(eligibilityReasonText('searching')).toBe(
+      'Still looking it up on Discogs.',
+    );
+    expect(eligibilityReasonText('imported')).toBe(
+      'Already in your collection.',
+    );
+    expect(eligibilityReasonText('import_open')).toBe('Already being added.');
+    expect(eligibilityReasonText('finding')).toBe('Already being added.');
+    expect(eligibilityReasonText('import_held')).toBe(
+      'Waiting for your choice on this card.',
+    );
+    expect(eligibilityReasonText('not_on_discogs')).toBe(
+      'Marked not on Discogs.',
+    );
+    expect(eligibilityReasonText('orphaned')).toBe(
+      'No longer detected. Re-attach it first.',
+    );
+    expect(eligibilityReasonText('skipped_duplicate')).toBe(
+      'Already imported from another spine. Open the card to add another copy.',
+    );
+  });
+
+  it('has text for every reason and none for a failed import (D-20)', () => {
+    expect(Object.keys(ELIGIBILITY_REASON_TEXT).sort()).toEqual(
+      [...ELIGIBILITY_REASONS].sort(),
+    );
+    expect(Object.values(ELIGIBILITY_REASON_TEXT)).not.toContain(
+      'Import failed. Use Retry import on this card.',
+    );
+    expect(ELIGIBILITY_REASONS as readonly string[]).not.toContain('failed');
+    expect(ELIGIBILITY_REASONS as readonly string[]).not.toContain(
+      'import_failed',
+    );
+  });
+});
+
+describe('importDisabledReason', () => {
+  const ok = {
+    selected: 3,
+    connected: true,
+    needsReconnect: false,
+    running: false,
+  };
+
+  it('is null when Import can open the dialog', () => {
+    expect(importDisabledReason(ok)).toBeNull();
+  });
+
+  it('asks for a selection first', () => {
+    expect(importDisabledReason({ ...ok, selected: 0 })).toBe(
+      'Select spines to import first',
+    );
+  });
+
+  it('asks to connect or reconnect Discogs', () => {
+    expect(importDisabledReason({ ...ok, connected: false })).toBe(
+      'Connect Discogs in Settings first',
+    );
+    expect(
+      importDisabledReason({ ...ok, connected: false, needsReconnect: true }),
+    ).toBe('Reconnect Discogs in Settings first');
+  });
+
+  it('waits for the current bulk import', () => {
+    expect(importDisabledReason({ ...ok, running: true })).toBe(
+      'Wait for the current bulk import to finish',
+    );
+  });
+});
+
+describe('lastResultLine', () => {
+  it('reads added and a single fallback, leaving out zero failed', () => {
+    expect(lastResultLine({ added: 12, fallbacks: 1, failed: 0 })).toBe(
+      'Last bulk import: 12 added · 1 fallback',
+    );
+  });
+
+  it('always shows added and pluralizes', () => {
+    expect(lastResultLine({ added: 0, fallbacks: 0, failed: 2 })).toBe(
+      'Last bulk import: 0 added · 2 failed',
+    );
+    expect(lastResultLine({ added: 5, fallbacks: 2, failed: 1 })).toBe(
+      'Last bulk import: 5 added · 2 fallbacks · 1 failed',
+    );
+  });
+});
+
+describe('startSkipsToast', () => {
+  it('names what started and what changed since it was picked', () => {
+    expect(startSkipsToast(5, 2)).toBe(
+      'Started 5. 2 skipped because they changed since you picked them.',
+    );
   });
 });

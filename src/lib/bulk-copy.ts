@@ -2,7 +2,7 @@
 // Contract). Client-safe and pure. Discogs strings are joined as plain
 // text, never re-cased. The bulk-state lines (D-04, D-09, D-15, BULK-11)
 // follow the match slot.
-import type { BulkItemDto, BulkRunDto } from './bulk-types';
+import type { BulkItemDto, BulkRunDto, EligibilityReason } from './bulk-types';
 import { type CountryBadge, countryBadgeOf } from './bulk-view';
 import { COUNTRY_DEMONYMS, canonicalCountry, pressingPhrase } from './pressing';
 import type { SpineDto } from './scan-types';
@@ -306,4 +306,31 @@ export function importButtonLabel(s: number) {
 
 export function selectAllLabel(e: number) {
   return `Select all shown (${e})`;
+}
+
+// Selection reasons, disabled Import tooltips and the last-result line.
+
+export const ELIGIBILITY_REASON_TEXT = {} as Record<EligibilityReason, string>;
+
+export function eligibilityReasonText(_reason: EligibilityReason): string {
+  return '';
+}
+
+export function importDisabledReason(_x: {
+  selected: number;
+  connected: boolean;
+  needsReconnect: boolean;
+  running: boolean;
+}): string | null {
+  return null;
+}
+
+export function lastResultLine(
+  _run: Pick<BulkRunDto, 'added' | 'fallbacks' | 'failed'>,
+): string {
+  return '';
+}
+
+export function startSkipsToast(_started: number, _skipped: number): string {
+  return '';
 }
