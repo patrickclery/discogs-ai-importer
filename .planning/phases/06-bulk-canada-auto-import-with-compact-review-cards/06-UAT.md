@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
@@ -83,5 +83,9 @@ blocked: 0
   reason: "User reported: at phone width it is missing the tabs for Not on Discogs and Failed because they don't word wrap ('Not found' is cut off)"
   severity: minor
   test: 9
-  artifacts: []
-  missing: []
+  root_cause: "src/components/review-status-filter.tsx wraps the status tab row in an overflow-x-auto scroller, so at phone width the last tabs (Not found, Not on Discogs, Failed) sit off-screen with no visible cue instead of wrapping"
+  artifacts:
+    - path: "src/components/review-status-filter.tsx"
+      issue: "horizontal scroller (overflow-x-auto) instead of a wrapping row"
+  missing:
+    - "Let the tab row wrap onto more lines (or otherwise keep every tab visible) at phone width"
