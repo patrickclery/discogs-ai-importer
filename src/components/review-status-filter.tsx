@@ -42,9 +42,10 @@ export function Count({ n, alert = false }: { n: number; alert?: boolean }) {
 /**
  * Row 1 of the /spines filter bar (UI-SPEC /spines filter bar, REV-03): All
  * and the six review statuses, each with its count. Never empty: clicking
- * the pressed item keeps it pressed. Items with 0 stay enabled. The joined
- * group never wraps; below 1152px it scrolls sideways inside a padded
- * wrapper that keeps focus rings visible.
+ * the pressed item keeps it pressed. Items with 0 stay enabled. On narrow
+ * screens the tabs wrap onto more lines, so every tab stays visible
+ * (G-06-9). They are spaced apart, each with its own border, because a
+ * joined row cannot wrap cleanly.
  */
 export function ReviewStatusFilter({
   counts,
@@ -54,34 +55,33 @@ export function ReviewStatusFilter({
   const [status, setStatus] = useStatusFilter();
 
   return (
-    <div className="-mx-1 overflow-x-auto px-1 pb-1">
-      <ToggleGroup
-        type="single"
-        variant="outline"
-        aria-label="Filter by status"
-        className="w-max"
-        value={status ?? ALL_STATUSES}
-        onValueChange={(v) => {
-          if (v === ALL_STATUSES) void setStatus(null);
-          else {
-            const next = parseStatusParam(v);
-            if (next) void setStatus(next);
-          }
-        }}
-      >
-        <ToggleGroupItem value={ALL_STATUSES} data-status-filter-item="">
-          All <Count n={counts.all} />
+    <ToggleGroup
+      type="single"
+      variant="outline"
+      spacing={1}
+      aria-label="Filter by status"
+      className="flex-wrap"
+      value={status ?? ALL_STATUSES}
+      onValueChange={(v) => {
+        if (v === ALL_STATUSES) void setStatus(null);
+        else {
+          const next = parseStatusParam(v);
+          if (next) void setStatus(next);
+        }
+      }}
+    >
+      <ToggleGroupItem value={ALL_STATUSES} data-status-filter-item="">
+        All <Count n={counts.all} />
+      </ToggleGroupItem>
+      {REVIEW_STATUSES.map((s) => (
+        <ToggleGroupItem key={s} value={s} data-status-filter-item="">
+          {REVIEW_STATUS_LABELS[s]}{' '}
+          <Count
+            n={counts.byStatus[s]}
+            alert={s === 'failed' && counts.byStatus[s] > 0}
+          />
         </ToggleGroupItem>
-        {REVIEW_STATUSES.map((s) => (
-          <ToggleGroupItem key={s} value={s} data-status-filter-item="">
-            {REVIEW_STATUS_LABELS[s]}{' '}
-            <Count
-              n={counts.byStatus[s]}
-              alert={s === 'failed' && counts.byStatus[s] > 0}
-            />
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-    </div>
+      ))}
+    </ToggleGroup>
   );
 }
