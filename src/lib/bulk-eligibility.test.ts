@@ -73,6 +73,7 @@ const item = (over: Partial<BulkItemDto> = {}): BulkItemDto => ({
   runId: 'run-1',
   phase: 'resolved',
   preferredCountry: 'Canada',
+  fallbackCountry: null,
   outcome: 'preferred',
   releaseId: 2000001,
   country: 'Canada',

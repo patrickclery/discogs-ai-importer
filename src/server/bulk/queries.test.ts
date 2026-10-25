@@ -28,7 +28,7 @@ function db() {
 }
 
 /** A scanned shelf with two spines that have a top match, run started. */
-async function startedShelf() {
+async function startedShelf(fallbackCountry?: string | null) {
   const shelf = await bulkShelf();
   const [s0, s1] = shelf.spineIds;
   const a = seedTopCandidate(s0);
@@ -40,6 +40,7 @@ async function startedShelf() {
     ],
     country: 'Canada',
     folderId: 1,
+    ...(fallbackCountry === undefined ? {} : { fallbackCountry }),
   });
   if (res.status !== 'ok') throw new Error('run did not start');
   return { ...shelf, s0, s1, runId: res.runId };
@@ -174,6 +175,16 @@ describe('getSpines spine.bulk', () => {
         skip: null,
       });
     }
+  });
+
+  it("an item carries its run's fallback country (G-06-side-1)", async () => {
+    const { s0 } = await startedShelf('US');
+    expect(spineOf(s0).bulk?.item?.fallbackCountry).toBe('US');
+  });
+
+  it('an item from a run with no fallback country carries null', async () => {
+    const { s0 } = await startedShelf();
+    expect(spineOf(s0).bulk?.item?.fallbackCountry).toBeNull();
   });
 
   it('a spine with a top match and no run is selectable with no item', async () => {

@@ -222,6 +222,7 @@ function item(over: Partial<BulkItemDto> = {}): BulkItemDto {
     runId: 'run1',
     phase: 'resolved',
     preferredCountry: 'Canada',
+    fallbackCountry: null,
     outcome: 'preferred',
     releaseId: 777,
     country: 'Canada',
@@ -295,6 +296,106 @@ describe('fallbackLine', () => {
       ),
     ).toBe('No pressing from Hong Kong, used US');
   });
+
+  // G-06-side-1: the line names the countries a fallback run tried.
+  it('a fallback_country import names the preferred country it missed', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_country',
+          fallbackCountry: 'US',
+          country: 'US',
+        }),
+      ),
+    ).toBe('No Canadian pressing, used US');
+  });
+
+  it('no version in either country names both, with demonyms', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_no_version',
+          fallbackCountry: 'US',
+          country: 'Hong Kong',
+        }),
+      ),
+    ).toBe('No Canadian or US pressing, used Hong Kong');
+  });
+
+  it('a fallback country without a demonym spells each phrase in full', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_no_version',
+          fallbackCountry: 'Hong Kong',
+          country: 'Japan',
+        }),
+      ),
+    ).toBe('No Canadian pressing or pressing from Hong Kong, used Japan');
+  });
+
+  it('no version and no fallback country keeps the one-country line', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_no_version',
+          fallbackCountry: null,
+          country: 'Hong Kong',
+        }),
+      ),
+    ).toBe('No Canadian pressing, used Hong Kong');
+  });
+
+  it('a fallback equal to the preferred country is no second tier', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_no_version',
+          fallbackCountry: 'canada',
+          country: 'US',
+        }),
+      ),
+    ).toBe('No Canadian pressing, used US');
+  });
+
+  it('the master, retry and no-country lines ignore the fallback country', () => {
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_no_master',
+          fallbackCountry: 'US',
+          country: 'UK',
+        }),
+      ),
+    ).toBe('No Canadian pressing listed for this release, used UK');
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_unusable_master',
+          fallbackCountry: 'US',
+          country: 'UK',
+        }),
+      ),
+    ).toBe('No Canadian pressing listed for this release, used UK');
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'retried_earlier',
+          fallbackCountry: 'US',
+          country: 'UK',
+        }),
+      ),
+    ).toBe('Retried the earlier import of this spine, used UK');
+    expect(
+      fallbackLine(
+        item({
+          outcome: 'fallback_country',
+          fallbackCountry: 'US',
+          country: null,
+        }),
+      ),
+    ).toBe('No Canadian pressing, used the top match (no country listed)');
+  });
 });
 
 describe('skippedLine', () => {
@@ -365,9 +466,15 @@ describe('lookupFailureLine', () => {
 
 describe('findingLine', () => {
   it('names the preferred pressing', () => {
-    expect(findingLine({ preferredCountry: 'Canada' })).toBe(
-      'Looking for the Canadian pressing…',
-    );
+    expect(
+      findingLine({ preferredCountry: 'Canada', fallbackCountry: null }),
+    ).toBe('Looking for the Canadian pressing…');
+  });
+
+  it('names both pressings when the run has a fallback (G-06-side-1)', () => {
+    expect(
+      findingLine({ preferredCountry: 'Canada', fallbackCountry: 'US' }),
+    ).toBe('Looking for the Canadian or US pressing…');
   });
 });
 

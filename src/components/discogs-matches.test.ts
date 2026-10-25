@@ -435,6 +435,7 @@ function bulkItem(over: Partial<BulkItemDto> = {}): BulkItemDto {
     runId: 'run1',
     phase: 'resolved',
     preferredCountry: 'Canada',
+    fallbackCountry: null,
     outcome: 'preferred',
     releaseId: 777,
     country: 'Canada',

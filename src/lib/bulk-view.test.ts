@@ -32,6 +32,12 @@ function it_(over: Partial<RunItemSummary>): RunItemSummary {
 }
 
 describe('summarizeRun', () => {
+  it('a fallback-country import from the US counts in fallbacks (G-06-side-1)', () => {
+    expect(summarizeRun(RUN, [it_({ country: 'US' }), it_({})]).fallbacks).toBe(
+      1,
+    );
+  });
+
   it('a finding item is not done and keeps the run running', () => {
     const r = summarizeRun(RUN, [
       it_({ phase: 'finding', country: null, importPhase: null }),
@@ -136,6 +142,7 @@ function item(over: Partial<BulkItemDto> = {}): BulkItemDto {
     runId: 'run-1',
     phase: 'resolved',
     preferredCountry: 'Canada',
+    fallbackCountry: null,
     outcome: 'preferred',
     releaseId: 6001,
     country: 'Canada',
@@ -198,6 +205,19 @@ describe('countryBadgeOf', () => {
     expect(countryBadgeOf(spine(item({ importId: null }), 'x'))).toBeNull();
     expect(countryBadgeOf(spine(null))).toBeNull();
     expect(countryBadgeOf({ import: null, bulk: null })).toBeNull();
+  });
+
+  it('a fallback_country import from the US badges Fallback: US (G-06-side-1)', () => {
+    const us = item({
+      outcome: 'fallback_country',
+      fallbackCountry: 'US',
+      country: 'US',
+    });
+    expect(countryBadgeOf(spine(us))).toEqual({
+      kind: 'fallback',
+      country: 'US',
+    });
+    expect(isFallbackSpine(spine(us))).toBe(true);
   });
 
   it('isFallbackSpine is true only for a fallback badge', () => {

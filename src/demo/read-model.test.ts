@@ -442,6 +442,7 @@ describe('bulk fields (D-15, D-17, BULK-12)', () => {
       expect(s?.reviewStatus, key).toBe('matched');
       expect(s?.bulk?.item).toMatchObject({
         preferredCountry: 'Canada',
+        fallbackCountry: 'US',
         outcome: null,
         releaseId: null,
         country: null,
@@ -452,6 +453,22 @@ describe('bulk fields (D-15, D-17, BULK-12)', () => {
       });
     }
     expect(spinesAt(getState(), at).discogsActive).toBe(true);
+  });
+
+  it("each item carries its run's fallback country, not the live setting (G-06-side-1)", () => {
+    run();
+    getState().account.fallbackCountry = 'UK';
+    expect(spineAt(RUN_KEYS[0], T0 + 100)?.bulk?.item?.fallbackCountry).toBe(
+      'US',
+    );
+  });
+
+  it('a run started with no distinct fallback country gives null', () => {
+    getState().account.fallbackCountry = 'Canada';
+    run();
+    expect(
+      spineAt(RUN_KEYS[0], T0 + 100)?.bulk?.item?.fallbackCountry,
+    ).toBeNull();
   });
 
   it('the status response counts finding items as Discogs jobs and imports left', () => {
