@@ -1,67 +1,73 @@
 ---
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
-fixed_at: 2026-10-25T09:10:00Z
+fixed_at: 2026-10-25T23:58:00Z
 review_path: .planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-REVIEW.md
-iteration: 1
-findings_in_scope: 6
-fixed: 6
+iteration: 2
+findings_in_scope: 2
+fixed: 2
 skipped: 0
 status: all_fixed
 ---
 
 # Phase 6: Code Review Fix Report
 
-**Fixed at:** 2026-10-25T09:10:00Z
-**Source review:** .planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-REVIEW.md
-**Iteration:** 1
+**Fixed at:** 2026-10-25T23:58:00Z
+**Source review:** .planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-REVIEW.md (iteration 4, re-review of 7537da1, 283679d, f71f40f)
+**Iteration:** 2
 
 **Summary:**
-- Findings in scope: 6 (Critical + Warning; Info IN-01..IN-04 out of scope)
-- Fixed: 6
+- Findings in scope: 2
+- Fixed: 2
 - Skipped: 0
 
-**Verification:** Ran in the main checkout (`workflow.use_worktrees: false`, no worktree created). Final gates: `npx tsc --noEmit` clean; `npx vitest run` 120 files / 2184 tests passed. Biome check clean on every touched file.
+Both fixes tell the cases apart with the stored outcome, not with guesses in the copy. A card names the fallback country as tried only when a fallback-country lookup returned an answer that was examined.
+
+| How the item ended | Outcome | Line |
+|--------------------|---------|------|
+| Preferred answer implausible, or its pick fails the title check (no fallback request sent) | `fallback_unusable_master` | `No Canadian pressing listed for this release, used X` |
+| Fallback answer implausible, or its pick fails the title check (both tried) | `fallback_country_unusable` (new) | `No Canadian or US pressing listed for this release, used X` |
+| Fallback answer examined, no version from that country (a 404 counts as an answer) | `fallback_no_version` | `No Canadian or US pressing, used X` |
+| Fallback lookup errored, or was never sent | `fallback_country_unchecked` (new) | `No Canadian pressing, couldn't check for US pressings, used X` |
 
 ## Fixed Issues
 
-### WR-01: The run's snapshotted folder is never used
+### WR-01: The "unusable master" line names the fallback country even when that country was never looked up
 
-**Files modified:** `src/server/imports/store.ts`, `src/server/jobs/handlers/resolve-pressing.ts`, `src/server/jobs/handlers/resolve-pressing.test.ts`
-**Commit:** 548019f
-**Applied fix:** `createImport` takes an optional `folderId` (defaults to `getCollectionFolderId()`); `resolve_pressing` passes `run.folder_id`. Test: a run started with folder 7 writes its import to folder 7 while Settings still says 1.
+**Files modified:** `src/lib/bulk-types.ts`, `src/lib/pressing.ts`, `src/lib/bulk-copy.ts`, `src/lib/pressing.test.ts`, `src/lib/bulk-copy.test.ts`, `src/server/jobs/handlers/resolve-pressing.test.ts`, `06-UI-SPEC.md`
+**Commit:** 9cde7b6
+**Status:** fixed: requires human verification (outcome logic change)
+**Applied fix:**
+- Added the outcome `fallback_country_unusable` to `PRESSING_OUTCOMES`. The schema's `text` enum reads that constant. SQLite has no CHECK constraint on the column, so no migration was needed.
+- `chooseFallbackTier` returns the new outcome for an `'unusable'` fallback answer and for a fallback-tier title-guard miss.
+- `fallbackLine` reverts `fallback_unusable_master` to the one-country phrase. Only `fallback_country_unusable` uses the pair phrase.
+- UI-SPEC: both fallback-line rows are amended.
 
-### WR-02: A queued item whose job ended `succeeded` blocks every future bulk run
+**Tests:** Added a pure test that a preferred-tier guard miss or unusable answer stays `fallback_unusable_master` and that `needsFallbackLookup` is false for both. Added a job test that a Canadian title-guard miss sends exactly one request and stores `fallback_unusable_master`. The copy tests cover both outcomes. The two existing fallback-tier job tests now expect `fallback_country_unusable`.
 
-**Files modified:** `src/server/bulk/recovery.ts`, `src/server/bulk/store.ts`, `src/server/imports/store.ts`, plus tests in `src/server/bulk/recovery.test.ts`, `src/server/bulk/store.test.ts`, `src/server/imports/store.test.ts`
-**Commit:** 147c568
-**Applied fix:** `markInterruptedLookups` now also fails queued items whose job `succeeded`. `retryBulkItem` reuses a running holder only while the item is still queued; for an item that already left queued it returns `null`, and `retrySpine` answers `busy`. Status: fixed: requires human verification (state-machine logic).
+### IN-01: A failed fallback request reads as "no pressing from either country"
 
-### WR-03: The server's "run in progress" rule disagrees with the UI's
+**Files modified:** `src/lib/bulk-types.ts`, `src/lib/pressing.ts`, `src/lib/bulk-copy.ts`, `src/lib/pressing.test.ts`, `src/lib/bulk-copy.test.ts`, `src/server/jobs/handlers/resolve-pressing.ts`, `src/server/jobs/handlers/resolve-pressing.test.ts`, `src/demo/ops/bulk.ts`, `06-UI-SPEC.md`
+**Commit:** 5bb5a4a
+**Status:** fixed: requires human verification (error-handling and outcome logic change)
+**Applied fix:**
+- Added the outcome `fallback_country_unchecked`.
+- `PressingInput.fallbackVersions` now also accepts `'failed'`. In `chooseFallbackTier`, both `undefined` (the request was never sent) and `'failed'` give `fallback_country_unchecked`. A top match whose combined country names the fallback country still gives `fallback_country`. Before this fix, `undefined` silently meant `fallback_no_version`.
+- Job: the optional (fallback) request's degrade branches now return `unchecked: true`. These are a non-404 4xx, a wrong-shaped body, and a last-attempt 5xx or unknown error. The call site maps that to `'failed'`. It maps a fallback 404 to `[]`, an examined empty answer. That keeps a 404 as `fallback_no_version`, as before. The header comment was updated to match.
+- Copy: `No {Canadian} pressing, couldn't check for {US pressings}, used X`. A country without a demonym reads `pressings from {country}`. There is a one-country fallback if the run has no distinct fallback country. The line is true both when the lookup errored and when it was never sent.
+- Demo twin: its canned fallback lookup always answers and is always usable, so it never produces either new outcome. Its `fallback_no_version` always means an examined answer. A doc comment in `src/demo/ops/bulk.ts` now says so, and the demo renders through the same `fallbackLine`.
+- UI-SPEC: added the unchecked line to the main fallback-line row and to the fallback-country copy table, and noted that "no version in either country" applies only to an answered lookup.
 
-**Files modified:** `src/lib/bulk-types.ts`, `src/lib/bulk-view.ts`, `src/server/bulk/queries.ts`, `src/app/api/spines/bulk-import/route.ts`, `src/lib/bulk-copy.ts`, `src/components/bulk-import-bar.tsx`, `src/demo/read-model.ts`, `src/demo/ops/bulk.ts`, plus tests in `route.test.ts`, `bulk-view.test.ts`, `bulk-copy.test.ts`, `src/demo/ops/bulk.test.ts`
-**Commit:** e5c5dc9
-**Applied fix:** `BulkRunDto` gains `openLookups` (queued items in any run) and `busy` (`running || openLookups > 0`), computed in `summarizeRun`. The start route refuses on `latestBulkRun(db)?.busy` (keeping the `openBulkItemCount` backstop), the Import button reads the same flag ("Wait for the retried lookup to finish" when only an older run's lookup is open), and the demo uses the same rule. The demo test that expected a second run to start once lookups finished now waits until the first run's adds finish too. Status: fixed: requires human verification (a new run is now refused while the latest run's adds are still waiting).
+**Tests:** The three WR-01 degrade job tests (422, wrong shape, last-attempt 502) now expect `fallback_country_unchecked`. The 404 test still expects `fallback_no_version`. The pure tests cover `undefined`, `'failed'`, and a combined top with `'failed'`, and `[]` stays `fallback_no_version`. Copy tests cover the US, Hong Kong and no-fallback lines.
 
-### WR-04: The header's failed count leaves out failed bulk lookups
+## Verification
 
-**Files modified:** `src/server/discogs/status.ts`, `src/server/discogs/status.test.ts`
-**Commit:** 77e512c
-**Applied fix:** `IMPORTS_FAILED_SQL` now follows `reviewStatusOf`. Imported spines never count. Otherwise the spine's current bulk item comes first: a failed or abandoned lookup counts, and a lookup still finding does not. Only after that does the latest-import rule apply. "Current" means the same as in `isCurrentBulkItem`. Demo needs no change (demo items never fail). Status: fixed: requires human verification (SQL logic).
-
-### WR-05: A malformed versions body is retried as transient and reported as "Error"
-
-**Files modified:** `src/server/discogs/versions.ts`, `src/server/discogs/versions.test.ts`, `src/server/jobs/handlers/resolve-pressing.ts`, `src/server/jobs/handlers/resolve-pressing.test.ts`
-**Commit:** 487cbbb
-**Applied fix:** New `DiscogsVersionsShapeError` ("Discogs answered an unexpected versions list"); the handler fails the item as `rejected` without rethrowing, so the worker does not retry it. The old "recorded as other and rethrown" test now asserts the new behavior.
-
-### WR-06: The confirm dialog's pick list changes while it is open, and can reach zero
-
-**Files modified:** `src/components/bulk-import-bar.tsx`, `src/components/bulk-import-dialog.tsx`, `src/components/bulk-import-dialog.test.ts`
-**Commit:** b9c5d21
-**Applied fix:** The bar snapshots `picked` into state when Import is clicked and passes that frozen list to the dialog. The dialog disables Start when `bulkStartBody(spines)` has no items. The dialog's disabled state has a test. The bar snapshot has no component test (node test environment), so it needs a manual UAT check: open the dialog during a poll and confirm the count holds.
+All checks ran in the main checkout (`workflow.use_worktrees: false`, so no worktree was created):
+- `npx vitest run`: 121 files, 2313 tests passed. The `cli.test.ts` timing test did not flake this run.
+- `npx tsc --noEmit`: clean
+- `npx biome check` on the changed source files: clean
 
 ---
 
-_Fixed: 2026-10-25T09:10:00Z_
+_Fixed: 2026-10-25T23:58:00Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_

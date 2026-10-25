@@ -66,7 +66,9 @@ blocked: 0
 ## Gaps
 - gap_id: G-06-side-1
   truth: "Settings has a Fallback country next to Preferred country (default US). When the master has no version from the preferred country, bulk import picks a version from the fallback country next (Preferred → Fallback → top match), instead of keeping whatever country the top match happened to be"
-  status: failed
+  status: resolved
+  resolved_by: "06-18-PLAN.md"
+  resolved_at: "2026-10-25"
   reason: "User reported: with Massive Attack, the default entry it picked was Hong Kong. If no entry for Canada exists, it should next default to US. Later: we should be able to set the preferred fallback country as well in the settings — I would set Canada and US as the fallback."
   severity: major
   test: 6
@@ -79,7 +81,9 @@ blocked: 0
     - "Fallback country setting (Settings page Discogs card + demo twin), default US, used by choosePressing and its badges/copy"
 - gap_id: G-06-9
   truth: "At phone width every status tab (All, Pending, Matched, Imported, Not found, Not on Discogs, Failed) is visible — the tab row wraps (or otherwise fits) instead of running off the right edge"
-  status: failed
+  status: resolved
+  resolved_by: "06-15-PLAN.md"
+  resolved_at: "2026-10-25"
   reason: "User reported: at phone width it is missing the tabs for Not on Discogs and Failed because they don't word wrap ('Not found' is cut off)"
   severity: minor
   test: 9

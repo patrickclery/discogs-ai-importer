@@ -1,9 +1,9 @@
 ---
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
-reviewed: 2026-10-25T23:45:00Z
+reviewed: 2026-10-25T23:56:52Z
 depth: standard
-iteration: 3
-scope: incremental (gap closure 06-13..06-18, diff since f4ab36b)
+iteration: 5
+scope: re-review of fixes 9cde7b6, 5bb5a4a (new outcomes fallback_country_unusable, fallback_country_unchecked) and every consumer of the outcome union (diff since f4ab36b)
 files_reviewed: 26
 files_reviewed_list:
   - drizzle/0005_bulk_fallback_country.sql
@@ -34,74 +34,64 @@ files_reviewed_list:
   - src/server/settings.ts
 findings:
   critical: 0
-  warning: 1
-  info: 2
-  total: 3
-status: issues_found
+  warning: 0
+  info: 1
+  total: 1
+status: clean
 ---
 
-# Phase 6: Code Review Report (incremental, gap closure 06-13..06-18)
+# Phase 6: Code Review Report (re-review of the WR-01 and IN-01 fixes)
 
-**Reviewed:** 2026-10-25T23:45:00Z
+**Reviewed:** 2026-10-25T23:56:52Z
 **Depth:** standard
 **Files Reviewed:** 26
-**Status:** issues_found
+**Status:** clean
 
 ## Summary
 
-This review covers only the changes since `f4ab36b`, which close G-06-side-1 (the Fallback country tier and its setting) and G-06-9 (status tabs that wrap).
+This re-review checks the two fixes in 06-REVIEW-FIX.md (iteration 2) and every consumer of `PressingOutcome`.
 
-- **Fallback country.** The pure logic in `src/lib/pressing.ts` is consistent. `needsFallbackLookup` fires under exactly the conditions where `choosePressing` reaches `chooseFallbackTier`, and `distinctFallback` is the one place that decides whether a second tier exists. The route, the demo `startBulk`, `bulk-copy` and the dialog all call it.
-- **Run snapshot.** `bulk_runs.fallback_country` is snapshotted in the run, so Retry is unaffected by later Settings edits. Runs from before migration 0005 read as null, which means no second tier.
-- **Demo twin.** The demo matches the real ordering: preferred, then an exact fallback-country top match, then an exact fallback version, then a combined top match, then the top match.
-- **Status tabs.** `w-fit` plus `flex-wrap` on the ToggleGroup bounds the row to the container, so it wraps correctly.
-- **Checks.** Targeted Vitest suites pass (225 tests) and `tsc --noEmit` is clean.
+- **WR-01 (9cde7b6): correct.**
+  - The preferred tier's `'unusable'` answer and its guard miss (`pressing.ts:367`, `:374`) still return `fallback_unusable_master`. `needsFallbackLookup` is false for both, so the copy now names only the preferred country (`bulk-copy.ts:207-208`). That is true.
+  - The fallback tier's `'unusable'` answer and its guard miss (`pressing.ts:302-304`, `:312-313`) return `fallback_country_unusable`, and its line uses the pair phrase. Both countries really were tried.
+- **IN-01 (5bb5a4a): correct.**
+  - Each optional-request degrade branch returns `UNCHECKED`: a non-404 4xx, a wrong-shaped body, and a last-attempt 5xx or unknown error (`resolve-pressing.ts:314`, `:320`, `:332`). The call site maps that to `'failed'` (`:375`).
+  - A fallback 404 comes back as `versions: undefined` without `unchecked`. The call site turns it into `[]`, so `rankTier` sees an examined empty answer. The outcome is `fallback_no_version`, or `fallback_country` when the top match names the fallback country in a combined country. Both are correct.
+  - `parseVersions` never returns `undefined` (`versions.ts:88`), so `?? []` only applies to the 404.
+  - `chooseFallbackTier` gives `fallback_country_unchecked` for `undefined` and for `'failed'`. The `keep` wrapper still promotes a combined top match to `fallback_country`.
+  - In the job, `undefined` cannot reach the fallback tier. When `distinctFallback` is non-null, the preferred answer is an array whose tier is empty, and the top match is not exactly from the fallback country, `needsFallbackLookup` is true, so the second request is always sent. Both paths use the same `distinctFallback`.
+  - Auth, 429, the paused gate and a lost current run behave the same as before.
+- **Consumers of the outcome union: consistent.**
+  - The only place that reads the outcome is `fallbackLine`, and it has a case for both new outcomes.
+  - The Fallback filter (`isFallbackSpine`, used by `scan/queries.ts:382,393` and `demo/read-model.ts:719,735`) reads the release country, not the outcome. So do the Fallback badge (`countryBadgeOf`, used by `country-badge.tsx` and `confirmed-match.tsx`), `summarizeRun` with its `fallbacks` toast count, and the fallback line gate (`bulk-copy.ts:305`).
+  - Both new outcomes keep the top match, whose country is `'none'` against the preferred country on this path. So they always count as fallbacks, show the badge, and reach `fallbackLine`, the same as `fallback_no_version`.
+  - The review-status mapping uses `lookupOf` (item phase only), so it is not affected.
+  - `bulk/queries.ts:159` passes `outcome` through without narrowing, so there is no stale whitelist. The schema enum reads `PRESSING_OUTCOMES`, and `0004_bulk_import.sql:7` is a plain `text` with no CHECK, so no migration is needed.
+  - The demo twin's `fallbackTier` (`demo/ops/bulk.ts:160-180`) never produces either new outcome, and the doc comment says so. Its run snapshots the fallback country through `distinctFallback` (`:328`).
+  - `verify-bulk-import.ts:219-224` expects only `preferred` and `fallback_country`, which the fake's always-answering fixture still produces.
+- **Copy:** the unchecked line reads `No Canadian pressing, couldn't check for US pressings, used X`. A country without a demonym reads `pressings from {country}`. The `second === null` branch cannot be reached from the job, but it is still a true line.
 
-The one robustness issue: the optional second lookup can fail an item that already has a usable answer.
-
-## Warnings
-
-### WR-01: A failed fallback-country lookup fails the whole item, even though the preferred answer was already usable
-
-**File:** `src/server/jobs/handlers/resolve-pressing.ts:337-339` (error mapping at `:286-300`)
-**Issue:**
-- The second `GET /masters/{id}/versions?country=<fallback>` goes through the same `lookupVersions` error mapping as the first request.
-- `DiscogsRequestError` and `DiscogsVersionsShapeError` fail the item as `rejected` and the caller returns. A persistent `DiscogsUnavailableError` (5xx) is rethrown until attempts run out, and then the item fails.
-- By that point the preferred-country answer has already arrived and is usable. Without the fallback tier, the item would have been imported as its top match with `fallback_no_version`.
-- So the fallback tier, which is optional, turns a spine that would have imported into a failed one. Each retry also re-sends the preferred request, which spends Discogs quota.
-- The header comment ("Each request's failures, the same for both") documents this, but it is a regression compared with the behaviour before 06-16.
-
-**Fix:** Degrade the second request instead of failing on it. Keep the auth (401) and rate-limit/NotCurrent paths, but map deterministic or unavailable errors to "no fallback answer":
-```ts
-const second = await lookupVersions(masterId, fallback, { optional: true });
-// inside lookupVersions, when optional:
-//   DiscogsRequestError | DiscogsVersionsShapeError -> return { failed: false, versions: undefined }
-//   DiscogsUnavailableError (last attempt) -> same, instead of rethrowing
-```
-`chooseFallbackTier` already maps `fallbackVersions === undefined` to `keep('fallback_no_version')`, so the item imports its top match exactly as it did before the fallback tier existed.
+Checks: the targeted Vitest suites (pressing, bulk-copy, bulk-view, resolve-pressing, demo) pass (22 files, 440 tests), and `tsc --noEmit` is clean.
 
 ## Info
 
-### IN-01: Fallback-tier title-guard failure reuses the "no usable master" copy
+### IN-01: `fallbackLine` has no exhaustiveness guard, so a future outcome would silently get the generic line
 
-**File:** `src/lib/pressing.ts:304`, `src/lib/bulk-copy.ts:200-202`
-**Issue:**
-- Suppose the preferred tier is empty and the best fallback-country version fails the D-21 title guard. The outcome is then `fallback_unusable_master`.
-- The card then reads "No Canadian pressing listed for this release, used X". That hides that the fallback country was tried, unlike `fallback_no_version`, which names both countries through `soughtPhrase`.
-
-**Fix:** Either use `soughtPhrase(item)` in the `fallback_unusable_master` line when `item.fallbackCountry` is set, or return a distinct outcome from the fallback-tier guard branch.
-
-### IN-02: No hint when the Fallback country equals the Preferred country
-
-**File:** `src/components/preferred-country-field.tsx:174-193`
-**Issue:**
-- If the owner saves Fallback = Preferred (for example, both US), `distinctFallback` silently disables the second tier.
-- The run copy and the dialog stay correct, but the Settings field says nothing, so the owner may think a second tier is active.
-
-**Fix:** Pass the preferred country into `FallbackCountryField`. When `countryMatch(fallback, preferred) === 'exact'`, show a FieldDescription note such as "Same as the preferred country, so bulk import goes straight to the top match."
+**File:** `src/lib/bulk-copy.ts:222-223`
+**Issue:** The switch ends in a `default` that returns `No {phrase}, {used}`. This fix had to add two cases by hand. If a later outcome is added to `PRESSING_OUTCOMES` without a case here, `tsc` will not catch it, and the card will show the generic line, which can be wrong (the same kind of problem as WR-01).
+**Fix:** List the remaining outcomes (`preferred`, `null`) explicitly and make the default unreachable:
+```ts
+    case 'preferred':
+    case null:
+      return `No ${phrase}, ${used}`;
+    default: {
+      const _exhaustive: never = item.outcome;
+      return `No ${phrase}, ${used}`;
+    }
+```
 
 ---
 
-_Reviewed: 2026-10-25T23:45:00Z_
+_Reviewed: 2026-10-25T23:56:52Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
