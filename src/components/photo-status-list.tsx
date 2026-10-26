@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { CircleX } from 'lucide-react';
 import { Children, type ReactNode } from 'react';
+import { MdPrefix } from '@/components/md-prefix';
 import { PhotoStatusRow } from '@/components/photo-status-row';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
@@ -60,9 +61,12 @@ export function PhotoStatusList({
   return (
     <div className="flex flex-col gap-6">
       {pollError}
-      <Card className="gap-0 py-0">
+      <Card variant="mini" className="gap-0 py-0">
         <div className="flex items-center gap-2 px-4 py-3">
-          <h2 className="text-base font-medium">Photos</h2>
+          <h2 className="text-base font-medium">
+            <MdPrefix marker="##" />
+            Photos
+          </h2>
           <span className="font-mono text-base text-muted-foreground tabular-nums">
             {photos.length}
           </span>
@@ -70,6 +74,7 @@ export function PhotoStatusList({
         <Separator />
         {photos.length === 0 && Children.count(pendingRows) === 0 ? (
           <p className="px-4 py-6 text-sm text-muted-foreground">
+            <MdPrefix marker=">" />
             No photos yet. Photos you drop appear here with their progress.
           </p>
         ) : null}

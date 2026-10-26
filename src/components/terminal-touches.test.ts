@@ -106,27 +106,27 @@ describe('PhotoStatusList (empty)', () => {
   });
 });
 
-describe.each([
-  ['page.tsx'],
-  ['page.demo.tsx'],
-])('/upload %s (source)', (file) => {
-  const s = src('..', 'app', 'upload', file);
+describe.each([['page.tsx'], ['page.demo.tsx']])(
+  '/upload %s (source)',
+  (file) => {
+    const s = src('..', 'app', 'upload', file);
 
-  it('puts the wordmark directly before the h1', () => {
-    const w = s.indexOf('<AsciiWordmark />');
-    expect(w).toBeGreaterThan(-1);
-    expect(w).toBeLessThan(s.indexOf('<h1'));
-  });
+    it('puts the wordmark directly before the h1', () => {
+      const w = s.indexOf('<AsciiWordmark />');
+      expect(w).toBeGreaterThan(-1);
+      expect(w).toBeLessThan(s.indexOf('<h1'));
+    });
 
-  it('has a gradient h1', () => {
-    expect(s).toContain(
-      '<h1 className="gradient-text w-fit text-2xl font-medium tracking-tight">',
-    );
-  });
+    it('has a gradient h1', () => {
+      expect(s).toContain(
+        '<h1 className="gradient-text w-fit text-2xl font-medium tracking-tight">',
+      );
+    });
 
-  it('starts the 80ch intro with a > prompt and keeps its wording', () => {
-    const p = s.match(/<p className="([^"]*)">\s*<MdPrefix marker=">" \/>/);
-    expect(p?.[1].split(/\s+/)).toContain('max-w-[80ch]');
-    expect(s).toContain('Drop photos of your CD shelves.');
-  });
-});
+    it('starts the 80ch intro with a > prompt and keeps its wording', () => {
+      const p = s.match(/<p className="([^"]*)">\s*<MdPrefix marker=">" \/>/);
+      expect(p?.[1].split(/\s+/)).toContain('max-w-[80ch]');
+      expect(s).toContain('Drop photos of your CD shelves.');
+    });
+  },
+);

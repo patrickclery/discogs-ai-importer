@@ -1,6 +1,8 @@
 import { TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { connection } from 'next/server';
+import { AsciiWordmark } from '@/components/ascii-wordmark';
+import { MdPrefix } from '@/components/md-prefix';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { UploadView } from '@/components/upload-view';
@@ -19,8 +21,12 @@ export default async function UploadPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-medium tracking-tight">Upload</h1>
-        <p className="text-sm text-muted-foreground">
+        <AsciiWordmark />
+        <h1 className="gradient-text w-fit text-2xl font-medium tracking-tight">
+          Upload
+        </h1>
+        <p className="max-w-[80ch] text-sm text-muted-foreground">
+          <MdPrefix marker=">" />
           Drop photos of your CD shelves. Each photo is read by Claude once, and
           every spine is cropped so you can check what it read.
         </p>
