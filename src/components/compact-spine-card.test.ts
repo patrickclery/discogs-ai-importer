@@ -578,3 +578,87 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     );
   });
 });
+
+describe('featured and Detailed spine cards (Phase 7 v2)', () => {
+  /** A SpineView with no trailing row, as the Detailed layout renders it. */
+  const detailed = (s: SpineDto) =>
+    renderToStaticMarkup(
+      h(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        h(
+          TooltipProvider,
+          null,
+          h(SpineView, {
+            spine: s,
+            threshold: 0.7,
+            discogs: DISCOGS_VIEW,
+          }),
+        ),
+      ),
+    );
+  /** A bare SpineCard with no featured prop. */
+  const bare = (s: SpineDto) =>
+    renderToStaticMarkup(
+      h(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        h(SpineCard, { spine: s, threshold: 0.7 }),
+      ),
+    );
+
+  /** The lg numeral holds 7 and comes before the visible #7 label. */
+  function expectLgNumeral(html: string) {
+    const numeral = openingTag(html, 'data-corner-numeral');
+    expect(classTokens(numeral)).toEqual(
+      expect.arrayContaining([...NUMERAL_SIZES.lg]),
+    );
+    const at = html.indexOf('data-corner-numeral');
+    expect(html.slice(at)).toMatch(/^[^>]*>7<\/span>/);
+    expect(at).toBeLessThan(html.indexOf('#7'));
+  }
+
+  it('the expanded compact card is the featured card with an lg numeral', () => {
+    const html = renderInGrid(spine(), ['sp-1']);
+    const tag = openingTag(html, 'id="spine-card-sp-1"');
+    expect(tag).toContain('data-slot="card"');
+    expect(tag).toContain('data-variant="featured"');
+    expect(classTokens(tag)).toContain('card-featured');
+    expect(classTokens(tag)).not.toContain('card-mini');
+    expectLgNumeral(html);
+  });
+
+  it('a Detailed card is a mini card with an lg numeral', () => {
+    const html = detailed(spine());
+    const tag = openingTag(html, 'id="spine-card-sp-1"');
+    expect(tag).toContain('data-variant="mini"');
+    expect(classTokens(tag)).toContain('card-mini');
+    expectLgNumeral(html);
+  });
+
+  it('a SpineCard without featured is mini', () => {
+    const html = bare(spine());
+    const tag = openingTag(html, 'id="spine-card-sp-1"');
+    expect(tag).toContain('data-variant="mini"');
+    expectLgNumeral(html);
+  });
+
+  it('an orphaned card keeps its warning border and the Plex explanation', () => {
+    const html = bare(spine({ state: 'orphaned', orphanedRunNo: 2 }));
+    expect(classTokens(openingTag(html, 'id="spine-card-sp-1"'))).toEqual(
+      expect.arrayContaining(['card-mini', 'border-warning/60']),
+    );
+    const p = openingTag(html, 'The latest re-scan didn&#x27;t find');
+    expect(classTokens(p)).toEqual(
+      expect.arrayContaining([
+        'font-prose',
+        'text-xs',
+        'text-muted-foreground',
+        'sm:flex-1',
+      ]),
+    );
+    expect(html).toContain(
+      'The latest re-scan didn&#x27;t find this spine. Your edits are kept until you re-attach or dismiss it.',
+    );
+  });
+});
