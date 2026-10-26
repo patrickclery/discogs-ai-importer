@@ -1,5 +1,5 @@
 ---
-status: complete
+status: testing
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
@@ -8,7 +8,11 @@ updated: 2026-10-26T22:54:00.817Z
 
 ## Current Test
 
-[testing complete]
+number: 15
+name: On the Spines page in Compact view at 4 cards per row, look over the cards, click a pencil then Show less, then narrow the window down to 1 card per row.
+expected: |
+  No card shows a number. Every card has the same rows: status badge (never cut off), a warnings line, the spine photo, one line with the checkbox, Top match and a pencil, the match (title at most two lines, details one line, full text on hover), then an import-notes line. In each row the photos, checkbox lines and matches line up. The pencil opens the card across the row and Show less closes it. Detailed view is unchanged.
+awaiting: user response
 
 ## Tests
 
@@ -70,12 +74,16 @@ result: pass
 expected: Guttermouth shows Fallback: US. Massive Attack shows Fallback: Hong Kong with No Canadian or US pressing, used Hong Kong.
 result: pass
 
+### 15. On the Spines page in Compact view at 4 cards per row, look over the cards, click a pencil then Show less, then narrow the window down to 1 card per row.
+expected: No card shows a number. Every card has the same rows: status badge (never cut off), a warnings line, the spine photo, one line with the checkbox, Top match and a pencil, the match (title at most two lines, details one line, full text on hover), then an import-notes line. In each row the photos, checkbox lines and matches line up. The pencil opens the card across the row and Show less closes it. Detailed view is unchanged.
+result: [pending]
+
 ## Summary
 
-total: 14
+total: 15
 passed: 13
 issues: 2
-pending: 0
+pending: 1
 skipped: 0
 blocked: 0
 
@@ -111,7 +119,9 @@ blocked: 0
     - "Let the tab row wrap onto more lines (or otherwise keep every tab visible) at phone width"
 - gap_id: G-06-side-2
   truth: "Every compact review card has the same number of rows, so cards in a grid line up: no card numbering at all (neither the '#N' label nor the big corner number), the checkbox shares its row with other content (e.g. the candidates count) instead of taking a row of its own, warning badges sit on their own line separate from the candidates count, and editing the spine is an icon button instead of the 'Edit spine' text"
-  status: diagnosed
+  status: resolved
+  resolved_by: "06-19-PLAN.md"
+  resolved_at: "2026-10-26"
   reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped. Later: we don't need the numbering on the cards at all. We just need check boxes, and ideally the check box shouldn't take up a whole row. It can have text beside it or whatever."
   severity: cosmetic
   test: side
