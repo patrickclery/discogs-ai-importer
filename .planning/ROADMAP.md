@@ -136,9 +136,9 @@ Plans:
 ### Phase 7: Match the patrickclery.com/awesomer color palette
 
 **Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (Catppuccin Mocha, dark only) and its overall terminal/markdown look: gradient cards with corner numbers, Geist Mono / IBM Plex Sans / asciiMono fonts, scanlines; applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
-**Requirements**: THEME-01..THEME-07 (proposed in 07-01-PLAN.md from the 07-CONTEXT.md decisions)
+**Requirements**: THEME-01..THEME-10 (THEME-01..07 proposed in 07-01-PLAN.md; THEME-08..10 proposed in 07-04-PLAN.md for gap G-07-style-1)
 **Depends on:** Phase 6
-**Plans:** 3/3 plans executed
+**Plans:** 3/8 plans executed
 
 Plans:
 **Wave 1**
@@ -147,3 +147,14 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 07-02-PLAN.md — Primitives: lavender primary hover, solid-red destructive fills with base text (C-1, C-2), description link hover (wave 2)
 - [x] 07-03-PLAN.md — Counts readable in pressed toggles (C-3, C-4) and lavender hover on inline links (wave 2)
+
+**Gap closure G-07-style-1 — Wave 1**
+- [ ] 07-04-PLAN.md — Tracer: awesomer fonts (Geist Mono, Plex, local asciiMono + OFL) and gradient mini compact card with corner numeral in app and demo; full v2 CSS block (scanlines, gradient-text, glow, cursor)
+
+**Gap closure G-07-style-1 — Wave 2** *(blocked on 07-04)*
+- [ ] 07-05-PLAN.md — Featured surfaces: expanded spine card, bulk bar, dialogs; Detailed mini cards with lg numerals; Plex dialog text
+- [ ] 07-06-PLAN.md — Terminal touches: MdPrefix, ASCII wordmark on /upload, gradient title, ## Photos mini card, glowing logo with 5-blink cursor
+- [ ] 07-07-PLAN.md — Contrast C-5/C-6 under scanlines; Plex on Card/Alert/Empty/Field descriptions; buttons pinned to Geist Mono
+
+**Gap closure G-07-style-1 — Wave 3** *(blocked on Wave 2)*
+- [ ] 07-08-PLAN.md — Settings numbered ## cards (1-4), gradient titles and > intros on /spines and /settings, ## photo headings; full app + demo proof
