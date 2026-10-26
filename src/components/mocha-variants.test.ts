@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -102,5 +104,21 @@ describe('Input selection (Mocha)', () => {
   it('uses the global 15% mauve ::selection, not a solid primary fill', () => {
     const t = slotTokens(renderToStaticMarkup(h(Input)), 'input');
     expect(t.filter((c) => c.startsWith('selection:'))).toEqual([]);
+  });
+});
+
+describe('DropdownMenuItem destructive focus (Mocha)', () => {
+  // A Radix menu item needs a portalled menu to render, so check the source:
+  // red on red/20 over surface0 is 3.81:1, red/10 is about 4.6:1 (IN-03).
+  const src = fs.readFileSync(
+    path.join(import.meta.dirname, 'ui', 'dropdown-menu.tsx'),
+    'utf8',
+  );
+
+  it('focuses at red/10 in dark, never red/20', () => {
+    expect(src).toContain('data-[variant=destructive]:focus:bg-destructive/10');
+    expect(src).not.toContain(
+      'dark:data-[variant=destructive]:focus:bg-destructive/20',
+    );
   });
 });
