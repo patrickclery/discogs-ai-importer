@@ -277,18 +277,18 @@ describe('PhotoSection source', () => {
 });
 
 describe('gradient page titles', () => {
+  const root = path.join(import.meta.dirname, '..');
+  // Every non-test source file that uses the gradient-text class token.
+  const hits = (fs.readdirSync(root, { recursive: true }) as string[])
+    .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f))
+    .map((f) => ({
+      file: f.split(path.sep).join('/'),
+      text: fs.readFileSync(path.join(root, f), 'utf8'),
+    }))
+    .filter(({ text }) => /\bgradient-text\b/.test(text));
+
   it('appear only on the three page h1s and their demo twins', () => {
-    const root = path.join(import.meta.dirname, '..');
-    const hits = (fs.readdirSync(root, { recursive: true }) as string[])
-      .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f))
-      .filter((f) =>
-        fs
-          .readFileSync(path.join(root, f), 'utf8')
-          .includes('gradient-text w-fit'),
-      )
-      .map((f) => f.split(path.sep).join('/'))
-      .sort();
-    expect(hits).toEqual(
+    expect(hits.map((h) => h.file).sort()).toEqual(
       [
         'app/settings/page.demo.tsx',
         'app/settings/page.tsx',
@@ -298,4 +298,22 @@ describe('gradient page titles', () => {
       ].sort(),
     );
   });
+
+  // WR-04: the spec allows gradient-text only on a page h1 and never with
+  // .glow (its text-shadow smears the transparent-fill text).
+  it.each(hits.map((h) => [h.file, h.text] as const))(
+    '%s uses gradient-text once, on its h1, without glow',
+    (_file, text) => {
+      const uses = text.match(/\bgradient-text\b/g) ?? [];
+      const onH1 = [
+        ...text.matchAll(/<h1 className="([^"]*\bgradient-text\b[^"]*)"/g),
+      ];
+      expect(uses).toHaveLength(1);
+      expect(onH1).toHaveLength(1);
+      expect(onH1[0][1]).not.toMatch(/\bglow\b/);
+      expect(text).not.toMatch(
+        /gradient-text[^"'`]*\bglow\b|\bglow\b[^"'`]*gradient-text/,
+      );
+    },
+  );
 });
