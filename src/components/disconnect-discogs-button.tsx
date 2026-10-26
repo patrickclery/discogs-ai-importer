@@ -110,7 +110,7 @@ export function DisconnectDiscogsButton() {
               href="https://www.discogs.com/settings/applications"
               target="_blank"
               rel="noreferrer"
-              className="text-primary underline underline-offset-4"
+              className="text-primary hover:text-primary-hover underline underline-offset-4"
             >
               discogs.com/settings/applications
             </a>

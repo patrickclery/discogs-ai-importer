@@ -173,7 +173,7 @@ function NoticeLine({
             : 'Connect Discogs to find matches.'}{' '}
           <Link
             href="/settings"
-            className="rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="rounded-sm text-primary hover:text-primary-hover underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             Open Settings
           </Link>

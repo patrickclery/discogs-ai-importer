@@ -122,7 +122,7 @@ function ImportStateLine({
             {' '}
             <Link
               href={failure.settingsLink.href}
-              className="rounded-sm text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className="rounded-sm text-primary hover:text-primary-hover underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               {failure.settingsLink.label}
             </Link>

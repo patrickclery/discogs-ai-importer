@@ -75,7 +75,7 @@ function ConnectedSection({
             href={`https://www.discogs.com/user/${encodeURIComponent(username)}`}
             target="_blank"
             rel="noreferrer"
-            className="font-medium text-primary underline underline-offset-4"
+            className="font-medium text-primary hover:text-primary-hover underline underline-offset-4"
           >
             {username}
           </a>
@@ -194,7 +194,7 @@ export function DiscogsCard({
             href="https://www.discogs.com/settings/developers"
             target="_blank"
             rel="noreferrer"
-            className="text-primary underline underline-offset-4"
+            className="text-primary hover:text-primary-hover underline underline-offset-4"
           >
             discogs.com/settings/developers
           </a>
