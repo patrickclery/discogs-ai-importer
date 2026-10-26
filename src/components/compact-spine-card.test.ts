@@ -277,7 +277,11 @@ function renderInGrid(
           TooltipProvider,
           null,
           selection
-            ? h(Selection, { selected: new Set(), onChange: () => {} }, card)
+            ? h(
+                Selection,
+                { selected: new Set<string>(), onChange: () => {} },
+                card,
+              )
             : card,
         ),
       ),
@@ -328,7 +332,11 @@ describe('CompactSpineCard expand toggle', () => {
     expect(html).not.toContain('lucide-chevron-down');
     expect(visibleText(html)).not.toContain('Edit spine');
     expect(html).not.toContain('Show less');
-    expect(html).not.toContain('<input');
+    // The checkbox's hidden form input is the only input: no field inputs.
+    expect(html).not.toMatch(
+      /<input(?![^>]*type="checkbox" aria-hidden="true")/,
+    );
+    expect(html).not.toContain('<textarea');
   });
 
   it('an expanded card renders the full card across the row, ending with Show less', () => {

@@ -1,18 +1,17 @@
 'use client';
 
 import {
-  ChevronDown,
   ChevronUp,
   CircleSlash,
   CircleX,
   Clock,
   type LucideIcon,
+  Pencil,
   SearchX,
   TriangleAlert,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { BulkStatusLine } from '@/components/bulk-status-line';
-import { CornerNumeral } from '@/components/corner-numeral';
 import { CountryBadge } from '@/components/country-badge';
 import { useExpandedCard } from '@/components/expanded-cards';
 import { ImportStateBadge } from '@/components/import-state-badge';
@@ -53,17 +52,30 @@ function PlaceholderLine({ text }: { text: string }) {
 }
 
 /**
- * One spine in the compact grid (D-10, D-16, UI-SPEC Compact card): the
- * header (the select checkbox, #n, the worst-field badge, Edited, the orphan badge and the state
- * badge last, after the bulk country badge), the spine crop, then directly
- * under it the top or confirmed match and at most one bulk status line. No field inputs, external link or Add button while collapsed: those
- * live in the full card (D-11).
+ * One spine in the compact grid (D-10, D-16, UI-SPEC Compact card, amended
+ * by G-06-side-2). Six rows, always rendered in this order so every card has
+ * the same shape:
+ *   1. status: the state badge alone, never clipped;
+ *   2. warnings: the worst-field badge, the bulk country badge, No longer
+ *      detected and Edited, always present (empty when there are none) and
+ *      wrapping when they don't fit;
+ *   3. crop: the spine crop;
+ *   4. select: the select checkbox, the Top match / Confirmed match label
+ *      and the pencil Edit button at the right end;
+ *   5. match: the top or confirmed match (or its placeholder) in a fixed
+ *      60px box;
+ *   6. bulk: the import notes line, two lines reserved.
+ * The card spans six rows of the photo section's grid and shares them
+ * (CSS subgrid), so the cards in a grid row line up row by row. No card
+ * numbering on screen: the spine number appears only in accessible names
+ * and the crop's alt text. No field inputs, external link or Add button
+ * while collapsed: those live in the full card (D-11).
  *
- * Edit spine opens the card in place: it renders `renderFull` (the one
+ * The pencil opens the card in place: it renders `renderFull` (the one
  * full-card renderer, SpineView) across the whole grid row, with Show less
  * as its last row. Instant, no height animation. Focus follows the toggle:
  * Show less after opening; after closing, the compact card scrolls into
- * view and its Edit spine takes focus.
+ * view and its pencil takes focus.
  */
 export function CompactSpineCard({
   spine,
@@ -141,34 +153,62 @@ export function CompactSpineCard({
       id={cardId}
       data-spine-card={spine.id}
       variant="mini"
-      className={cn('gap-2 rounded-xl p-4', orphaned && 'border-warning/60')}
+      className={cn(
+        'row-span-6 grid grid-rows-subgrid gap-2 rounded-xl p-4',
+        orphaned && 'border-warning/60',
+      )}
     >
-      <CornerNumeral value={number} size="md" />
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-        <SpineSelectCheckbox spine={spine} />
-        <span className="font-mono text-muted-foreground tabular-nums">
-          #{number}
-        </span>
+      {/* A badge that ever outgrows the card wraps its text instead of being cut off. */}
+      <div
+        data-compact-row="status"
+        className="flex min-h-6 items-center [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal"
+      >
+        <ImportStateBadge spine={spine} />
+      </div>
+      <div
+        data-compact-row="warnings"
+        className="flex min-h-6 flex-wrap content-start items-center gap-x-2 gap-y-1"
+      >
         <WorstFieldBadge spine={spine} threshold={threshold} />
-        {edited > 0 ? (
-          <Badge variant="secondary">{`Edited · ${edited}`}</Badge>
-        ) : null}
+        <CountryBadge spine={spine} />
         {orphaned ? (
           <Badge variant="outline">
             <TriangleAlert aria-hidden="true" className="text-warning" />
             No longer detected
           </Badge>
         ) : null}
-        <div className="ml-auto flex min-w-0 max-w-full items-center gap-2">
-          <CountryBadge spine={spine} />
-          <ImportStateBadge spine={spine} />
-        </div>
+        {edited > 0 ? (
+          <Badge variant="secondary">{`Edited · ${edited}`}</Badge>
+        ) : null}
       </div>
-      <SpineCrop crop={spine.crop} number={number} rawText={rawText} />
-      <div className="flex flex-col gap-1">
-        <p className="text-xs font-medium text-muted-foreground">
+      <div data-compact-row="crop" className="grid">
+        <SpineCrop crop={spine.crop} number={number} rawText={rawText} />
+      </div>
+      <div data-compact-row="select" className="flex h-9 items-center gap-2">
+        <SpineSelectCheckbox spine={spine} />
+        <p className="min-w-0 truncate text-xs font-medium text-muted-foreground">
           {slot.label}
         </p>
+        {renderFull ? (
+          <Button
+            ref={editRef}
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="ml-auto"
+            aria-label={`Edit spine #${number}`}
+            aria-expanded="false"
+            aria-controls={cardId}
+            onClick={() => {
+              focusAfter.current = 'expand';
+              setExpanded(true);
+            }}
+          >
+            <Pencil aria-hidden="true" />
+          </Button>
+        ) : null}
+      </div>
+      <div data-compact-row="match" className="h-15">
         {match ? (
           <TopMatchRow
             title={match.title}
@@ -179,27 +219,9 @@ export function CompactSpineCard({
           <PlaceholderLine text={slot.placeholder ?? ''} />
         )}
       </div>
-      <BulkStatusLine spine={spine} />
-      {renderFull ? (
-        <div className="flex justify-end">
-          <Button
-            ref={editRef}
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label={`Edit spine #${number}`}
-            aria-expanded="false"
-            aria-controls={cardId}
-            onClick={() => {
-              focusAfter.current = 'expand';
-              setExpanded(true);
-            }}
-          >
-            Edit spine
-            <ChevronDown aria-hidden="true" />
-          </Button>
-        </div>
-      ) : null}
+      <div data-compact-row="bulk" className="min-h-8">
+        <BulkStatusLine spine={spine} />
+      </div>
     </Card>
   );
 }
