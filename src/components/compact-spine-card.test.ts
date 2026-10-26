@@ -554,6 +554,103 @@ describe('CompactSpineCard bulk states', () => {
   });
 });
 
+// G-06-side-2: fixed line counts so the cards in a grid row line up; the
+// full text is always on hover.
+
+const SKIP_ITEM = bulkItem({
+  phase: 'skipped',
+  importId: null,
+  outcome: null,
+  country: null,
+  skip: {
+    reason: 'duplicate',
+    photo: 'IMG_1.jpg',
+    spineNumber: 12,
+    samePhoto: false,
+  },
+});
+
+const US_FALLBACK = () =>
+  withBulk(
+    bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
+    bulkImport({ phase: 'waiting' }),
+  );
+
+/** The element whose text starts with `text` (its opening tag). */
+const tagOfText = (html: string, text: string) => openingTag(html, `>${text}`);
+
+describe('CompactSpineCard fixed line counts', () => {
+  it('the title is exactly two lines and the details exactly one, each with the full text', () => {
+    const html = render(spine());
+    const title = openingTag(html, 'title="Various');
+    expect(classTokens(title)).toEqual(
+      expect.arrayContaining(['line-clamp-2', 'h-[2lh]']),
+    );
+    const details = tagOfText(html, '1991 · US · DGCD-24425');
+    expect(classTokens(details)).toEqual(
+      expect.arrayContaining(['line-clamp-1', 'h-[1lh]']),
+    );
+    expect(details).toContain('title="1991 · US · DGCD-24425"');
+  });
+
+  it('the match row is a fixed 60px box, with or without a candidate', () => {
+    const tokens = (html: string) =>
+      classTokens(openingTag(html, 'data-compact-row="match"'));
+    expect(tokens(render(spine()))).toContain('h-15');
+    const queued = render(
+      spine({
+        discogs: {
+          state: 'queued',
+          candidateCount: 0,
+          topCandidates: [],
+          failure: null,
+          fieldsChanged: false,
+        },
+      }),
+    );
+    expect(queued).toContain('Looking it up on Discogs…');
+    expect(tokens(queued)).toContain('h-15');
+  });
+
+  it('the fallback and skipped lines clamp to two lines with the full text on hover', () => {
+    const fallback = tagOfText(
+      renderBulk(US_FALLBACK()),
+      'No Canadian pressing, used US',
+    );
+    expect(classTokens(fallback)).toContain('line-clamp-2');
+    expect(fallback).toContain('title="No Canadian pressing, used US"');
+    const skipped = tagOfText(
+      renderBulk(withBulk(SKIP_ITEM, null)),
+      'Already imported from IMG_1.jpg, spine #12',
+    );
+    expect(classTokens(skipped)).toContain('line-clamp-2');
+    expect(skipped).toContain(
+      'title="Already imported from IMG_1.jpg, spine #12"',
+    );
+  });
+
+  it('a failed lookup keeps its whole text, the Settings link and Retry import', () => {
+    const html = renderBulk(
+      withBulk(
+        bulkItem({
+          phase: 'failed',
+          importId: null,
+          outcome: null,
+          country: null,
+          failure: { kind: 'auth', reason: null },
+        }),
+        null,
+      ),
+    );
+    const text =
+      'Couldn&#x27;t look up pressings: Discogs rejected the connection.';
+    expect(html).toContain(text);
+    expect(html).toContain('href="/settings"');
+    expect(html).toContain('Retry import');
+    expect(classTokens(tagOfText(html, text))).not.toContain('line-clamp-2');
+  });
+});
+
 describe('ImportStateBadge bulk phases', () => {
   const badge = (s: SpineDto) =>
     renderToStaticMarkup(h(ImportStateBadge, { spine: s }));
@@ -739,6 +836,17 @@ describe('featured and Detailed spine cards (Phase 7 v2)', () => {
     expect(tag).toContain('data-variant="mini"');
     expect(classTokens(tag)).toContain('card-mini');
     expectLgNumeral(html);
+  });
+
+  it('a Detailed fallback line is never clamped', () => {
+    const html = detailed(
+      withBulk(
+        bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
+        bulkImport({ phase: 'waiting' }),
+      ),
+    );
+    const line = openingTag(html, '>No Canadian pressing, used US');
+    expect(classTokens(line)).not.toContain('line-clamp-2');
   });
 
   it('a SpineCard without featured is mini', () => {
