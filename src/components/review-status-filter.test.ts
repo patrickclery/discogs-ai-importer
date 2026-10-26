@@ -4,7 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { emptyByStatus } from '@/lib/review-status';
 import { tagsWithSlot } from '../../test/helpers/radix-open';
-import { ReviewStatusFilter } from './review-status-filter';
+import { Count, ReviewStatusFilter } from './review-status-filter';
+import { toggleVariants } from './ui/toggle';
 
 // G-06-9: at phone width the status tabs sat in a sideways scroller, so
 // "Not found" was cut off and "Not on Discogs" and "Failed" were off-screen.
@@ -66,5 +67,59 @@ describe('ReviewStatusFilter (G-06-9)', () => {
     expect(failed).toMatch(
       /<span class="[^"]*\btext-destructive\b[^"]*">2<\/span>/,
     );
+  });
+});
+
+/** Class tokens of the first element in a markup fragment. */
+function firstClasses(html: string): string[] {
+  return (html.match(/class="([^"]*)"/)?.[1] ?? '').split(/\s+/);
+}
+
+/** Class tokens of each data-status-filter-item button. */
+function itemClasses(html: string): string[][] {
+  return [...html.matchAll(/<button([^>]*data-status-filter-item[^>]*)>/g)].map(
+    (m) => firstClasses(m[1]),
+  );
+}
+
+describe('Count in toggles (Phase 7 C-3, C-4)', () => {
+  const groupTokens = [
+    'group-hover/toggle:text-accent-foreground',
+    'group-data-[state=on]/toggle:text-accent-foreground',
+  ];
+
+  it('muted count switches to text color in a hovered or pressed toggle', () => {
+    const cls = firstClasses(renderToStaticMarkup(h(Count, { n: 3 })));
+    expect(cls).toEqual(
+      expect.arrayContaining([
+        'font-mono',
+        'tabular-nums',
+        'text-muted-foreground',
+        ...groupTokens,
+      ]),
+    );
+  });
+
+  it('alert count stays red at rest and also switches in the toggle', () => {
+    const cls = firstClasses(
+      renderToStaticMarkup(h(Count, { n: 2, alert: true })),
+    );
+    expect(cls).toEqual(
+      expect.arrayContaining(['text-destructive', ...groupTokens]),
+    );
+    expect(cls).not.toContain('text-muted-foreground');
+  });
+
+  it('toggleVariants carries the named group group/toggle', () => {
+    expect(toggleVariants().split(/\s+/)).toContain('group/toggle');
+    expect(toggleVariants({ variant: 'outline' }).split(/\s+/)).toContain(
+      'group/toggle',
+    );
+  });
+
+  it('every status tab is a group/toggle', () => {
+    const all = itemClasses(render());
+    expect(all).toHaveLength(7);
+    for (const cls of all) expect(cls).toContain('group/toggle');
   });
 });
