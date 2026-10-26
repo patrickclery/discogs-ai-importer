@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { BulkStatusLine } from '@/components/bulk-status-line';
+import { CornerNumeral } from '@/components/corner-numeral';
 import { CountryBadge } from '@/components/country-badge';
 import { useExpandedCard } from '@/components/expanded-cards';
 import { ImportStateBadge } from '@/components/import-state-badge';
@@ -139,8 +140,10 @@ export function CompactSpineCard({
     <Card
       id={cardId}
       data-spine-card={spine.id}
+      variant="mini"
       className={cn('gap-2 rounded-xl p-4', orphaned && 'border-warning/60')}
     >
+      <CornerNumeral value={number} size="md" />
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         <SpineSelectCheckbox spine={spine} />
         <span className="font-mono text-muted-foreground tabular-nums">

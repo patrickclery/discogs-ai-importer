@@ -1,12 +1,38 @@
 import { cn } from 'cn';
 import type * as React from 'react';
 
-function Card({ className, ...props }: React.ComponentProps<'div'>) {
+type CardVariant = 'default' | 'mini' | 'featured';
+
+/**
+ * `mini` and `featured` are awesomer's gradient cards (07-UI-SPEC v2 Card
+ * treatments): the `.card-mini` / `.card-featured` component classes draw the
+ * fill, border and glow, so the default's border, bg-card and shadow-sm go.
+ * `relative isolate overflow-hidden` hosts a CornerNumeral behind the content.
+ */
+function Card({
+  className,
+  variant = 'default',
+  ...props
+}: React.ComponentProps<'div'> & { variant?: CardVariant }) {
+  if (variant === 'default') {
+    return (
+      <div
+        data-slot="card"
+        className={cn(
+          'flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm',
+          className,
+        )}
+        {...props}
+      />
+    );
+  }
   return (
     <div
       data-slot="card"
+      data-variant={variant}
       className={cn(
-        'flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm',
+        'relative isolate flex flex-col gap-6 overflow-hidden rounded-xl py-6 text-card-foreground',
+        variant === 'mini' ? 'card-mini' : 'card-featured',
         className,
       )}
       {...props}

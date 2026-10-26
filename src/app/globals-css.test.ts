@@ -115,14 +115,16 @@ describe('globals.css: Catppuccin Mocha tokens (Phase 7)', () => {
     expect(css).not.toContain('prefers-color-scheme');
   });
 
-  it('@theme inline maps the new utilities and keeps the Geist fonts', () => {
+  it('@theme inline maps the new utilities and the Geist Mono and Plex fonts', () => {
     const t = themeInline();
     expect(t).toContain('--color-primary-hover: var(--primary-hover);');
     expect(t).toContain(
       '--color-destructive-foreground: var(--destructive-foreground);',
     );
-    expect(t).toContain('--font-sans: var(--font-geist-sans);');
+    expect(t).toContain('--font-sans: var(--font-geist-mono);');
     expect(t).toContain('--font-mono: var(--font-geist-mono);');
+    expect(t).toContain('--font-prose: var(--font-ibm-plex-sans);');
+    expect(t).not.toContain('--font-geist-sans');
     expect(t).not.toContain('--selection');
   });
 
