@@ -1,6 +1,10 @@
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { badgeVariants } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
+import { EmptyDescription } from '@/components/ui/empty';
+import { FieldDescription } from '@/components/ui/field';
 
 // Phase 7 (THEME-05, THEME-06): filled primary hovers to lavender, every
 // destructive fill is solid red with dark base text (never white), and link
@@ -57,5 +61,38 @@ describe('badgeVariants (Mocha)', () => {
   it('link hovers to lavender', () => {
     const t = tokens(badgeVariants({ variant: 'link' }));
     expect(t).toContain('[a&]:hover:text-primary-hover');
+  });
+});
+
+/** Class tokens of the element carrying the given data-slot. */
+function slotTokens(html: string, slot: string): string[] {
+  const tag = html.match(new RegExp(`<[a-z]+[^>]*data-slot="${slot}"[^>]*>`));
+  const cls = tag?.[0].match(/class="([^"]*)"/)?.[1] ?? '';
+  // renderToStaticMarkup escapes & and > inside attribute values.
+  return tokens(
+    cls
+      .replaceAll('&gt;', '>')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&amp;', '&'),
+  );
+}
+
+describe('description links (Mocha)', () => {
+  it('EmptyDescription links hover to lavender', () => {
+    const html = renderToStaticMarkup(
+      h(EmptyDescription, null, h('a', { href: '/settings' }, 'Settings')),
+    );
+    const t = slotTokens(html, 'empty-description');
+    expect(t).toContain('[&>a:hover]:text-primary-hover');
+    expect(t).not.toContain('[&>a:hover]:text-primary');
+  });
+
+  it('FieldDescription links hover to lavender', () => {
+    const html = renderToStaticMarkup(
+      h(FieldDescription, null, h('a', { href: '/settings' }, 'Settings')),
+    );
+    const t = slotTokens(html, 'field-description');
+    expect(t).toContain('[&>a:hover]:text-primary-hover');
+    expect(t).not.toContain('[&>a:hover]:text-primary');
   });
 });
