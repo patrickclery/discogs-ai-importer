@@ -19,11 +19,13 @@ import {
 import { ImportStateBadge } from './import-state-badge';
 import { SpineView } from './photo-section';
 import { SpineCard } from './spine-card';
+import { SelectionProvider } from './spine-selection';
 import { Card } from './ui/card';
 import { TooltipProvider } from './ui/tooltip';
 
-// The compact card (D-10, UI-SPEC Compact card): #n and the header badges,
-// the spine crop, then the top match with its cover, title and details. No
+// The compact card (D-10, UI-SPEC Compact card, amended by G-06-side-2): six
+// rows in a fixed order (status, warnings, crop, select, match, bulk) and no
+// spine number on screen; the number lives only in accessible names. No
 // field inputs until the card is expanded (D-11).
 
 const LONG_TITLE = `Various - ${'A Very Long Compilation Title '.repeat(4)}`;
@@ -95,6 +97,26 @@ function spine(over: Partial<SpineDto> = {}): SpineDto {
   };
 }
 
+/** The visible text: every tag becomes a space, so attribute values drop out. */
+function visibleText(html: string): string {
+  return html.replace(/<[^>]*>/g, ' ');
+}
+
+/** The markup from data-compact-row="{name}" up to the next row, or the end. */
+function rowSlice(html: string, name: string): string {
+  const at = html.indexOf(`data-compact-row="${name}"`);
+  if (at < 0) throw new Error(`row ${name} not found`);
+  const next = html.indexOf('data-compact-row="', at + 1);
+  return html.slice(at, next < 0 ? undefined : next);
+}
+
+/** Every data-compact-row value, in markup order. */
+function rowNames(html: string): string[] {
+  return [...html.matchAll(/data-compact-row="([^"]*)"/g)].map((m) => m[1]);
+}
+
+const ROWS = ['status', 'warnings', 'crop', 'select', 'match', 'bulk'];
+
 function render(s: SpineDto): string {
   return renderToStaticMarkup(
     h(CompactSpineCard, { spine: s, threshold: 0.7 }),
@@ -102,9 +124,35 @@ function render(s: SpineDto): string {
 }
 
 describe('CompactSpineCard (collapsed)', () => {
-  it('shows #n, the Top match label and the full title on hover', () => {
+  it('always renders the six rows in order', () => {
+    expect(rowNames(render(spine()))).toEqual(ROWS);
+    const fallback = renderBulk(
+      withBulk(
+        bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
+        bulkImport({ phase: 'waiting' }),
+      ),
+    );
+    expect(rowNames(fallback)).toEqual(ROWS);
+  });
+
+  it('a low-confidence field warns on the warnings row, not the select row', () => {
+    const s = spine();
+    const low = spine({
+      fields: s.fields.map((f) =>
+        f.field === 'title' ? { ...f, confidence: 0.3 } : f,
+      ),
+    });
+    const html = render(low);
+    expect(rowSlice(html, 'warnings')).toContain('Check title · 30%');
+    expect(rowSlice(html, 'select')).not.toContain('Check title');
+  });
+
+  it('shows no spine number, the Top match label and the full title on hover', () => {
     const html = render(spine());
-    expect(html).toContain('#7');
+    const text = visibleText(html);
+    expect(html).not.toContain('data-corner-numeral');
+    expect(text).not.toContain('#7');
+    expect(text).not.toMatch(/(^|\D)7(\D|$)/);
     expect(html).toContain('Top match');
     expect(html).toContain(`title="${LONG_TITLE.replaceAll('"', '&quot;')}"`);
     expect(html).toContain('1991 · US · DGCD-24425');
@@ -191,7 +239,33 @@ const Expanded = ExpandedCardsProvider as FC<{
 }>;
 
 /** Renders the compact card under a provider, optionally already expanded. */
-function renderInGrid(s: SpineDto, expanded: string[]): string {
+// createElement's typing wants children in props; pass them as an argument.
+const Selection = SelectionProvider as FC<{
+  selected: ReadonlySet<string>;
+  onChange: () => void;
+  children?: ReactNode;
+}>;
+
+/**
+ * Renders the compact card under a provider, optionally already expanded and
+ * optionally inside a SelectionProvider (so the select checkbox renders).
+ */
+function renderInGrid(
+  s: SpineDto,
+  expanded: string[],
+  selection = false,
+): string {
+  const card = h(CompactSpineCard, {
+    spine: s,
+    threshold: 0.7,
+    renderFull: (trailing: ReactNode) =>
+      h(SpineView, {
+        spine: s,
+        threshold: 0.7,
+        discogs: DISCOGS_VIEW,
+        trailing,
+      }),
+  });
   return renderToStaticMarkup(
     h(
       QueryClientProvider,
@@ -202,17 +276,9 @@ function renderInGrid(s: SpineDto, expanded: string[]): string {
         h(
           TooltipProvider,
           null,
-          h(CompactSpineCard, {
-            spine: s,
-            threshold: 0.7,
-            renderFull: (trailing: ReactNode) =>
-              h(SpineView, {
-                spine: s,
-                threshold: 0.7,
-                discogs: DISCOGS_VIEW,
-                trailing,
-              }),
-          }),
+          selection
+            ? h(Selection, { selected: new Set(), onChange: () => {} }, card)
+            : card,
         ),
       ),
     ),
@@ -245,12 +311,22 @@ describe('layoutReset', () => {
 });
 
 describe('CompactSpineCard expand toggle', () => {
-  it('a collapsed card offers Edit spine and no field inputs', () => {
-    const html = renderInGrid(spine(), []);
-    expect(html).toContain('Edit spine');
-    expect(html).toContain('aria-label="Edit spine #7"');
-    expect(html).toContain('aria-expanded="false"');
-    expect(html).toContain('aria-controls="spine-card-sp-1"');
+  it('a collapsed card offers a pencil Edit button beside the checkbox and no field inputs', () => {
+    const html = renderInGrid(
+      spine({ bulk: { eligible: true, reason: null, item: null } }),
+      [],
+      true,
+    );
+    const select = rowSlice(html, 'select');
+    expect(select).toContain('aria-label="Select spine #7"');
+    expect(select).toContain('Top match');
+    const edit = openingTag(select, 'aria-label="Edit spine #7"');
+    expect(edit).toContain('aria-expanded="false"');
+    expect(edit).toContain('aria-controls="spine-card-sp-1"');
+    expect(edit).toContain('data-size="icon"');
+    expect(html).toContain('lucide-pencil');
+    expect(html).not.toContain('lucide-chevron-down');
+    expect(visibleText(html)).not.toContain('Edit spine');
     expect(html).not.toContain('Show less');
     expect(html).not.toContain('<input');
   });
@@ -380,17 +456,35 @@ describe('CompactSpineCard bulk states', () => {
     expect(html).toContain('Looking for the Canadian pressing…');
   });
 
-  it('a resolved US fallback shows Fallback: US before the state badge, and the fallback line', () => {
+  it('a resolved US fallback shows the state badge on its own row, Fallback: US on the warnings line, and the fallback line', () => {
     const html = renderBulk(
       withBulk(
         bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
         bulkImport({ phase: 'waiting' }),
       ),
     );
-    const badge = html.indexOf('Fallback: US');
-    expect(badge).toBeGreaterThan(-1);
-    expect(badge).toBeLessThan(html.indexOf('Waiting to import'));
+    const state = html.indexOf('Waiting to import');
+    expect(state).toBeGreaterThan(-1);
+    expect(state).toBeLessThan(html.indexOf('Fallback: US'));
+    const status = rowSlice(html, 'status');
+    expect(status).toContain('Waiting to import');
+    expect(status).not.toContain('Fallback: US');
+    expect(rowSlice(html, 'warnings')).toContain('Fallback: US');
     expect(html).toContain('No Canadian pressing, used US');
+  });
+
+  it('the status row is one badge line and never clips the badge', () => {
+    const html = renderBulk(
+      withBulk(
+        bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
+        bulkImport({ phase: 'waiting' }),
+      ),
+    );
+    const t = classTokens(openingTag(html, 'data-compact-row="status"'));
+    expect(t).toContain('min-h-6');
+    for (const gone of ['min-w-0', 'max-w-full', 'overflow-hidden']) {
+      expect(t).not.toContain(gone);
+    }
   });
 
   it('a preferred import shows the country with no status line', () => {
@@ -556,19 +650,22 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     });
   }
 
-  it('the compact card is a mini card with an md numeral before #n', () => {
+  it('the compact card is a six-row subgrid mini card with no numeral', () => {
     const html = render(spine());
-    expect(openingTag(html, 'data-slot="card"')).toContain(
-      'data-variant="mini"',
+    const tag = openingTag(html, 'data-slot="card"');
+    expect(tag).toContain('data-variant="mini"');
+    expect(classTokens(tag)).toEqual(
+      expect.arrayContaining([
+        'row-span-6',
+        'grid',
+        'grid-rows-subgrid',
+        'gap-2',
+        'rounded-xl',
+        'p-4',
+      ]),
     );
-    const numeral = openingTag(html, 'data-corner-numeral');
-    expect(classTokens(numeral)).toEqual(
-      expect.arrayContaining([...NUMERAL_SIZES.md]),
-    );
-    expect(classTokens(numeral)).not.toContain('text-[10rem]');
-    const at = html.indexOf('data-corner-numeral');
-    expect(html.slice(at)).toMatch(/^[^>]*>7<\/span>/);
-    expect(at).toBeLessThan(html.indexOf('#7'));
+    expect(html).not.toContain('data-corner-numeral');
+    expect(visibleText(html)).not.toContain('#7');
   });
 
   it('an orphaned compact card keeps its warning border with card-mini', () => {
