@@ -1,6 +1,6 @@
 // Checks a demo static export before it can be published (D-03, D-06, D-18,
 // T-05-01..03, T-05-08). Every rule fails with a short message naming it and
-// never prints a secret value.
+// never prints a secret value. Rule i: the demo stays dark-only (Phase 7).
 //   node scripts/demo/verify-export.ts [--out ./out] [--next ./.next] [--secrets ./secrets.json]
 // The secrets file defaults to $SECRETS_FILE or ./secrets.json, like the app.
 // build-demo.ts calls verifyExport() after every build. Node built-ins only.
@@ -294,6 +294,27 @@ export function verifyExport(opts: {
       }
     }
   }
+  // i. the demo stays dark-only (Phase 7): every layout-rendered page has
+  // the dark class token on <html>. Missing pages are rule a's job.
+  // The root index.html is skipped: it is the client-redirect shell, which
+  // has no layout and no class.
+  const layoutPages = demoPageRoutes(opts.repoRoot ?? REPO)
+    .filter((route) => route !== '/')
+    .map((route) => `${route}index.html`);
+  layoutPages.push('404.html');
+  for (const page of layoutPages) {
+    const file = path.join(outDir, page);
+    if (!fs.existsSync(file)) continue;
+    const tag = fs.readFileSync(file, 'utf8').match(/<html\b[^>]*>/i)?.[0];
+    const cls = tag?.match(/\sclass="([^"]*)"/)?.[1] ?? '';
+    if (!cls.split(/\s+/).includes('dark')) {
+      fail(
+        'i',
+        `export is not dark-only: <html> lacks the dark class (out/${page})`,
+      );
+    }
+  }
+
   if (cropBytes >= CROPS_MAX_BYTES) {
     fail(
       'f',
@@ -317,7 +338,7 @@ export function reportVerify(r: VerifyResult): boolean {
       r.secretValues === undefined
         ? ''
         : ` (${r.secretValues} known secret values, ${SECRET_PATTERNS.length} secret patterns)`;
-    console.log(`[verify-export] PASS: ${r.files} files, rules a-h${scanned}`);
+    console.log(`[verify-export] PASS: ${r.files} files, rules a-i${scanned}`);
   }
   return r.ok;
 }
