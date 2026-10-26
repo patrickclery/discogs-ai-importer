@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { badgeVariants } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyDescription } from '@/components/ui/empty';
@@ -107,16 +108,37 @@ describe('Input selection (Mocha)', () => {
   });
 });
 
-describe('DropdownMenuItem destructive focus (Mocha)', () => {
+describe('Alert destructive description (C-5)', () => {
+  // Red/90 on the card is 4.48:1 on a scanline row; solid red is 5.43:1, or
+  // 5.16 on a scanline row (UI-SPEC C-5).
+  it('renders the description in solid red on the card', () => {
+    const html = renderToStaticMarkup(
+      h(Alert, { variant: 'destructive' }, h(AlertDescription, null, 'x')),
+    );
+    const t = slotTokens(html, 'alert');
+    expect(t).toContain('*:data-[slot=alert-description]:text-destructive');
+    expect(t).not.toContain(
+      '*:data-[slot=alert-description]:text-destructive/90',
+    );
+    expect(t).toContain('text-destructive');
+    expect(t).toContain('bg-card');
+  });
+});
+
+describe('DropdownMenuItem destructive focus (C-6)', () => {
   // A Radix menu item needs a portalled menu to render, so check the source:
-  // red on red/20 over surface0 is 3.81:1, red/10 is about 4.6:1 (IN-03).
+  // red on a red/5 tint is 4.99:1, or 4.77 on a scanline row (UI-SPEC C-6).
+  // Red/10 falls under AA once the scanlines land.
   const src = fs.readFileSync(
     path.join(import.meta.dirname, 'ui', 'dropdown-menu.tsx'),
     'utf8',
   );
 
-  it('focuses at red/10 in dark, never red/20', () => {
-    expect(src).toContain('data-[variant=destructive]:focus:bg-destructive/10');
+  it('focuses at red/5, never red/10 or red/20', () => {
+    expect(src).toContain('data-[variant=destructive]:focus:bg-destructive/5');
+    expect(src).not.toContain(
+      'data-[variant=destructive]:focus:bg-destructive/10',
+    );
     expect(src).not.toContain(
       'dark:data-[variant=destructive]:focus:bg-destructive/20',
     );
