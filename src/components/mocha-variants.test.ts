@@ -5,6 +5,7 @@ import { badgeVariants } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { EmptyDescription } from '@/components/ui/empty';
 import { FieldDescription } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 
 // Phase 7 (THEME-05, THEME-06): filled primary hovers to lavender, every
 // destructive fill is solid red with dark base text (never white), and link
@@ -94,5 +95,12 @@ describe('description links (Mocha)', () => {
     const t = slotTokens(html, 'field-description');
     expect(t).toContain('[&>a:hover]:text-primary-hover');
     expect(t).not.toContain('[&>a:hover]:text-primary');
+  });
+});
+
+describe('Input selection (Mocha)', () => {
+  it('uses the global 15% mauve ::selection, not a solid primary fill', () => {
+    const t = slotTokens(renderToStaticMarkup(h(Input)), 'input');
+    expect(t.filter((c) => c.startsWith('selection:'))).toEqual([]);
   });
 });
