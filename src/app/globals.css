@@ -92,6 +92,8 @@
   --success: #a6e3a1;
   --warning: #f9e2af;
   --selection: #cba6f726;
+  --glow: #cba6f766;
+  --cyan: #89dcfe;
 }
 
 /* Catppuccin Mocha, dark only. Hex values: 07-UI-SPEC token table. */
@@ -104,6 +106,19 @@
   }
   ::selection {
     background-color: var(--selection);
+  }
+}
+
+/* awesomer's look (07-UI-SPEC v2). Exact rules: reference/awesomer-style-rules.css. */
+@layer base {
+  /* CRT scanlines: decorative, never blocks input. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg, #0000 0 1px, #0000000a 1px 2px);
   }
 }
 
@@ -147,5 +162,60 @@
     box-shadow:
       0 2px 12px #0003,
       0 0 10px color-mix(in srgb, var(--primary) 6%, transparent);
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, var(--primary), var(--cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .glow {
+    text-shadow: 0 0 8px var(--glow);
+  }
+  .glow-intense {
+    text-shadow:
+      0 0 4px var(--primary),
+      0 0 10px var(--glow),
+      0 0 20px var(--glow),
+      0 0 40px var(--glow);
+  }
+  .cursor-blink {
+    animation: blink 1s step-end 5;
+  }
+  .ascii-art {
+    font-family: var(--font-ascii-mono), monospace;
+    white-space: pre;
+    letter-spacing: 0;
+    font-size: 11px;
+    line-height: 1;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-blink {
+    animation: none;
+  }
+  .card-featured,
+  .card-mini {
+    transition: none;
+  }
+}
+
+@media print, (forced-colors: active) {
+  body::before {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .gradient-text {
+    background: none;
+    -webkit-text-fill-color: currentColor;
   }
 }
