@@ -10,6 +10,7 @@ import type { ImportDto } from '@/lib/import-types';
 import type { SpineDto } from '@/lib/scan-types';
 import { layoutOf, layoutParamOf, useCardLayout } from './card-layout-toggle';
 import { CompactSpineCard } from './compact-spine-card';
+import { CornerNumeral } from './corner-numeral';
 import {
   ExpandedCardsProvider,
   layoutReset,
@@ -18,6 +19,7 @@ import {
 import { ImportStateBadge } from './import-state-badge';
 import { SpineView } from './photo-section';
 import { SpineCard } from './spine-card';
+import { Card } from './ui/card';
 import { TooltipProvider } from './ui/tooltip';
 
 // The compact card (D-10, UI-SPEC Compact card): #n and the header badges,
@@ -471,6 +473,108 @@ describe('ImportStateBadge bulk phases', () => {
     expect(badge(withBulk(finding, bulkImport()))).toContain('Imported');
     expect(badge({ ...withBulk(finding, null), notOnDiscogs: true })).toContain(
       'Not on Discogs',
+    );
+  });
+});
+
+/** The opening tag of the first element carrying `marker`. */
+function openingTag(html: string, marker: string): string {
+  const at = html.indexOf(marker);
+  if (at < 0) throw new Error(`${marker} not found`);
+  const start = html.lastIndexOf('<', at);
+  return html.slice(start, html.indexOf('>', at) + 1);
+}
+
+/** The whole class tokens on an opening tag (no substring matches). */
+function classTokens(tag: string): string[] {
+  const m = tag.match(/class="([^"]*)"/);
+  return (m?.[1] ?? '').split(/\s+/).filter(Boolean);
+}
+
+const NUMERAL_BASE = [
+  'pointer-events-none',
+  'absolute',
+  '-z-10',
+  'select-none',
+  'font-mono',
+  'font-black',
+  'leading-none',
+  'text-primary/[0.07]',
+];
+
+const NUMERAL_SIZES = {
+  sm: ['-right-1', '-bottom-2', 'text-4xl'],
+  md: ['-right-1', '-bottom-3', 'text-7xl'],
+  lg: ['-right-2', '-bottom-6', 'text-[10rem]'],
+} as const;
+
+describe('awesomer mini card (Phase 7 v2)', () => {
+  const cardTag = (variant?: 'default' | 'mini' | 'featured') =>
+    openingTag(
+      renderToStaticMarkup(h(Card, variant ? { variant } : {}, 'x')),
+      'data-slot="card"',
+    );
+
+  it('Card default keeps border, bg-card and shadow-sm and no data-variant', () => {
+    const tag = cardTag();
+    expect(classTokens(tag)).toEqual(
+      expect.arrayContaining(['border', 'bg-card', 'shadow-sm']),
+    );
+    expect(tag).not.toContain('data-variant');
+  });
+
+  for (const variant of ['mini', 'featured'] as const) {
+    it(`Card ${variant} is an awesomer gradient card`, () => {
+      const tag = cardTag(variant);
+      const t = classTokens(tag);
+      expect(tag).toContain(`data-variant="${variant}"`);
+      expect(t).toEqual(
+        expect.arrayContaining([
+          `card-${variant}`,
+          'relative',
+          'isolate',
+          'overflow-hidden',
+        ]),
+      );
+      for (const gone of ['bg-card', 'shadow-sm', 'border']) {
+        expect(t).not.toContain(gone);
+      }
+    });
+  }
+
+  for (const size of ['sm', 'md', 'lg'] as const) {
+    it(`CornerNumeral ${size} is decorative with exactly its size tokens`, () => {
+      const html = renderToStaticMarkup(h(CornerNumeral, { value: 42, size }));
+      const tag = openingTag(html, 'data-corner-numeral');
+      expect(tag).toContain('aria-hidden="true"');
+      expect(tag).toContain('data-corner-numeral=""');
+      expect(classTokens(tag).sort()).toEqual(
+        [...NUMERAL_BASE, ...NUMERAL_SIZES[size]].sort(),
+      );
+      expect(html).toMatch(/>42<\/span>$/);
+      expect(html).not.toContain('#');
+    });
+  }
+
+  it('the compact card is a mini card with an md numeral before #n', () => {
+    const html = render(spine());
+    expect(openingTag(html, 'data-slot="card"')).toContain(
+      'data-variant="mini"',
+    );
+    const numeral = openingTag(html, 'data-corner-numeral');
+    expect(classTokens(numeral)).toEqual(
+      expect.arrayContaining([...NUMERAL_SIZES.md]),
+    );
+    expect(classTokens(numeral)).not.toContain('text-[10rem]');
+    const at = html.indexOf('data-corner-numeral');
+    expect(html.slice(at)).toMatch(/^[^>]*>7<\/span>/);
+    expect(at).toBeLessThan(html.indexOf('#7'));
+  });
+
+  it('an orphaned compact card keeps its warning border with card-mini', () => {
+    const html = render(spine({ state: 'orphaned', orphanedRunNo: 2 }));
+    expect(classTokens(openingTag(html, 'data-slot="card"'))).toEqual(
+      expect.arrayContaining(['card-mini', 'border-warning/60']),
     );
   });
 });

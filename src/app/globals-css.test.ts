@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -174,5 +175,110 @@ describe('globals.css: WCAG contrast (Phase 7)', () => {
     expect(vars[fg]).toBeDefined();
     expect(vars[bg]).toBeDefined();
     expect(contrastRatio(vars[fg], vars[bg])).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+const read = (rel: string) =>
+  fs.readFileSync(path.join(import.meta.dirname, rel), 'utf8');
+
+/** One rule body, whitespace collapsed so formatter line breaks don't matter. */
+function ruleBody(selector: string): string {
+  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = css.match(new RegExp(`(?:^|[\\s}])${esc}\\s*\\{([^}]*)\\}`));
+  if (!m) throw new Error(`${selector} rule not found`);
+  return m[1]
+    .replace(/\s+/g, ' ')
+    .replace(/\(\s+/g, '(')
+    .replace(/\s+\)/g, ')');
+}
+
+describe('fonts wiring (Phase 7 v2)', () => {
+  it('fonts.ts loads Geist Mono, Plex 400 and the local asciiMono', () => {
+    const src = read('fonts.ts');
+    for (const s of [
+      'Geist_Mono',
+      'IBM_Plex_Sans',
+      'localFont',
+      "'./fonts/ascii_mono.woff2'",
+      '--font-geist-mono',
+      '--font-ibm-plex-sans',
+      '--font-ascii-mono',
+      "weight: '400'",
+      "display: 'block'",
+    ]) {
+      expect(src).toContain(s);
+    }
+  });
+
+  for (const layout of ['layout.tsx', 'layout.demo.tsx']) {
+    it(`${layout} uses the shared fonts and no Geist Sans`, () => {
+      const src = read(layout);
+      expect(src).toContain(
+        "import { asciiMono, geistMono, plexSans } from './fonts';",
+      );
+      expect(src).toContain(
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: the literal className template
+        'className={`dark ${geistMono.variable} ${plexSans.variable} ${asciiMono.variable} h-full antialiased`}',
+      );
+      expect(src).not.toContain('geistSans');
+      expect(src).not.toContain('--font-geist-sans');
+    });
+  }
+});
+
+describe('asciiMono font file and license (Phase 7 v2)', () => {
+  it('is the byte-identical 7,032-byte capture', () => {
+    const buf = fs.readFileSync(
+      path.join(import.meta.dirname, 'fonts/ascii_mono.woff2'),
+    );
+    expect(buf.length).toBe(7032);
+    expect(createHash('sha256').update(buf).digest('hex')).toBe(
+      '756de50e06e4438e37dd4bfc887e58aa7f76cd7d5e7da0710a13d45d43a1b382',
+    );
+  });
+
+  it('ships beside the SIL OFL 1.1 with the Noto copyright', () => {
+    const ofl = read('fonts/OFL.txt');
+    expect(ofl).toContain('SIL OPEN FONT LICENSE Version 1.1');
+    expect(ofl).toContain('The Noto Project Authors');
+    expect(ofl).not.toContain('Open Sans');
+  });
+});
+
+describe('awesomer card rules (Phase 7 v2)', () => {
+  const GRADIENT =
+    'linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 85%, var(--background)) 100%)';
+
+  it('.card-mini is the gradient with a faint border, mauve on hover', () => {
+    const mini = ruleBody('.card-mini');
+    expect(mini).toContain(`background: ${GRADIENT};`);
+    expect(mini).toContain(
+      'border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);',
+    );
+    expect(ruleBody('.card-mini:hover')).toContain(
+      'border-color: color-mix(in srgb, var(--primary) 40%, transparent);',
+    );
+  });
+
+  it('.card-featured has a half-mauve border, solid mauve on hover', () => {
+    const featured = ruleBody('.card-featured');
+    expect(featured).toContain(`background: ${GRADIENT};`);
+    expect(featured).toContain(
+      'border: 1px solid color-mix(in srgb, var(--primary) 50%, transparent);',
+    );
+    expect(ruleBody('.card-featured:hover')).toContain(
+      'border-color: var(--primary);',
+    );
+  });
+
+  it('no card rule moves or scales the card', () => {
+    for (const sel of [
+      '.card-mini',
+      '.card-mini:hover',
+      '.card-featured',
+      '.card-featured:hover',
+    ]) {
+      expect(ruleBody(sel)).not.toContain('transform');
+    }
   });
 });

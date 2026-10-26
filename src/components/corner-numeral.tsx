@@ -23,9 +23,11 @@ export function CornerNumeral({
     <span
       aria-hidden="true"
       data-corner-numeral=""
+      // Size first: tailwind-merge drops a leading-* that precedes a text-*
+      // size, and leading-none must survive (text-[10rem] sets no line-height).
       className={cn(
-        'pointer-events-none absolute -z-10 select-none font-mono font-black leading-none text-primary/[0.07]',
         SIZES[size],
+        'pointer-events-none absolute -z-10 select-none font-mono font-black leading-none text-primary/[0.07]',
       )}
     >
       {value}
