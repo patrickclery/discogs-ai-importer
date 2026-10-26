@@ -214,6 +214,22 @@ describe('fonts wiring (Phase 7 v2)', () => {
     }
   });
 
+  // next/font defaults to a size-adjusted local(Arial) fallback, which is
+  // proportional, so the mono UI font and the box-drawing wordmark would
+  // first paint (or fail over) in Arial. Both mono fonts opt out of it and
+  // fall back to real monospace faces instead.
+  for (const name of ['geistMono', 'asciiMono']) {
+    it(`${name} falls back to monospace, not the Arial metric fallback`, () => {
+      const src = read('fonts.ts');
+      const m = src.match(
+        new RegExp(`export const ${name} = \\w+\\(\\{([\\s\\S]*?)\\}\\);`),
+      );
+      if (!m) throw new Error(`${name} font call not found`);
+      expect(m[1]).toContain('adjustFontFallback: false,');
+      expect(m[1]).toMatch(/fallback: \[[^\]]*'monospace',?\s*\]/);
+    });
+  }
+
   for (const layout of ['layout.tsx', 'layout.demo.tsx']) {
     it(`${layout} uses the shared fonts and no Geist Sans`, () => {
       const src = read(layout);

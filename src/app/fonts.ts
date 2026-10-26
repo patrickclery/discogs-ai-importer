@@ -6,6 +6,16 @@ import localFont from 'next/font/local';
 export const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+  // next/font's default fallback is a size-adjusted local(Arial), which is
+  // proportional. Fall back to real monospace faces instead.
+  adjustFontFallback: false,
+  fallback: [
+    'ui-monospace',
+    'SFMono-Regular',
+    'Menlo',
+    'Consolas',
+    'monospace',
+  ],
 });
 
 export const plexSans = IBM_Plex_Sans({
@@ -20,4 +30,7 @@ export const asciiMono = localFont({
   src: './fonts/ascii_mono.woff2',
   variable: '--font-ascii-mono',
   display: 'block',
+  // Arial would misalign the box-drawing columns, so no metric fallback.
+  adjustFontFallback: false,
+  fallback: ['ui-monospace', 'monospace'],
 });
