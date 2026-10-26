@@ -8,10 +8,10 @@ updated: 2026-10-26T12:00:00.000Z
 
 ## Current Test
 
-number: 11
-name: On Settings, look at the Fallback country box in the Discogs card. Type germany and click away. Then clear the box and click away. Then type canada and click away.
+number: 12
+name: At phone width, look at the status tabs at the top of the Spines page, then tap Failed.
 expected: |
-  It starts as US. germany saves as Germany with a pop-up. An empty box is not saved and says Enter a country, such as US. With canada (same as Preferred country) a note says bulk import goes straight to the top match. Set it back to US when done.
+  All seven tabs (All, Pending, Matched, Imported, Not found, Not on Discogs, Failed) are visible over two or three lines, none cut off, and tapping Failed shows the failed list.
 awaiting: user response
 
 ## Tests
@@ -60,7 +60,7 @@ result: pass
 
 ### 11. On Settings, look at the Fallback country box in the Discogs card. Type germany and click away. Then clear the box and click away. Then type canada and click away.
 expected: It starts as US. germany saves as Germany with a pop-up. An empty box is not saved and says Enter a country, such as US. With canada (same as Preferred country) a note says bulk import goes straight to the top match. Set it back to US when done.
-result: [pending]
+result: pass
 
 ### 12. At phone width, look at the status tabs at the top of the Spines page, then tap Failed.
 expected: All seven tabs (All, Pending, Matched, Imported, Not found, Not on Discogs, Failed) are visible over two or three lines, none cut off, and tapping Failed shows the failed list.
@@ -77,9 +77,9 @@ result: [pending]
 ## Summary
 
 total: 14
-passed: 9
+passed: 10
 issues: 2
-pending: 4
+pending: 3
 skipped: 0
 blocked: 0
 
@@ -114,9 +114,9 @@ blocked: 0
   missing:
     - "Let the tab row wrap onto more lines (or otherwise keep every tab visible) at phone width"
 - gap_id: G-06-side-2
-  truth: "Every compact review card has the same number of rows, so cards in a grid line up: the card number shows only once (the big number in the corner, no '#N' label), warning badges sit on their own line separate from the candidates count, and editing the spine is an icon button instead of the 'Edit spine' text"
+  truth: "Every compact review card has the same number of rows, so cards in a grid line up: no card numbering at all (neither the '#N' label nor the big corner number), the checkbox shares its row with other content (e.g. the candidates count) instead of taking a row of its own, warning badges sit on their own line separate from the candidates count, and editing the spine is an icon button instead of the 'Edit spine' text"
   status: failed
-  reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped."
+  reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped. Later: we don't need the numbering on the cards at all. We just need check boxes, and ideally the check box shouldn't take up a whole row. It can have text beside it or whatever."
   severity: cosmetic
   test: side
   artifacts: []
