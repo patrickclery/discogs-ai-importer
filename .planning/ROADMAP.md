@@ -138,7 +138,7 @@ Plans:
 **Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (Catppuccin Mocha, dark only) and its overall terminal/markdown look: gradient cards with corner numbers, Geist Mono / IBM Plex Sans / asciiMono fonts, scanlines; applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
 **Requirements**: THEME-01..THEME-10 (THEME-01..07 proposed in 07-01-PLAN.md; THEME-08..10 proposed in 07-04-PLAN.md for gap G-07-style-1)
 **Depends on:** Phase 6
-**Plans:** 4/8 plans executed
+**Plans:** 5/8 plans executed
 
 Plans:
 **Wave 1**
@@ -152,7 +152,7 @@ Plans:
 - [x] 07-04-PLAN.md — Tracer: awesomer fonts (Geist Mono, Plex, local asciiMono + OFL) and gradient mini compact card with corner numeral in app and demo; full v2 CSS block (scanlines, gradient-text, glow, cursor)
 
 **Gap closure G-07-style-1 — Wave 2** *(blocked on 07-04)*
-- [ ] 07-05-PLAN.md — Featured surfaces: expanded spine card, bulk bar, dialogs; Detailed mini cards with lg numerals; Plex dialog text
+- [x] 07-05-PLAN.md — Featured surfaces: expanded spine card, bulk bar, dialogs; Detailed mini cards with lg numerals; Plex dialog text
 - [ ] 07-06-PLAN.md — Terminal touches: MdPrefix, ASCII wordmark on /upload, gradient title, ## Photos mini card, glowing logo with 5-blink cursor
 - [ ] 07-07-PLAN.md — Contrast C-5/C-6 under scanlines; Plex on Card/Alert/Empty/Field descriptions; buttons pinned to Geist Mono
 
