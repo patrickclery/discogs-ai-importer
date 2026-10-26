@@ -1,6 +1,6 @@
 ---
 phase: 07-match-the-patrickclery-com-awesomer-color-palette
-verified: 2026-10-26T02:50:05Z
+verified: 2026-10-26T02:56:31Z
 status: human_needed
 score: 15/15 must-haves verified
 covered_files:
@@ -15,6 +15,7 @@ covered_files:
   - "src/app/globals.css"
   - "src/app/layout.demo.tsx"
   - "src/app/layout.tsx"
+  - "src/components/app-header.test.ts"
   - "src/components/app-header.tsx"
   - "src/components/bulk-status-line.tsx"
   - "src/components/confirmed-match.tsx"
@@ -29,14 +30,22 @@ covered_files:
   - "src/components/theme-provider.tsx"
   - "src/components/ui/badge.tsx"
   - "src/components/ui/button.tsx"
+  - "src/components/ui/dropdown-menu.tsx"
   - "src/components/ui/empty.tsx"
   - "src/components/ui/field.tsx"
+  - "src/components/ui/input.tsx"
   - "src/components/ui/sonner.tsx"
   - "src/components/ui/toggle.tsx"
   - "src/demo/verify-export.test.ts"
-covered_digest: "v3:sha256:ef19fdcbde9a19f92608251414b929da90687ba681579ce3210006897691ba86"
+covered_digest: "v3:sha256:7f5756e2cc9433578f70dd183d62ee1b47aa0627f941f61d569b071f0ed9c5e1"
 behavior_unverified: 0
 overrides_applied: 0
+re_verification:
+  previous_status: human_needed
+  previous_score: 15/15
+  gaps_closed: []
+  gaps_remaining: []
+  regressions: []
 human_verification:
   - test: "Set your computer to light mode. Start the app and open the Upload page, then the Spines page and the Settings page. Reload each page a few times."
     expected: "Every page has a dark navy-purple background with soft off-white text, even though the computer is in light mode. Cards and panels are a slightly lighter slate-purple with thin grey-purple borders. Reloading never shows a white flash. There is no light/dark switch anywhere. The lettering looks exactly as before."
@@ -53,22 +62,22 @@ human_verification:
   - test: "On the Spines page, look at the row of status tabs (All is selected when the page opens). Move the mouse over other tabs. If a spine has failed, look at the Failed tab, then click it. Also hover and click Needs review and Fallback if they show."
     expected: "On the selected tab the number is bright off-white and easy to read, not faded grey. Hovering a tab brightens its number the same way. The Failed number is red when the tab is not selected and turns off-white once you hover or select it. Filtering works exactly as before."
     why_human: "Readability of small numbers on the selected and hover backgrounds is visual."
-  - test: "Hover the underlined purple links: in Settings, the links in the Discogs card; on the Spines page (Detailed view), the Discogs links under a match or a confirmed match. Then select some text anywhere with the mouse, and press Tab a few times to move between buttons and fields."
-    expected: "Each link is light purple and turns bluish lavender under the mouse, staying underlined. Selected text gets a faint purple highlight and keeps its own color. The outline that shows which button or field you are on is purple."
+  - test: "Hover the underlined purple links: in Settings, the links in the Discogs card; on the Spines page (Detailed view), the Discogs links under a match or a confirmed match. Then select some text on the page with the mouse, and also select some text you typed into a box (for example the search box on the Spines page or a field in Settings). Finally press Tab a few times to move between buttons and fields."
+    expected: "Each link is light purple and turns bluish lavender under the mouse, staying underlined. Selected text gets a faint purple highlight and keeps its own color, both on the page and inside a typing box (never a solid purple block). The outline that shows which button or field you are on is purple."
     why_human: "Hover, selection and keyboard-focus colors are visual."
   - test: "Open the published demo site (or a fresh demo build) and visit its first page, Spines and Settings."
-    expected: "The demo looks the same as the app: dark navy-purple, light text, purple buttons, no white flash, no white page anywhere."
+    expected: "The demo looks the same as the app: dark navy-purple, light text, purple buttons, no white flash, no white page anywhere, including the very first page you land on."
     why_human: "Visual parity of the static demo with the app."
 ---
 
 # Phase 7: Match the patrickclery.com/awesomer color palette — Verification Report
 
 **Phase Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (Catppuccin Mocha, dark only; colors only, fonts unchanged), applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
-**Verified:** 2026-10-26T02:50:05Z
+**Verified:** 2026-10-26T02:56:31Z
 **Status:** human_needed
-**Re-verification:** No — initial verification
+**Re-verification:** Yes. The previous report went stale after the review fixes e52601b (WR-01), 682dc34 (IN-01), 45d7878 (IN-02) and cbb4779 (IN-03).
 
-ROADMAP lists no explicit success criteria for Phase 7; must-haves are the 15 truths from the three PLAN frontmatters.
+ROADMAP lists no explicit success criteria for Phase 7, so the must-haves are the 15 truths from the three PLAN frontmatters. Since f2da0ab, the only source changes are the 7 files in those four commits (`git diff --stat f2da0ab HEAD -- src scripts`). Every other covered file is byte-identical, so its earlier evidence still holds. The full suite, types, lint, demo build and smoke check were all re-run.
 
 ## Goal Achievement
 
@@ -76,45 +85,46 @@ ROADMAP lists no explicit success criteria for Phase 7; must-haves are the 15 tr
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Every screen paints Mocha via shadcn tokens (base, text, surface0/1, subtext0, mantle, mauve) | ✓ VERIFIED | `globals.css` has a single `:root` with all 37 UI-SPEC values (read directly; locked by `globals-css.test.ts`). No `.dark {}` block, no `oklch(`, no old hexes. Exported demo CSS carries `--background:#1e1e2e`, zero `#0a0a0a`/`#4f46e5`. Grep finds no hard-coded palette classes in `src` (only `bg-black/50` overlays, kept per UI-SPEC). |
-| 2 | Dark whatever the OS or stored theme, no flash, no toggle | ✓ VERIFIED | Static `dark` class on `<html>` in both layouts; `viewport.colorScheme='dark'`; provider `forcedTheme="dark"`, `enableSystem={false}`; `theme-provider.test.ts` asserts the next-themes script args `("class","theme","dark","dark",…,false,true)`. No `prefers-color-scheme`, `useTheme` or `setTheme` anywhere in `src`. The "no flash" part goes to human check 1. |
-| 3 | Status colors: success, warning, destructive, sky as chart-2 | ✓ VERIFIED | `--success #a6e3a1`, `--warning #f9e2af`, `--destructive #f38ba8`, `--chart-2 #89dcfe` in `:root`. |
-| 4 | Mauve selection at 15%, mauve focus rings, translucent blurred header | ✓ VERIFIED | `::selection { background-color: var(--selection) }` with `--selection #cba6f726`; `--ring #cba6f7`; header class `bg-background/80 backdrop-blur-sm`; both utilities are present in the exported CSS. |
-| 5 | Toasts always dark | ✓ VERIFIED | `sonner.tsx` passes the constant `theme="dark"`; `useTheme` removed; the only callers (both layouts) pass no `theme`. |
-| 6 | Demo export same dark theme; verify-export rule i fails when a page lacks the class | ✓ VERIFIED | A fresh `build-demo.ts` run gave `PASS: 392 files, rules a-i`. upload, spines, settings and 404 HTML have `class="dark …"`; the root redirect shell has the dark color-scheme meta. Rule i is tested for missing, `darkmode` and no-class cases. |
-| 7 | Fonts stay Geist; no copy, layout or spacing changes | ✓ VERIFIED | `--font-sans`/`--font-mono` lines unchanged. The diff of every `.tsx` since `005d0e2` touches only color classes, theme props, the viewport export and the `dark` class. |
-| 8 | Filled primary buttons are mauve with base text and lavender on hover | ✓ VERIFIED | button `default`: `bg-primary text-primary-foreground hover:bg-primary-hover`; the badge equivalent also checks out. `.hover\:bg-primary-hover` is in the exported CSS. `mocha-variants.test.ts` passes. |
-| 9 | Three destructive confirms are solid red with base text; Clear value never mauve | ✓ VERIFIED | button/badge `destructive`: `text-destructive-foreground`, no `text-white`, no `dark:bg-destructive/60`. `secret-field.tsx` Clear value is `AlertDialogAction variant="destructive"`, and `AlertDialogAction` forwards `variant` to `Button`. No `text-white` remains in any `.tsx`. |
-| 10 | Link variants and Empty/Field description links hover lavender | ✓ VERIFIED | `hover:text-primary-hover` on the button link variant, `[a&]:hover:text-primary-hover` on the badge link variant, and `[&>a:hover]:text-primary-hover` in empty.tsx and field.tsx. Tests pass. |
-| 11 | Secondary, outline and ghost keep their neutral hover | ✓ VERIFIED | Those variant strings are unchanged in the diff; the test asserts ghost `hover:bg-accent`. |
-| 12 | Counts read in text color while their toggle is pressed or hovered (C-3) | ✓ VERIFIED | `toggleVariants` base starts with `group/toggle`. `Count` adds both group variants. Compiled CSS: `.group-data-[state=on]/toggle:text-accent-foreground:is(:where(.group/toggle)[data-state=on] *)` has the same specificity as `.text-muted-foreground` and comes later (byte 35982 vs 28052), so it wins. `Count` is used by the status tabs, Needs review (spines-filter-bar) and Fallback. |
-| 13 | Failed count red at rest, text color pressed or hovered (C-4) | ✓ VERIFIED | Same mechanism: `.text-destructive` is at byte 27679, before both group rules. The alert branch is tested. |
-| 14 | Every inline accent link mauve at rest, lavender on hover | ✓ VERIFIED | All 6 `text-primary` links outside `ui/` carry `hover:text-primary-hover`: discogs-card ×2, discogs-matches, confirmed-match, disconnect-discogs-button, bulk-status-line. The only other `text-primary` hit is the dropzone icon, which is correctly excluded. |
-| 15 | Filtering, counts and tab wrapping unchanged | ✓ VERIFIED | Only class strings changed; the existing G-06-9 and spines-filter-bar tests pass in the full run. |
+| 1 | Every screen paints Mocha via shadcn tokens | ✓ VERIFIED | `globals.css` is unchanged. A fresh export's CSS has `--background:#1e1e2e` and `::selection{background-color:var(--selection)}`. |
+| 2 | Dark whatever the OS or stored theme, no flash, no toggle | ✓ VERIFIED | Layouts and provider are unchanged, and `theme-provider.test.ts` passes. In the fresh export, upload, spines, settings and 404 have `class="dark …"` plus the dark color-scheme meta. The root shell has the meta. |
+| 3 | Status colors | ✓ VERIFIED | Unchanged `:root`; `globals-css.test.ts` passes. |
+| 4 | Mauve 15% selection, mauve focus rings, translucent blurred header | ✓ VERIFIED | IN-01: the header is `bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80`. In the compiled CSS the `@supports` rule (byte 51266) comes after `.bg-background/95` (byte 22573), so blur-capable browsers still get the locked /80. The new `app-header.test.ts` asserts the tokens. IN-02: `Input` no longer has `selection:` utilities, so the global 15% mauve `::selection` now applies inside inputs too (tested). |
+| 5 | Toasts always dark | ✓ VERIFIED | `sonner.tsx` is unchanged (`theme="dark"`). |
+| 6 | Demo export same dark theme; verify-export rule i fails when a page lacks the class | ✓ VERIFIED | WR-01 makes it stronger: rule i now also checks root `index.html`, which passes on the class or a dark-only color-scheme meta. The meta exemption is limited to the root (`metaOk: true`). Six new tests cover meta, reordered meta, class, neither, `light dark`, and a layout page with the meta but no class. A fresh `build-demo.ts` gives `PASS: 392 files, rules a-i`. |
+| 7 | Fonts stay Geist; no copy, layout or spacing changes | ✓ VERIFIED | The fixes touch only color or selection class tokens and the verify script. |
+| 8 | Filled primary buttons mauve, lavender on hover | ✓ VERIFIED | `button.tsx` is unchanged; `mocha-variants.test.ts` passes. |
+| 9 | Destructive confirms solid red with base text; Clear value never mauve | ✓ VERIFIED | Unchanged. IN-03 also drops the dropdown destructive focus from red/20 to the base red/10 (about 4.6:1). The menu item is unused today. |
+| 10 | Link variants and Empty/Field description links hover lavender | ✓ VERIFIED | Unchanged; tests pass. |
+| 11 | Secondary, outline and ghost keep a neutral hover | ✓ VERIFIED | Unchanged; tests pass. |
+| 12 | Counts in text color while toggle pressed or hovered (C-3) | ✓ VERIFIED | `toggle.tsx` and `review-status-filter.tsx` are unchanged; tests pass. |
+| 13 | Failed count red at rest, text color pressed or hovered (C-4) | ✓ VERIFIED | Unchanged; tests pass. |
+| 14 | Every inline accent link mauve at rest, lavender on hover | ✓ VERIFIED | The six link files are unchanged. |
+| 15 | Filtering, counts and tab wrapping unchanged | ✓ VERIFIED | Full suite passes. |
 
 **Score:** 15/15 truths verified (0 present, behavior-unverified)
 
 ### Required Artifacts
 
-`verify.artifacts`: 07-01 9/9, 07-02 6/6, 07-03 4/4, all exist and are substantive. Every artifact is wired: the layouts import ThemeProvider and Toaster, AppHeader renders in both layouts, and Count is imported by fallback-filter-toggle and spines-filter-bar.
+All artifacts in plans 07-01, 07-02 and 07-03 still exist and are substantive. Of the touched artifacts, `app-header.tsx` still renders in both layouts and `input.tsx` and `dropdown-menu.tsx` are unchanged in their wiring. In `verify-export.ts`, `build-demo.ts` → `verifyExport` still prints the rule a-i PASS line.
 
 ### Key Link Verification
 
-`verify.key-links`: 07-01 3/3, 07-02 2/2, 07-03 2/2 WIRED. Manually confirmed that `build-demo.ts` → `verifyExport` prints the rule-i PASS line, and that the `@theme inline` `--color-primary-hover` and `--color-destructive-foreground` utilities are emitted in the exported CSS.
+All key links are still WIRED: 07-01 3/3, 07-02 2/2, 07-03 2/2. None of the link endpoints changed except `verify-export.ts`, and the demo build exercises that one end to end.
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Full test suite | `vitest run` (once) | 124 files, 2359 tests passed | ✓ PASS |
-| Types and lint | `tsc --noEmit`, `biome check` | clean (690 files) | ✓ PASS |
-| Demo build + rule i | `node scripts/demo/build-demo.ts` | `PASS: 392 files, rules a-i` | ✓ PASS |
-| Exported HTML dark | grep `<html>` in upload, spines, settings, 404 | `class="dark …"`; color-scheme meta on all 5, including root shell | ✓ PASS |
-| Demo smoke | `smoke.ts --expect "/=Drop photos…" --expect "settings/=Preferred country"` | `PASS 4 page(s), zero /api requests` | ✓ PASS |
+| Full test suite | `vitest run` (once) | 125 files, 2368 tests passed | ✓ PASS |
+| Types and lint | `tsc --noEmit`; `biome check` on the 7 changed files | clean | ✓ PASS |
+| Demo build + rule i (incl. root) | `node scripts/demo/build-demo.ts` | `PASS: 392 files, rules a-i` (out-2300458-…) | ✓ PASS |
+| Exported HTML dark | grep `<html>`/meta in index, upload, spines, settings, 404 | 4 pages have `class="dark …"`; all 5 have `color-scheme content="dark"` | ✓ PASS |
+| Header fallback order | byte offsets in the exported CSS | /95 at 22573, then `@supports` /80 at 51266 | ✓ PASS |
+| Demo smoke | `smoke.ts --out … --expect "/=Drop photos" --expect "settings/=Preferred country"` (ephemeral port) | `PASS 4 page(s), zero /api requests` | ✓ PASS |
 
 ### Probe Execution
 
-None declared; Step 7c not applicable.
+No probes are declared, so Step 7c does not apply.
 
 ### Requirements Coverage
 
@@ -123,10 +133,10 @@ None declared; Step 7c not applicable.
 | THEME-01 Mocha via tokens; fonts and layout unchanged | 07-01 | ✓ SATISFIED | Truths 1, 7 |
 | THEME-02 Dark only, no toggle | 07-01 | ✓ SATISFIED | Truths 2, 5 |
 | THEME-03 Status colors | 07-01 | ✓ SATISFIED | Truth 3 |
-| THEME-04 Selection, focus ring, blurred header | 07-01 | ✓ SATISFIED | Truth 4 |
+| THEME-04 Selection, focus ring, blurred header | 07-01 | ✓ SATISFIED | Truth 4 (now also inside inputs, plus a no-blur fallback) |
 | THEME-05 Lavender hover on accents | 07-02, 07-03 | ✓ SATISFIED | Truths 8, 10, 14 |
-| THEME-06 WCAG AA (C-1..C-4) | 07-02, 07-03 | ✓ SATISFIED | Truths 9, 12, 13; contrast pairs computed from the parsed `:root` in globals-css.test.ts |
-| THEME-07 Demo same theme, enforced | 07-01 | ✓ SATISFIED | Truth 6 |
+| THEME-06 WCAG AA (C-1..C-4) | 07-02, 07-03 | ✓ SATISFIED | Truths 9, 12, 13; plus IN-03 dropdown focus at about 4.6:1 |
+| THEME-07 Demo same theme, enforced | 07-01 | ✓ SATISFIED | Truth 6 (the root landing page is now enforced too) |
 
 There is no REQUIREMENTS.md. All 7 IDs are claimed by plans, and none are orphaned.
 
@@ -134,26 +144,26 @@ There is no REQUIREMENTS.md. All 7 IDs are claimed by plans, and none are orphan
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| (all modified files) | — | TBD/FIXME/XXX/TODO/HACK | — | None found |
-| src/components/ui/sonner.tsx | 15/33 | `{...props}` spread after `theme="dark"` | ℹ️ Info | A future caller passing `theme` could override the forced dark theme; no caller does today |
-| src/components/ui/checkbox.tsx | — | Unchecked border 1.38:1 on surface0 | ℹ️ Info | Documented in UI-SPEC as an accepted assumption (parity with Phases 1-6) |
+| 7 changed files | — | TBD/FIXME/XXX/TODO/HACK | — | None found |
+| exported CSS | — | `.selection:bg-primary` and `.focus:bg-destructive/20` rules still emitted | ℹ️ Info | Tailwind picks these class names up from the test strings in `mocha-variants.test.ts` and the planning docs. No element in the exported HTML or JS uses them, so they are dead CSS with no visual effect. |
+| src/components/ui/sonner.tsx | 15/33 | `{...props}` spread after `theme="dark"` | ℹ️ Info | Carried forward. No caller passes `theme`. |
+| src/components/ui/checkbox.tsx | — | Unchecked border 1.38:1 on surface0 | ℹ️ Info | Carried forward. This is an accepted UI-SPEC assumption. |
+
+### Advisory (New Scope, Unevidenced)
+
+None.
 
 ### Human Verification Required
 
-There are 7 visual checks, listed in the frontmatter `human_verification` as plain do/see steps:
-1. Dark on a light-mode computer, with no white flash and no toggle
-2. See-through blurred top bar over a bright photo
-3. Dark confirmation pop-up
-4. Purple Import button turning lavender; red dialog confirms with dark text
-5. Status-tab numbers readable when selected or hovered
-6. Link hover, text selection and keyboard-focus colors
-7. Demo looks the same as the app
+There are 7 visual checks, given as plain do/see steps in the frontmatter `human_verification`. Two have new wording:
+- **Check 6** now also asks you to select text inside a typing box (the IN-02 fix) and expects a faint purple highlight, never a solid purple block.
+- **Check 7** now says the very first landing page of the demo must be dark too (the WR-01 fix).
 
 ### Gaps Summary
 
-No gaps. Every must-have is present, substantive, wired and backed by passing tests, the demo build (rule i) and the smoke check. Only visual confirmation remains.
+No gaps. All four review fixes are correct and covered by tests, and none of them weakens a must-have. WR-01 and IN-02 strengthen truths 6 and 4. Only visual confirmation remains.
 
 ---
 
-_Verified: 2026-10-26T02:50:05Z_
+_Verified: 2026-10-26T02:56:31Z_
 _Verifier: Claude (gsd-verifier)_
