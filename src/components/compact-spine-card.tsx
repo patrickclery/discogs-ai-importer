@@ -5,6 +5,7 @@ import {
   CircleSlash,
   CircleX,
   Clock,
+  Disc3,
   type LucideIcon,
   Pencil,
   SearchX,
@@ -36,6 +37,10 @@ const PLACEHOLDER_ICONS: Record<string, LucideIcon> = {
   [MATCH_PLACEHOLDERS.failed]: CircleX,
   [MATCH_PLACEHOLDERS.marked]: CircleSlash,
 };
+
+function candidatesLabel(n: number) {
+  return `${n} ${n === 1 ? 'candidate' : 'candidates'}`;
+}
 
 function PlaceholderLine({ text }: { text: string }) {
   const Icon = PLACEHOLDER_ICONS[text];
@@ -165,7 +170,7 @@ export function CompactSpineCard({
         data-compact-row="status"
         className="flex min-h-6 items-center [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal"
       >
-        <ImportStateBadge spine={spine} />
+        <ImportStateBadge spine={spine} hideCandidateCount />
       </div>
       <div
         data-compact-row="warnings"
@@ -188,16 +193,28 @@ export function CompactSpineCard({
       </div>
       <div data-compact-row="select" className="flex h-9 items-center gap-2">
         <SpineSelectCheckbox spine={spine} />
-        <p className="min-w-0 truncate text-xs font-medium text-muted-foreground">
+        <p className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
           {slot.label}
         </p>
+        {spine.discogs?.state === 'done' ? (
+          <span
+            data-candidate-count
+            title={candidatesLabel(spine.discogs.candidateCount)}
+            className="flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground tabular-nums"
+          >
+            <Disc3 aria-hidden="true" className="size-3.5" />
+            <span aria-hidden="true">{spine.discogs.candidateCount}</span>
+            <span className="sr-only">
+              {candidatesLabel(spine.discogs.candidateCount)}
+            </span>
+          </span>
+        ) : null}
         {renderFull ? (
           <Button
             ref={editRef}
             type="button"
             variant="ghost"
             size="icon"
-            className="ml-auto"
             aria-label={`Edit spine #${number}`}
             aria-expanded="false"
             aria-controls={cardId}

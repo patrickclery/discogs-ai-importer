@@ -25,12 +25,15 @@ function FailedBadge() {
  * bulk item's lookup (the finding badge while it runs, Import failed once it
  * failed, Phase 6), then the import's phase; with none of these, the Phase
  * 3 search badge shows unchanged. Outline badges only; destructive colors
- * only Import failed.
+ * only Import failed. `hideCandidateCount` drops the "N candidates" search
+ * badge (the compact card shows the bare count beside its match label).
  */
 export function ImportStateBadge({
   spine,
+  hideCandidateCount = false,
 }: {
   spine: Pick<SpineDto, 'import' | 'notOnDiscogs' | 'discogs' | 'bulk'>;
+  hideCandidateCount?: boolean;
 }) {
   const phase = spine.import?.phase ?? null;
   if (phase === 'imported') {
@@ -82,6 +85,7 @@ export function ImportStateBadge({
         </Badge>
       );
     default:
+      if (hideCandidateCount && spine.discogs?.state === 'done') return null;
       return <SearchStateBadge discogs={spine.discogs} />;
   }
 }

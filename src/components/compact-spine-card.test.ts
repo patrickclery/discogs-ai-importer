@@ -206,6 +206,27 @@ function layoutUnder(searchParams: string): string {
   return renderToStaticMarkup(h(Adapter, { searchParams }, h(Probe)));
 }
 
+describe('CompactSpineCard candidate count', () => {
+  it('shows the bare count on the match label line, not an N candidates badge', () => {
+    const s = spine();
+    const html = renderInGrid(
+      {
+        ...s,
+        discogs: { ...s.discogs, state: 'done', candidateCount: 10 },
+      } as SpineDto,
+      [],
+    );
+    const at = html.indexOf('data-candidate-count');
+    expect(at).toBeGreaterThan(html.indexOf('data-compact-row="select"'));
+    expect(at).toBeLessThan(html.indexOf('data-compact-row="match"'));
+    expect(html.slice(at)).toMatch(
+      /^[^>]*>.*?<span aria-hidden="true">10<\/span>/,
+    );
+    expect(html).toContain('<span class="sr-only">10 candidates</span>');
+    expect(html).not.toContain('> candidates');
+  });
+});
+
 describe('useCardLayout', () => {
   it('reads detailed only for ?view=detailed', () => {
     expect(layoutUnder('?view=detailed')).toBe('<span>detailed</span>');
