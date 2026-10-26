@@ -3,10 +3,11 @@ import path from 'node:path';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { badgeVariants } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { EmptyDescription } from '@/components/ui/empty';
+import { CardDescription, CardTitle } from '@/components/ui/card';
+import { EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { FieldDescription } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 
@@ -143,4 +144,83 @@ describe('DropdownMenuItem destructive focus (C-6)', () => {
       'dark:data-[variant=destructive]:focus:bg-destructive/20',
     );
   });
+});
+
+describe('prose font (Phase 7 v2)', () => {
+  // THEME-09: explanatory sentences read in IBM Plex Sans (font-prose), as
+  // awesomer's .description does. Titles, labels and buttons stay Geist Mono.
+  const render = (
+    el: Parameters<typeof renderToStaticMarkup>[0],
+    slot: string,
+  ) => slotTokens(renderToStaticMarkup(el), slot);
+
+  it('CardDescription is prose and keeps its size and muted color', () => {
+    const t = render(h(CardDescription, null, 'x'), 'card-description');
+    expect(t).toContain('font-prose');
+    expect(t).toEqual(
+      expect.arrayContaining(['text-sm', 'text-muted-foreground']),
+    );
+  });
+
+  it('AlertDescription is prose and keeps its size and muted color', () => {
+    const t = render(h(AlertDescription, null, 'x'), 'alert-description');
+    expect(t).toContain('font-prose');
+    expect(t).toEqual(
+      expect.arrayContaining(['text-sm', 'text-muted-foreground']),
+    );
+  });
+
+  it('EmptyDescription is prose and keeps its size, color and link hover', () => {
+    const t = render(h(EmptyDescription, null, 'x'), 'empty-description');
+    expect(t).toContain('font-prose');
+    expect(t).toEqual(
+      expect.arrayContaining([
+        'text-sm/relaxed',
+        'text-muted-foreground',
+        '[&>a:hover]:text-primary-hover',
+      ]),
+    );
+  });
+
+  it('FieldDescription is prose and keeps its size, weight and color', () => {
+    const t = render(h(FieldDescription, null, 'x'), 'field-description');
+    expect(t).toContain('font-prose');
+    expect(t).toEqual(
+      expect.arrayContaining([
+        'text-sm',
+        'leading-normal',
+        'font-normal',
+        'text-muted-foreground',
+      ]),
+    );
+  });
+
+  it('titles stay mono', () => {
+    expect(render(h(CardTitle, null, 'x'), 'card-title')).not.toContain(
+      'font-prose',
+    );
+    expect(render(h(AlertTitle, null, 'x'), 'alert-title')).not.toContain(
+      'font-prose',
+    );
+    expect(render(h(EmptyTitle, null, 'x'), 'empty-title')).not.toContain(
+      'font-prose',
+    );
+  });
+
+  it.each([
+    'default',
+    'destructive',
+    'outline',
+    'secondary',
+    'ghost',
+    'link',
+  ] as const)(
+    '%s button pins Geist Mono so Plex never cascades in',
+    (variant) => {
+      const t = tokens(buttonVariants({ variant }));
+      expect(t).toContain('font-sans');
+      expect(t).toContain('font-medium');
+      expect(t).not.toContain('font-prose');
+    },
+  );
 });
