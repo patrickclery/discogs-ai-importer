@@ -1,7 +1,8 @@
 ---
 phase: "7"
 slug: "match-the-patrickclery-com-awesomer-color-palette"
-status: draft
+status: approved
+reviewed_at: 2026-10-25
 shadcn_initialized: true
 preset: "none (style new-york, base radix, base color neutral, cssVariables; tokens overridden in globals.css, now Catppuccin Mocha)"
 created: "2026-10-25"
@@ -388,3 +389,7 @@ No third-party registries are declared (`components.json` `"registries": {}`). D
 - [ ] Dimension 7 Inventory Provenance: PASS
 
 **Approval:** pending
+
+## Visual Anchors
+
+The visual anchors and hierarchy from 06-UI-SPEC still apply unchanged. On `/spines` and `/upload`, the filled mauve primary button is the color focal point.
