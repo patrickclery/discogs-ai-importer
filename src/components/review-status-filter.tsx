@@ -25,12 +25,16 @@ export function useStatusFilter() {
   return [status, setStatus] as const;
 }
 
-/** A filter count: mono, tabular, muted (destructive when `alert`). */
+/**
+ * A filter count in mono and tabular digits: muted (destructive when
+ * `alert`) at rest, and text color while its toggle is hovered or pressed,
+ * so it stays readable on the pressed fill (Phase 7 C-3, C-4).
+ */
 export function Count({ n, alert = false }: { n: number; alert?: boolean }) {
   return (
     <span
       className={cn(
-        'font-mono tabular-nums',
+        'font-mono tabular-nums group-hover/toggle:text-accent-foreground group-data-[state=on]/toggle:text-accent-foreground',
         alert ? 'text-destructive' : 'text-muted-foreground',
       )}
     >
