@@ -445,6 +445,8 @@ awesomer's classes, mapped onto this app's surfaces:
 | Dialogs and alert dialogs | `ui/dialog.tsx`, `ui/alert-dialog.tsx` | `card-featured` (fill moves from base to the surface0 gradient) | none | A modal is the focus. Footer buttons would sit on a numeral. |
 | Alerts, Empty, popovers, menus, selects, tooltips, toasts, skeletons, dropzone | n/a | Unchanged | none | Not cards in awesomer's sense |
 
+The compact spine card now has no corner numeral and no visible `#n` (owner, G-06-side-2, 06-19); see the 06-UI-SPEC amendment "gap closure (G-06-side-2, 06-19)" for its layout. The expanded and Detailed cards keep their `lg` numeral.
+
 `SpineCard` gains `featured?: boolean` (default `false`). `SpineView` passes `featured={trailing !== undefined}`.
 
 "Hover lift" means the glow grows (awesomer has no translate): mini cards gain a 40% mauve border and a soft glow, and featured surfaces go to a solid mauve border with a 20% glow. Both use a 0.2s ease-out transition, and none under reduced motion.

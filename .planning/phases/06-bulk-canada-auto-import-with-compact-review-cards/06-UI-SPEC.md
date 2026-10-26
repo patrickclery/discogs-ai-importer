@@ -480,6 +480,22 @@ The pair phrase: when both countries have a demonym, `{Demonym1} or {Demonym2} p
 ### Filter bar row 1: status tabs wrap (G-06-9, 06-15)
 - The status tabs (`ReviewStatusFilter`) are a `ToggleGroup` with 4px spacing (`spacing={1}`) and `flex-wrap`: at narrow widths they wrap onto more lines, each tab keeping its own border and rounded corners. There is no sideways scroll.
 
+## Amendment: gap closure (G-06-side-2, 06-19)
+
+Added by 06-19 because the owner asked for it in UAT. It supersedes D-10's visible `#n`, D-11's `Edit` chevron label, the Compact card header and bottom row, the compact card's Focus order, and the sentence "The only icon-only controls remain the Phase 4 menu trigger and folder refresh." The earlier rows are left as written for history.
+
+- **No numbering:** the compact card has no `#n` label and no corner numeral. The spine number appears only in accessible names (`Select spine #{n}`, `Edit spine #{n}`, `Show less of spine #{n}`) and the crop's alt text. The Detailed and expanded cards keep `#n` and their `lg` numeral.
+- **Six rows, always rendered, in this order:**
+  1. **Status row:** the state badge alone, at least 24px (`min-h-6`), never truncated or clipped. The longest label, `Already in your collection` (about 221px), fits in the 232px content column at the 4-column width. If a badge ever outgrows the column (a fallback font, for example) its text wraps inside the badge instead of being cut off, and the subgrid grows the row.
+  2. **Warnings line:** worst-field badge, country badge, `No longer detected`, `Edited · {n}`. Always present and at least one badge line tall (24px) even when empty, wrapping when the badges don't fit.
+  3. **Crop:** `SpineCrop` unchanged, with the well filling the row.
+  4. **Select row, 36px:** the checkbox, the `Top match` / `Confirmed match` label (truncated if ever too long), and the Edit button at the right end.
+  5. **Match, 60px:** `TopMatchRow` with the title exactly two lines tall and the details exactly one line, each with the full text on hover (`title`). Placeholders sit in the same 60px box.
+  6. **Import notes line:** two Caption lines reserved (32px). Fallback, skipped and finding text clamps to two lines with the full text on hover. A failed lookup keeps its full text, the `Open Settings` link and `Retry import`, and may make this last row taller.
+- **Line-up rule:** the card is a subgrid that spans six rows of the photo section's grid (`row-span-6 grid-rows-subgrid`, 8px between rows inside the card, 16px between cards). Every card in a grid row shares the same row heights, so a wrapped warnings line or a failed lookup grows that row for the whole grid row and nothing is cut off.
+- **Edit button:** `ghost`, size `icon` (36px), `Pencil` icon, no visible text, `aria-label` `Edit spine #{n}`, `aria-expanded="false"`, `aria-controls` the card id. After Show less, focus returns to it. It joins the Phase 4 menu trigger and the folder refresh as icon-only controls (owner decision).
+- **Focus order in a collapsed card:** the crop link, the checkbox (or its disabled-reason span), Edit (pencil), then `Retry import` when shown.
+
 ---
 
 ## Checker Sign-Off
