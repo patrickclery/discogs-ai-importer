@@ -1,7 +1,8 @@
 ---
 phase: "7"
 slug: "match-the-patrickclery-com-awesomer-color-palette"
-status: draft
+status: approved
+reviewed_at: 2026-10-25
 version: 2
 amended: "2026-10-25"
 previous_approval: "v1 (colors only) approved 2026-10-25"
@@ -770,3 +771,15 @@ No third-party registries are declared (`components.json` `"registries": {}`). D
 - `/spines`: the gradient title, then the grid of gradient mini cards with faint mauve corner numbers. The expanded card and the floating bulk bar are the two featured (glowing) surfaces, and "Import {s} selected" is the single filled mauve action.
 - `/settings`: four numbered mini cards (1-4) under `## ` titles.
 - The 06-UI-SPEC hierarchy otherwise still applies.
+
+## Owner Decisions on Open Items (2026-10-25)
+
+These resolve the Claude's Discretion items and override anything above that conflicts:
+1. **Wordmark:** the two-line ASCII "DISCOGS / AI IMPORTER" wordmark appears on `/upload` only, from 640px up.
+2. **Corners:** keep the current rounded radii. No squaring.
+3. **Cursor:** blinks 5 times, then stops. It doesn't blink at all under reduced motion.
+4. **Photo-section headers on `/spines`:** no corner number. Only spine cards (spine number) and Settings cards (1-4) get numbers.
+
+**Spacing exception:** the 12px numeral offset (`-bottom-3`) is copied from awesomer's `card-mini`. Use it only for corner numerals.
+
+**Weight 900 and the 11/36/72/160px sizes:** these are allowed only in the decorative `CornerNumeral` and `AsciiWordmark` components, which are `aria-hidden`.
