@@ -247,10 +247,57 @@ describe('verifyExport rule i (dark only, Phase 7)', () => {
     ]);
   });
 
-  it('skips the root redirect shell', () => {
-    write(path.join(repoRoot, 'src', 'app', 'page.demo.tsx'), 'x');
-    write(path.join(outDir, 'index.html'), '<html id="__next_error__"></html>');
-    expect(run().failures).toEqual([]);
+  describe('root redirect shell (WR-01)', () => {
+    const ROOT_FAIL =
+      '[i] export is not dark-only: <html> lacks the dark class (out/index.html)';
+
+    function writeRoot(html: string) {
+      write(path.join(repoRoot, 'src', 'app', 'page.demo.tsx'), 'x');
+      write(path.join(outDir, 'index.html'), html);
+    }
+
+    it('passes a classless shell with the dark color-scheme meta', () => {
+      writeRoot(
+        '<html id="__next_error__"><head><meta name="color-scheme" content="dark"/></head></html>',
+      );
+      expect(run().failures).toEqual([]);
+    });
+
+    it('accepts the meta in any attribute order', () => {
+      writeRoot(
+        '<html id="__next_error__"><head><meta content="dark" name="color-scheme"></head></html>',
+      );
+      expect(run().failures).toEqual([]);
+    });
+
+    it('passes a root page that carries the dark class', () => {
+      writeRoot(DARK);
+      expect(run().failures).toEqual([]);
+    });
+
+    it('fails a shell with neither the dark class nor the meta', () => {
+      writeRoot(
+        '<html id="__next_error__"><head><meta name="viewport" content="width=device-width"/></head></html>',
+      );
+      expect(run().failures).toEqual([ROOT_FAIL]);
+    });
+
+    it('fails a meta that also allows light', () => {
+      writeRoot(
+        '<html id="__next_error__"><head><meta name="color-scheme" content="light dark"/></head></html>',
+      );
+      expect(run().failures).toEqual([ROOT_FAIL]);
+    });
+
+    it('does not let the meta excuse a layout page without the class', () => {
+      addRoute(
+        'upload',
+        '<html lang="en"><head><meta name="color-scheme" content="dark"/></head></html>',
+      );
+      expect(run().failures).toEqual([
+        '[i] export is not dark-only: <html> lacks the dark class (out/upload/index.html)',
+      ]);
+    });
   });
 
   it('reports rules a-i on PASS', () => {

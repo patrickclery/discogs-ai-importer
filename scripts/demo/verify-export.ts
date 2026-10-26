@@ -107,6 +107,26 @@ export function demoPageRoutes(repoRoot: string): string[] {
   return routes.sort();
 }
 
+/** True when the first <html> tag's class attribute has the `dark` token. */
+function htmlHasDarkClass(html: string): boolean {
+  const tag = html.match(/<html\b[^>]*>/i)?.[0];
+  const cls = tag?.match(/\sclass="([^"]*)"/)?.[1] ?? '';
+  return cls.split(/\s+/).includes('dark');
+}
+
+/**
+ * True when a <meta name="color-scheme"> is dark-only (has `dark`, not
+ * `light`), in any attribute order.
+ */
+function hasDarkColorSchemeMeta(html: string): boolean {
+  for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
+    if (!/\sname="color-scheme"/i.test(tag)) continue;
+    const tokens = (tag.match(/\scontent="([^"]*)"/i)?.[1] ?? '').split(/\s+/);
+    if (tokens.includes('dark') && !tokens.includes('light')) return true;
+  }
+  return false;
+}
+
 function listFiles(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string) => {
@@ -296,18 +316,23 @@ export function verifyExport(opts: {
   }
   // i. the demo stays dark-only (Phase 7): every layout-rendered page has
   // the dark class token on <html>. Missing pages are rule a's job.
-  // The root index.html is skipped: it is the client-redirect shell, which
-  // has no layout and no class.
+  // The root index.html is the client-redirect shell, rendered without the
+  // layout (no class), so it passes on either the class or the
+  // <meta name="color-scheme" content="dark"> from layout.demo.tsx's
+  // viewport export (WR-01). It is the demo's landing URL, so it is checked.
   const layoutPages = demoPageRoutes(opts.repoRoot ?? REPO)
     .filter((route) => route !== '/')
     .map((route) => `${route}index.html`);
   layoutPages.push('404.html');
-  for (const page of layoutPages) {
+  const darkPages = [
+    ...layoutPages.map((page) => ({ page, metaOk: false })),
+    { page: 'index.html', metaOk: true },
+  ];
+  for (const { page, metaOk } of darkPages) {
     const file = path.join(outDir, page);
     if (!fs.existsSync(file)) continue;
-    const tag = fs.readFileSync(file, 'utf8').match(/<html\b[^>]*>/i)?.[0];
-    const cls = tag?.match(/\sclass="([^"]*)"/)?.[1] ?? '';
-    if (!cls.split(/\s+/).includes('dark')) {
+    const html = fs.readFileSync(file, 'utf8');
+    if (!htmlHasDarkClass(html) && !(metaOk && hasDarkColorSchemeMeta(html))) {
       fail(
         'i',
         `export is not dark-only: <html> lacks the dark class (out/${page})`,
