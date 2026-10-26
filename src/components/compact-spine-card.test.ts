@@ -363,7 +363,7 @@ describe('CompactSpineCard expand toggle', () => {
 });
 
 describe('SpineCard leading slot', () => {
-  it('renders the leading slot before #n', () => {
+  it('renders the leading slot before the worst-field badge', () => {
     const html = renderToStaticMarkup(
       h(
         QueryClientProvider,
@@ -377,7 +377,6 @@ describe('SpineCard leading slot', () => {
     );
     const lead = html.indexOf('data-lead="1"');
     expect(lead).toBeGreaterThan(-1);
-    expect(lead).toBeLessThan(html.indexOf('#7'));
     expect(html).toContain('id="spine-card-sp-1"');
   });
 });
@@ -819,33 +818,28 @@ describe('featured and Detailed spine cards (Phase 7 v2)', () => {
       ),
     );
 
-  /** The lg numeral holds 7 and comes before the visible #7 label. */
-  function expectLgNumeral(html: string) {
-    const numeral = openingTag(html, 'data-corner-numeral');
-    expect(classTokens(numeral)).toEqual(
-      expect.arrayContaining([...NUMERAL_SIZES.lg]),
-    );
-    const at = html.indexOf('data-corner-numeral');
-    expect(html.slice(at)).toMatch(/^[^>]*>7<\/span>/);
-    expect(at).toBeLessThan(html.indexOf('#7'));
+  /** No spine numbering on the card itself (G-06-side-2): no corner numeral, no #7 label. */
+  function expectNoNumbering(html: string) {
+    expect(html).not.toContain('data-corner-numeral');
+    expect(html).not.toMatch(/>#7</);
   }
 
-  it('the expanded compact card is the featured card with an lg numeral', () => {
+  it('the expanded compact card is the featured card with no numbering', () => {
     const html = renderInGrid(spine(), ['sp-1']);
     const tag = openingTag(html, 'id="spine-card-sp-1"');
     expect(tag).toContain('data-slot="card"');
     expect(tag).toContain('data-variant="featured"');
     expect(classTokens(tag)).toContain('card-featured');
     expect(classTokens(tag)).not.toContain('card-mini');
-    expectLgNumeral(html);
+    expectNoNumbering(html);
   });
 
-  it('a Detailed card is a mini card with an lg numeral', () => {
+  it('a Detailed card is a mini card with no numbering', () => {
     const html = detailed(spine());
     const tag = openingTag(html, 'id="spine-card-sp-1"');
     expect(tag).toContain('data-variant="mini"');
     expect(classTokens(tag)).toContain('card-mini');
-    expectLgNumeral(html);
+    expectNoNumbering(html);
   });
 
   it('a Detailed fallback line is never clamped', () => {
@@ -863,7 +857,7 @@ describe('featured and Detailed spine cards (Phase 7 v2)', () => {
     const html = bare(spine());
     const tag = openingTag(html, 'id="spine-card-sp-1"');
     expect(tag).toContain('data-variant="mini"');
-    expectLgNumeral(html);
+    expectNoNumbering(html);
   });
 
   it('an orphaned card keeps its warning border and the Plex explanation', () => {

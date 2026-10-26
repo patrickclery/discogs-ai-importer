@@ -1,6 +1,5 @@
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { CornerNumeral } from '@/components/corner-numeral';
 import { DismissSpineButton } from '@/components/dismiss-spine-button';
 import { ReattachDialog } from '@/components/reattach-dialog';
 import { SpineCrop } from '@/components/spine-crop';
@@ -105,12 +104,8 @@ export function SpineCard({
       variant={featured ? 'featured' : 'mini'}
       className={cn('gap-4 rounded-xl p-4', orphaned && 'border-warning/60')}
     >
-      <CornerNumeral value={number} size="lg" />
       <div className="flex items-center gap-2 text-xs">
         {leading}
-        <span className="font-mono text-muted-foreground tabular-nums">
-          #{number}
-        </span>
         <WorstFieldBadge spine={spine} threshold={threshold} />
         {badges}
         {status ? (

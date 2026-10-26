@@ -11,7 +11,7 @@ updated: 2026-10-26T22:54:00.817Z
 number: 15
 name: On the Spines page in Compact view at 4 cards per row, look over the cards, click a pencil then Show less, then narrow the window down to 1 card per row.
 expected: |
-  No card shows a number. Every card has the same rows: status badge (never cut off), a warnings line, the spine photo, one line with the checkbox, Top match and a pencil, the match (title at most two lines, details one line, full text on hover), then an import-notes line. In each row the photos, checkbox lines and matches line up. The pencil opens the card across the row and Show less closes it. Detailed view is unchanged.
+  No card shows a number. Every card has the same rows: status badge (never cut off), a warnings line, the spine photo, one line with the checkbox, Top match and a pencil, the match (title at most two lines, details one line, full text on hover), then an import-notes line. In each row the photos, checkbox lines and matches line up. The pencil opens the card across the row and Show less closes it. Opened and Detailed cards show no number either.
 awaiting: user response
 
 ## Tests
@@ -122,6 +122,7 @@ blocked: 0
   status: resolved
   resolved_by: "06-19-PLAN.md"
   resolved_at: "2026-10-26"
+  followup: "Test 15: user reported the opened (expanded) card still showed #3 and the big corner number; removed numbering from SpineView too (opened + Detailed cards)"
   reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped. Later: we don't need the numbering on the cards at all. We just need check boxes, and ideally the check box shouldn't take up a whole row. It can have text beside it or whatever."
   severity: cosmetic
   test: side
