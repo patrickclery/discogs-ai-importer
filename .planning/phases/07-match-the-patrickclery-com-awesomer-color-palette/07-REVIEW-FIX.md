@@ -1,61 +1,67 @@
 ---
 phase: 07-match-the-patrickclery-com-awesomer-color-palette
-fixed_at: 2026-10-25T21:00:00Z
+fixed_at: 2026-10-26T09:10:00Z
 review_path: .planning/phases/07-match-the-patrickclery-com-awesomer-color-palette/07-REVIEW.md
-iteration: 1
+iteration: 3
 findings_in_scope: 4
 fixed: 4
 skipped: 0
 status: all_fixed
 ---
 
-# Phase 7: Code Review Fix Report
+# Phase 7: Code Review Fix Report (iteration 3)
 
-**Fixed at:** 2026-10-25T21:00:00Z
+**Fixed at:** 2026-10-26T09:10:00Z
 **Source review:** .planning/phases/07-match-the-patrickclery-com-awesomer-color-palette/07-REVIEW.md
-**Iteration:** 1
+**Iteration:** 3 (plans 07-04 to 07-08)
+
+> **Earlier fixes:** the review of plans 07-01 to 07-03 had four findings (WR-01 and IN-01 to IN-03), and all four were fixed in e52601b, 682dc34, 45d7878 and cbb4779.
 
 **Summary:**
-- Findings in scope: 4 (fix_scope: all)
+- Findings in scope: 4 (fix_scope: critical_warning, so IN-01 to IN-04 were not attempted)
 - Fixed: 4
 - Skipped: 0
 
 ## Fixed Issues
 
-### WR-01: Rule i does not guard the root `index.html`, the demo's landing URL
+### WR-01: The font fallbacks are proportional Arial, so `.ascii-art`'s `monospace` fallback never applies
 
-**Files modified:** `scripts/demo/verify-export.ts`, `src/demo/verify-export.test.ts`
-**Commit:** e52601b
-**Applied fix:** Rule i now checks `out/index.html`. Layout pages still need the `dark` class on `<html>`. The root redirect shell passes on either the class or a `<meta name="color-scheme">` whose content is dark-only (it has `dark` and not `light`), and the attributes can be in any order. The failure message is unchanged. The old "skips the root redirect shell" test is replaced by six tests: meta passes, reordered meta passes, class passes, neither fails, `light dark` fails, and the meta does not excuse a layout page.
+**Files modified:** `src/app/fonts.ts`, `src/app/globals-css.test.ts`
+**Commit:** eb78656
+**Applied fix:** `geistMono` and `asciiMono` now set `adjustFontFallback: false` and use real monospace fallbacks: `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` for Geist Mono, and `ui-monospace, monospace` for asciiMono. The `, monospace` in `.ascii-art` was kept as a harmless no-op, so the locked CSS test did not change. I wrote a test for each font call first and saw it fail before the fix. The dev server on 3001 now serves `--font-ascii-mono: "asciiMono", ui-monospace, monospace`, with no Arial fallback face.
 
-### IN-01: The header has no fallback when `backdrop-filter` is unsupported
+### WR-02: asciiMono is preloaded on every route but used only on /upload at 640px and wider
 
-**Files modified:** `src/components/app-header.tsx`, `src/components/app-header.test.ts` (new)
-**Commit:** 682dc34
-**Applied fix:** `bg-background/80 backdrop-blur-sm` became `bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80`, matching the photo-section headers. Browsers that support blur still render the locked `/80` with blur, so the locked decision is unchanged. The new test renders `AppHeader` (with NavLink and StatusIndicator mocked) and asserts the class tokens.
+**Files modified:** `src/app/fonts.ts`, `src/app/globals-css.test.ts`
+**Commit:** 1236975
+**Applied fix:** Added `preload: false` to the `asciiMono` `localFont` call. This is the review's first option. The variable stays on `<html>`, so the layout test is unchanged. I wrote the test first and saw it fail. `/spines` on the dev server now has no `ascii_mono` preload link.
 
-### IN-02: Text selection inside inputs is still solid mauve
+### WR-03: The settings step numbers are split across shared components and page files
 
-**Files modified:** `src/components/ui/input.tsx`, `src/components/mocha-variants.test.ts`
-**Commit:** 45d7878
-**Applied fix:** Removed `selection:bg-primary selection:text-primary-foreground` from `Input`, so the UI-SPEC's global mauve-15% `::selection` applies inside inputs too. The test asserts that `Input` carries no `selection:` classes, and it fails against the old code.
+**Files modified:** `src/components/claude-cli-card.tsx`, `src/components/discogs-card.tsx`, `src/app/settings/page.tsx`, `src/app/settings/page.demo.tsx`, `src/components/markdown-touches.test.ts`, `src/components/preferred-country-field.test.ts`
+**Commit:** a738509
+**Applied fix:** `ClaudeCliCard` and `DiscogsCard` take a required `step` prop and render `<CornerNumeral value={step} …>`. Both settings pages pass `step={1}` and `step={2}`. The new tests check four things:
+- Each card renders whatever step it is given (tested with 7).
+- Neither card's source contains a literal numeral.
+- In each page's source, the step numbers count 1, 2, 3, then 4 when the Developer card is present. This enforces the invariant that numerals follow render order.
+- The `preferred-country-field` render calls pass `step: 2`, because the prop is required.
 
-### IN-03: The destructive menu-item focus state fails AA (currently unused)
+### WR-04: The "gradient only on page h1s" test does not guard the rule it names
 
-**Files modified:** `src/components/ui/dropdown-menu.tsx`, `src/components/mocha-variants.test.ts`
-**Commit:** cbb4779
-**Applied fix:** Removed the `dark:data-[variant=destructive]:focus:bg-destructive/20` override, so the base `focus:bg-destructive/10` (about 4.6:1) applies. The test checks the source, because a Radix menu item only renders inside a portalled menu.
+**Files modified:** `src/components/markdown-touches.test.ts`
+**Commit:** 647f30d
+**Applied fix:** The test now selects files by the `\bgradient-text\b` token instead of the literal `'gradient-text w-fit'`. For each file it adds a check that the token appears exactly once, on an `<h1 className="…">`, and is never combined with `glow`. This was a test-only change, so I checked it with mutations instead of a failing-first run. Adding `glow` to the upload h1 failed the test, and so did putting `gradient-text` on a `CardTitle`. The old test passed the `glow` mutation.
 
 ## Verification
 
-All gates ran in the **main checkout** (`workflow.use_worktrees: false`, so no worktree was created).
-- `npx vitest run`: 125 files and 2368 tests passed.
+All gates ran in the **main checkout**. `workflow.use_worktrees` is `false`, so no worktree was created.
+- `npx vitest run`: 128 files and 2462 tests passed.
 - `npx tsc --noEmit`: clean.
-- `npx biome check` on the changed files: clean.
-- `node scripts/demo/build-demo.ts`: `[verify-export] PASS: 392 files, rules a-i`. The real root shell is `<html id="__next_error__">` with `<meta name="color-scheme" content="dark"/>`, so the new assertion passes on the meta.
+- `npx biome check`: clean (698 files).
+- The existing dev server on 3001 serves the new font stacks and no asciiMono preload on `/spines`. No other server was started.
 
 ---
 
-_Fixed: 2026-10-25T21:00:00Z_
+_Fixed: 2026-10-26T09:10:00Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 3_
