@@ -16,10 +16,15 @@ export function AppHeader() {
         <Link
           href="/upload"
           aria-label="Discogs AI Importer"
-          className="flex h-9 shrink-0 items-center gap-2 rounded-md text-base font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="flex h-9 shrink-0 items-center gap-2 rounded-md text-base font-medium text-primary outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           <Disc3 aria-hidden="true" className="size-5" />
-          <span className="hidden sm:inline">Discogs AI Importer</span>
+          <span className="glow-intense hidden lg:inline">
+            Discogs AI Importer
+            <span aria-hidden="true" className="cursor-blink">
+              _
+            </span>
+          </span>
         </Link>
         <nav aria-label="Main" className="ml-4 h-full sm:ml-6">
           <ul className="flex h-full items-center gap-2">
