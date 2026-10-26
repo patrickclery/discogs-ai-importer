@@ -230,6 +230,16 @@ describe('fonts wiring (Phase 7 v2)', () => {
     });
   }
 
+  // The wordmark font's variable sits on <html> in the root layout, so by
+  // default next/font preloads it on every route. Only /upload (>=640px)
+  // draws the wordmark, so the preload is disabled.
+  it('asciiMono is not preloaded on every route', () => {
+    const src = read('fonts.ts');
+    const m = src.match(/export const asciiMono = \w+\(\{([\s\S]*?)\}\);/);
+    if (!m) throw new Error('asciiMono font call not found');
+    expect(m[1]).toContain('preload: false,');
+  });
+
   for (const layout of ['layout.tsx', 'layout.demo.tsx']) {
     it(`${layout} uses the shared fonts and no Geist Sans`, () => {
       const src = read(layout);

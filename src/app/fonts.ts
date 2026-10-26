@@ -30,6 +30,9 @@ export const asciiMono = localFont({
   src: './fonts/ascii_mono.woff2',
   variable: '--font-ascii-mono',
   display: 'block',
+  // Decorative and only drawn on /upload at 640px+, so do not preload it on
+  // every route (its variable is on <html>).
+  preload: false,
   // Arial would misalign the box-drawing columns, so no metric fallback.
   adjustFontFallback: false,
   fallback: ['ui-monospace', 'monospace'],
