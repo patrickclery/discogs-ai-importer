@@ -666,7 +666,9 @@ describe('Detailed card bulk states', () => {
 
   it('a skipped duplicate shows the skipped line above the candidate list', () => {
     const html = detailed(withItem(SKIPPED_ITEM));
-    const line = html.indexOf('Already imported from spine #4');
+    const line = html.indexOf(
+      'Already imported from another spine in this photo',
+    );
     expect(line).toBeGreaterThan(-1);
     expect(line).toBeLessThan(html.indexOf('Nirvana - Nevermind'));
   });
@@ -699,7 +701,7 @@ describe('Detailed card bulk states', () => {
     const html = detailed(
       withItem(SKIPPED_ITEM, { discogs: discogsDto({ fieldsChanged: true }) }),
     );
-    expect(html).toContain('Already imported from spine #4');
+    expect(html).toContain('Already imported from another spine in this photo');
     expect(html).not.toContain(FIELDS_CHANGED_LINE);
   });
 

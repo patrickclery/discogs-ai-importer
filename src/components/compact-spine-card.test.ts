@@ -520,7 +520,7 @@ describe('CompactSpineCard bulk states', () => {
         null,
       ),
     );
-    expect(html).toContain('Already imported from IMG_1.jpg, spine #12');
+    expect(html).toContain('Already imported from another spine in IMG_1.jpg');
     expect(html).not.toContain('Fallback:');
   });
 
@@ -621,11 +621,11 @@ describe('CompactSpineCard fixed line counts', () => {
     expect(fallback).toContain('title="No Canadian pressing, used US"');
     const skipped = tagOfText(
       renderBulk(withBulk(SKIP_ITEM, null)),
-      'Already imported from IMG_1.jpg, spine #12',
+      'Already imported from another spine in IMG_1.jpg',
     );
     expect(classTokens(skipped)).toContain('line-clamp-2');
     expect(skipped).toContain(
-      'title="Already imported from IMG_1.jpg, spine #12"',
+      'title="Already imported from another spine in IMG_1.jpg"',
     );
   });
 

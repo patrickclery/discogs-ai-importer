@@ -224,12 +224,18 @@ export function fallbackLine(item: BulkItemDto): string {
   }
 }
 
-/** The skipped-duplicate line (D-09): the spine already imported. */
+/**
+ * The skipped-duplicate line (D-09): the spine already imported. It names
+ * the other spine's photo, never its number: compact cards show no spine
+ * numbers (G-06-side-2), so a "spine #12" would point at nothing visible.
+ */
 export function skippedLine(skip: NonNullable<BulkItemDto['skip']>): string {
   if (skip.spineNumber === null) return 'Already imported from another spine';
-  if (skip.samePhoto) return `Already imported from spine #${skip.spineNumber}`;
-  const photo = present(skip.photo) ? skip.photo : 'another photo';
-  return `Already imported from ${photo}, spine #${skip.spineNumber}`;
+  if (skip.samePhoto)
+    return 'Already imported from another spine in this photo';
+  if (!present(skip.photo))
+    return 'Already imported from a spine in another photo';
+  return `Already imported from another spine in ${skip.photo}`;
 }
 
 /** The Open Settings link of a rejected-connection line (fixed href). */

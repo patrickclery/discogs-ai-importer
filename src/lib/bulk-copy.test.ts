@@ -457,7 +457,7 @@ describe('fallbackLine', () => {
 });
 
 describe('skippedLine', () => {
-  it('same photo names only the spine number', () => {
+  it('same photo says this photo and names no spine number', () => {
     expect(
       skippedLine({
         reason: 'duplicate',
@@ -465,10 +465,10 @@ describe('skippedLine', () => {
         spineNumber: 12,
         samePhoto: true,
       }),
-    ).toBe('Already imported from spine #12');
+    ).toBe('Already imported from another spine in this photo');
   });
 
-  it('another photo names the photo too', () => {
+  it('another photo names the photo and no spine number', () => {
     expect(
       skippedLine({
         reason: 'duplicate',
@@ -476,7 +476,18 @@ describe('skippedLine', () => {
         spineNumber: 12,
         samePhoto: false,
       }),
-    ).toBe('Already imported from IMG_1.jpg, spine #12');
+    ).toBe('Already imported from another spine in IMG_1.jpg');
+  });
+
+  it('another photo with no file name says another photo', () => {
+    expect(
+      skippedLine({
+        reason: 'duplicate',
+        photo: null,
+        spineNumber: 12,
+        samePhoto: false,
+      }),
+    ).toBe('Already imported from a spine in another photo');
   });
 
   it('a holder that is gone reads another spine', () => {
@@ -581,7 +592,9 @@ describe('bulkStatusLineOf', () => {
       ),
     });
     expect(line?.kind).toBe('skipped');
-    expect(line?.text).toBe('Already imported from spine #3');
+    expect(line?.text).toBe(
+      'Already imported from another spine in this photo',
+    );
   });
 
   it('a finding item reads the finding line', () => {
