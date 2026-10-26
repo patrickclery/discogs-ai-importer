@@ -8,6 +8,7 @@ import { CountryBadge } from '@/components/country-badge';
 import { DensityBadge, IncompleteBadge } from '@/components/density-badge';
 import { DiscogsMatches } from '@/components/discogs-matches';
 import { ImportStateBadge } from '@/components/import-state-badge';
+import { MdPrefix } from '@/components/md-prefix';
 import { PhotoStatusBadge } from '@/components/photo-status-badge';
 import { RescanButton } from '@/components/rescan-button';
 import { OrphanFooter, SpineCard } from '@/components/spine-card';
@@ -334,6 +335,7 @@ export function PhotoSection({
               className="truncate text-sm font-medium"
               title={photo.filename}
             >
+              <MdPrefix marker="##" />
               {photo.filename}
             </h2>
             <p

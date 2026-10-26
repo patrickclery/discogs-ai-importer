@@ -40,6 +40,7 @@ import {
   SPINE_ACTION_EVENT,
   type SpineActionDetail,
 } from '@/components/import-ui-context';
+import { MdPrefix } from '@/components/md-prefix';
 import { PhotoSection } from '@/components/photo-section';
 import { useStatusFilter } from '@/components/review-status-filter';
 import { SelectionProvider } from '@/components/spine-selection';
@@ -644,8 +645,11 @@ export function SpinesView({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-medium tracking-tight">Spines</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="gradient-text w-fit text-2xl font-medium tracking-tight">
+          Spines
+        </h1>
+        <p className="max-w-[80ch] text-sm text-muted-foreground">
+          <MdPrefix marker=">" />
           <Count n={spineCount} one="spine" many="spines" />
           {' from '}
           <Count n={photoCount} one="photo" many="photos" />
