@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 current_phase: 07
 current_phase_name: Match the patrickclery.com/awesomer color palette
 status: verifying
-stopped_at: Completed 07-08-PLAN.md
-last_updated: "2026-10-26T04:33:14.141Z"
+stopped_at: Completed 06-19-PLAN.md
+last_updated: "2026-10-26T23:18:10.777Z"
 last_activity: 2026-10-25
 last_activity_desc: Phase 07 execution started
-state_head: d09522ee5e1f6af7ea92caa2c3fd12fb7a4ba345
+state_head: ad2cc99d11161c7be34b69f4bafdd22fd99e37bc
 progress:
   total_phases: 3
   completed_phases: 4
-  total_plans: 35
+  total_plans: 36
   completed_plans: 50
   percent: 100
 ---
@@ -133,6 +133,7 @@ Last activity: 2026-10-25 — Phase 07 execution started
 | Phase 07 P06 | 6 min | 2 tasks | 8 files |
 | Phase 07 P07 | 5min | 2 tasks | 7 files |
 | Phase 07 P08 | 4 min | 2 tasks | 7 files |
+| Phase 06 P19 | 4min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -313,6 +314,7 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-06: WORDMARK lines extracted from the UI-SPEC fence as single-quoted literals so line 7's trailing space survives formatters
 - [Phase 07]: Buttons pin font-sans in the shared base so Plex never cascades into buttons inside AlertDescription
 - [Phase 07]: Numerals for shared Claude CLI and Discogs cards live inside the components so app and demo order match
+- [Phase 06]: 06-19: compact card status row is min-h-6 and lets a badge wrap inside the card, so no status badge can be clipped by the card's overflow-hidden
 
 ### Pending Todos
 
@@ -336,8 +338,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T04:33:13.815Z
-Stopped at: Completed 07-08-PLAN.md
+Last session: 2026-10-26T23:18:10.423Z
+Stopped at: Completed 06-19-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
