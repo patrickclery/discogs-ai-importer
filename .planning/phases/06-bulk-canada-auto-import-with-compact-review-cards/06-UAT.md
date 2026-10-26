@@ -8,10 +8,10 @@ updated: 2026-10-26T12:00:00.000Z
 
 ## Current Test
 
-number: 12
-name: At phone width, look at the status tabs at the top of the Spines page, then tap Failed.
+number: 14
+name: Open the demo site, select all on the review page, import, and watch it finish.
 expected: |
-  All seven tabs (All, Pending, Matched, Imported, Not found, Not on Discogs, Failed) are visible over two or three lines, none cut off, and tapping Failed shows the failed list.
+  Guttermouth shows Fallback: US. Massive Attack shows Fallback: Hong Kong with No Canadian or US pressing, used Hong Kong.
 awaiting: user response
 
 ## Tests
@@ -64,11 +64,11 @@ result: pass
 
 ### 12. At phone width, look at the status tabs at the top of the Spines page, then tap Failed.
 expected: All seven tabs (All, Pending, Matched, Imported, Not found, Not on Discogs, Failed) are visible over two or three lines, none cut off, and tapping Failed shows the failed list.
-result: [pending]
+result: pass
 
 ### 13. Select a few spines including Massive Attack and run a bulk import on the real app.
 expected: The dialog mentions the US CD pressing as second choice and cards read Looking for the Canadian or US pressing…. Afterwards a US import shows Fallback: US with No Canadian pressing, used US; a spine with neither says No Canadian or US pressing, used {country}. Massive Attack no longer lands on Hong Kong when Discogs lists a US CD.
-result: [pending]
+result: pass
 
 ### 14. Open the demo site, select all on the review page, import, and watch it finish.
 expected: Guttermouth shows Fallback: US. Massive Attack shows Fallback: Hong Kong with No Canadian or US pressing, used Hong Kong.
@@ -77,9 +77,9 @@ result: [pending]
 ## Summary
 
 total: 14
-passed: 10
+passed: 12
 issues: 2
-pending: 3
+pending: 1
 skipped: 0
 blocked: 0
 
@@ -120,4 +120,5 @@ blocked: 0
   severity: cosmetic
   test: side
   artifacts: []
-  missing: []
+  missing:
+    - "Status badges (Imported, Waiting to import) are cut off at the card's right edge when they share a row with Fallback or warning badges (seen in test 13 screenshot)"
