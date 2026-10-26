@@ -3,7 +3,7 @@ status: testing
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
-updated: 2026-10-26T00:02:04.128Z
+updated: 2026-10-26T12:00:00.000Z
 ---
 
 ## Current Test
@@ -78,7 +78,7 @@ result: [pending]
 
 total: 14
 passed: 9
-issues: 1
+issues: 2
 pending: 4
 skipped: 0
 blocked: 0
@@ -113,3 +113,11 @@ blocked: 0
       issue: "horizontal scroller (overflow-x-auto) instead of a wrapping row"
   missing:
     - "Let the tab row wrap onto more lines (or otherwise keep every tab visible) at phone width"
+- gap_id: G-06-side-2
+  truth: "Every compact review card has the same number of rows, so cards in a grid line up: the card number shows only once (the big number in the corner, no '#N' label), warning badges sit on their own line separate from the candidates count, and editing the spine is an icon button instead of the 'Edit spine' text"
+  status: failed
+  reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped."
+  severity: cosmetic
+  test: side
+  artifacts: []
+  missing: []
