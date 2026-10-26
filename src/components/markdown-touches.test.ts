@@ -193,3 +193,68 @@ describe.each([
     }
   });
 });
+
+describe('spines-view.tsx source', () => {
+  const text = region(src('spines-view.tsx'), '<h1 className=', '{data ? (');
+
+  it('has the gradient Spines h1', () => {
+    expect(text).toContain(`<h1 className="${H1}">`);
+    expect(text).toMatch(/<h1[^>]*>\s*Spines\s*<\/h1>/);
+  });
+
+  it('starts the counts intro with > and caps it at 80ch', () => {
+    const intro = region(text, '<p className="', '</p>');
+    expect(intro).toContain('max-w-[80ch]');
+    expect(intro).toMatch(
+      /^<p className="[^"]*">\s*<MdPrefix marker=">" \/>\s*<Count n=\{spineCount\}/,
+    );
+    expect(intro).toContain("{'. Changes save when you leave a field.'}");
+  });
+});
+
+describe('PhotoSection source', () => {
+  const text = region(
+    src('photo-section.tsx'),
+    'export function PhotoSection(',
+    '\nexport ',
+  );
+
+  it('prefixes the h2 with ## and keeps its id, classes and title', () => {
+    const h2 = region(text, '<h2', '</h2>');
+    expect(h2).toContain('id={headingId}');
+    expect(h2).toContain('className="truncate text-sm font-medium"');
+    expect(h2).toContain('title={photo.filename}');
+    expect(h2).toMatch(
+      />\s*<MdPrefix marker="##" \/>\s*\{photo\.filename\}\s*$/,
+    );
+  });
+
+  it('has no corner numeral and no isolate (Owner Decision 4)', () => {
+    expect(text).not.toContain('CornerNumeral');
+    expect(text).not.toMatch(/\bisolate\b/);
+  });
+});
+
+describe('gradient page titles', () => {
+  it('appear only on the three page h1s and their demo twins', () => {
+    const root = path.join(import.meta.dirname, '..');
+    const hits = (fs.readdirSync(root, { recursive: true }) as string[])
+      .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f))
+      .filter((f) =>
+        fs
+          .readFileSync(path.join(root, f), 'utf8')
+          .includes('gradient-text w-fit'),
+      )
+      .map((f) => f.split(path.sep).join('/'))
+      .sort();
+    expect(hits).toEqual(
+      [
+        'app/settings/page.demo.tsx',
+        'app/settings/page.tsx',
+        'app/upload/page.demo.tsx',
+        'app/upload/page.tsx',
+        'components/spines-view.tsx',
+      ].sort(),
+    );
+  });
+});
