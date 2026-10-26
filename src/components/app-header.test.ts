@@ -33,3 +33,39 @@ describe('AppHeader (Mocha)', () => {
     expect(t).not.toContain('bg-background/80');
   });
 });
+
+describe('AppHeader logo (Phase 7 v2)', () => {
+  const html = renderToStaticMarkup(h(AppHeader));
+  const logo = html.match(/<a[^>]*>[\s\S]*?<\/a>/)?.[0] ?? '';
+  const tokens = (re: RegExp) =>
+    (logo.match(re)?.[1] ?? '').split(/\s+/).filter(Boolean);
+
+  it('keeps the link target and accessible name, now mauve', () => {
+    expect(logo).toContain('href="/upload"');
+    expect(logo).toContain('aria-label="Discogs AI Importer"');
+    const t = tokens(/^<a[^>]*class="([^"]*)"/);
+    for (const c of [
+      'text-primary',
+      'text-base',
+      'font-medium',
+      'focus-visible:ring-[3px]',
+      'focus-visible:ring-ring/50',
+    ]) {
+      expect(t).toContain(c);
+    }
+  });
+
+  it('shows glowing logo text from lg, ending in a blinking cursor', () => {
+    const t = tokens(/<span class="([^"]*)">Discogs AI Importer/);
+    expect(t.sort()).toEqual(['glow-intense', 'hidden', 'lg:inline'].sort());
+    expect(logo).toContain(
+      'Discogs AI Importer<span aria-hidden="true" class="cursor-blink">_</span>',
+    );
+  });
+
+  it('keeps the Disc3 icon aria-hidden at size-5', () => {
+    const svg = logo.match(/<svg[^>]*>/)?.[0] ?? '';
+    expect(svg).toContain('aria-hidden="true"');
+    expect(svg).toMatch(/class="[^"]*\bsize-5\b/);
+  });
+});
