@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { CornerNumeral } from '@/components/corner-numeral';
 import { DismissSpineButton } from '@/components/dismiss-spine-button';
 import { ReattachDialog } from '@/components/reattach-dialog';
 import { SpineCrop } from '@/components/spine-crop';
@@ -34,7 +35,7 @@ export const ORPHAN_EXPLANATION =
 export function OrphanFooter({ spine }: { spine: SpineDto }) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <p className="text-xs text-muted-foreground sm:flex-1">
+      <p className="font-prose text-xs text-muted-foreground sm:flex-1">
         {ORPHAN_EXPLANATION}
       </p>
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -52,6 +53,7 @@ export function OrphanFooter({ spine }: { spine: SpineDto }) {
  * `Edited · {n}` when the owner changed n fields. An orphaned spine (D-16)
  * adds the "No longer detected" badge, a warning border and the Re-attach /
  * Dismiss footer. Field values are input values only (T-02-20).
+ * Featured (the one card in focus) or mini surface, with an lg corner number.
  */
 export function SpineCard({
   spine,
@@ -60,6 +62,7 @@ export function SpineCard({
   badges,
   statusSlot,
   footer,
+  featured = false,
 }: {
   spine: SpineDto;
   /** The confidence_threshold setting (D-09). */
@@ -70,6 +73,8 @@ export function SpineCard({
   badges?: ReactNode;
   statusSlot?: ReactNode;
   footer?: ReactNode;
+  /** The expanded compact card is featured; every other card is mini. */
+  featured?: boolean;
 }) {
   const number = spineNumber(spine);
   const rawText =
@@ -97,8 +102,10 @@ export function SpineCard({
     <Card
       id={`spine-card-${spine.id}`}
       data-spine-card={spine.id}
+      variant={featured ? 'featured' : 'mini'}
       className={cn('gap-4 rounded-xl p-4', orphaned && 'border-warning/60')}
     >
+      <CornerNumeral value={number} size="lg" />
       <div className="flex items-center gap-2 text-xs">
         {leading}
         <span className="font-mono text-muted-foreground tabular-nums">

@@ -152,6 +152,7 @@ export function SpineView({
     <SpineCard
       spine={spine}
       threshold={threshold}
+      featured={trailing !== undefined}
       leading={<SpineSelectCheckbox spine={spine} />}
       statusSlot={
         <>
