@@ -242,7 +242,7 @@ function ClearControl({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Keep value</AlertDialogCancel>
           <AlertDialogAction
-            className="bg-destructive text-white hover:bg-destructive/90"
+            variant="destructive"
             disabled={pending}
             onClick={confirm}
           >
