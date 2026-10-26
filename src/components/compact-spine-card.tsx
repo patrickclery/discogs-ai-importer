@@ -220,7 +220,7 @@ export function CompactSpineCard({
         )}
       </div>
       <div data-compact-row="bulk" className="min-h-8">
-        <BulkStatusLine spine={spine} />
+        <BulkStatusLine spine={spine} clamp />
       </div>
     </Card>
   );

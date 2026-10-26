@@ -4,9 +4,11 @@ import { Disc3 } from 'lucide-react';
 import { useState } from 'react';
 
 /**
- * The compact card's match slot (UI-SPEC Top match row): a 48px cover, the
- * verbatim Discogs title clamped to two lines (full title on hover) and the
- * `{year} · {country} · {catno}` line. React text only (T-06-19); the cover
+ * The compact card's match slot (UI-SPEC Top match row, G-06-side-2): a
+ * 48px cover, the verbatim Discogs title exactly two lines tall and the
+ * `{year} · {country} · {catno}` details exactly one line, each with the
+ * full text on hover. Short text keeps the same height, so the row is always
+ * 60px and the cards in a grid row line up. React text only (T-06-19, T-06-36); the cover
  * src comes only from candidateThumbSrc. A missing or failing cover shows
  * the Disc3 placeholder, never a broken-image glyph.
  */
@@ -42,12 +44,17 @@ export function TopMatchRow({
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p
-          className="line-clamp-2 text-sm font-medium break-words"
+          className="line-clamp-2 h-[2lh] text-sm font-medium break-words"
           title={title}
         >
           {title}
         </p>
-        <p className="line-clamp-2 text-xs text-muted-foreground">{details}</p>
+        <p
+          className="line-clamp-1 h-[1lh] text-xs break-words text-muted-foreground"
+          title={details}
+        >
+          {details}
+        </p>
       </div>
     </div>
   );

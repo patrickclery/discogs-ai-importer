@@ -93,17 +93,31 @@ function RetryImport({ spineId }: { spineId: string }) {
  * fallback (warning icon, foreground text), a skipped duplicate (muted) or
  * the lookup in progress (spinner, muted). `kinds` limits which lines this
  * place shows (Detailed cards split them between the confirmed panel and
- * the Discogs notice line).
+ * the Discogs notice line). `clamp` (compact cards) keeps the fallback,
+ * skipped and finding text to two lines with the full text on hover; a
+ * failed lookup is never clamped, so its explanation, Open Settings and
+ * Retry import stay visible and reachable.
  */
 export function BulkStatusLine({
   spine,
   kinds,
+  clamp = false,
 }: {
   spine: SpineDto;
   kinds?: ReadonlyArray<BulkStatusKind>;
+  /** Compact cards keep the line at two lines, with the full text on hover (G-06-side-2). */
+  clamp?: boolean;
 }) {
   const line = bulkStatusLineOf(spine);
   if (line === null || (kinds && !kinds.includes(line.kind))) return null;
+  // React attribute and text only (T-06-36): never HTML.
+  const text = clamp ? (
+    <span className="line-clamp-2 min-w-0 break-words" title={line.text}>
+      {line.text}
+    </span>
+  ) : (
+    <span className="min-w-0 break-words">{line.text}</span>
+  );
   switch (line.kind) {
     case 'failed':
       return (
@@ -136,14 +150,14 @@ export function BulkStatusLine({
             aria-hidden="true"
             className={`${ICON} text-warning`}
           />
-          <span className="min-w-0 break-words">{line.text}</span>
+          {text}
         </p>
       );
     case 'skipped':
       return (
         <p className={`${LINE} text-muted-foreground`}>
           <Copy aria-hidden="true" className={ICON} />
-          <span className="min-w-0 break-words">{line.text}</span>
+          {text}
         </p>
       );
     case 'finding':
@@ -154,7 +168,7 @@ export function BulkStatusLine({
             role="presentation"
             className="mt-px shrink-0"
           />
-          <span className="min-w-0 break-words">{line.text}</span>
+          {text}
         </p>
       );
   }
