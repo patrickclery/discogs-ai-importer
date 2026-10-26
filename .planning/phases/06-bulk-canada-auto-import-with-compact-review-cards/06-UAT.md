@@ -111,10 +111,15 @@ blocked: 0
     - "Let the tab row wrap onto more lines (or otherwise keep every tab visible) at phone width"
 - gap_id: G-06-side-2
   truth: "Every compact review card has the same number of rows, so cards in a grid line up: no card numbering at all (neither the '#N' label nor the big corner number), the checkbox shares its row with other content (e.g. the candidates count) instead of taking a row of its own, warning badges sit on their own line separate from the candidates count, and editing the spine is an icon button instead of the 'Edit spine' text"
-  status: failed
+  status: diagnosed
   reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped. Later: we don't need the numbering on the cards at all. We just need check boxes, and ideally the check box shouldn't take up a whole row. It can have text beside it or whatever."
   severity: cosmetic
   test: side
-  artifacts: []
+  root_cause: "src/components/compact-spine-card.tsx renders a flex-wrap header holding the checkbox, a '#N' label, worst-field/Edited/orphan badges and an ml-auto group (CountryBadge + ImportStateBadge with min-w-0 max-w-full, which clips instead of wrapping), so cards wrap to 1-3 header rows depending on badge count; it also renders <CornerNumeral> (big corner number), a 'Edit spine' text button on its own bottom row, and an unclamped TopMatchRow title/details and BulkStatusLine whose line count varies per match"
+  artifacts:
+    - path: "src/components/compact-spine-card.tsx"
+      issue: "variable-height wrapping header, '#N' label + CornerNumeral, text 'Edit spine' button row"
+    - path: "src/components/top-match-row.tsx"
+      issue: "title and details wrap to a varying number of lines"
   missing:
     - "Status badges (Imported, Waiting to import) are cut off at the card's right edge when they share a row with Fallback or warning badges (seen in test 13 screenshot)"
