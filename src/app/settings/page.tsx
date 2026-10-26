@@ -1,8 +1,10 @@
 import { headers } from 'next/headers';
 import { connection } from 'next/server';
 import { ClaudeCliCard } from '@/components/claude-cli-card';
+import { CornerNumeral } from '@/components/corner-numeral';
 import { DevJobTrigger } from '@/components/dev-job-trigger';
 import { DiscogsCard } from '@/components/discogs-card';
+import { MdPrefix } from '@/components/md-prefix';
 import { StoragePaths } from '@/components/storage-paths';
 import {
   Card,
@@ -78,8 +80,11 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-2xl">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-medium tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="gradient-text w-fit text-2xl font-medium tracking-tight">
+          Settings
+        </h1>
+        <p className="max-w-[80ch] text-sm text-muted-foreground">
+          <MdPrefix marker=">" />
           Keys are saved to secrets.json on this computer, outside the data
           folder, and are never shown in full again after saving.
         </p>
@@ -94,9 +99,13 @@ export default async function SettingsPage() {
           preferredCountry={getPreferredCountry()}
           fallbackCountry={getFallbackCountry()}
         />
-        <Card>
+        <Card variant="mini">
+          <CornerNumeral value={3} size="md" />
           <CardHeader>
-            <CardTitle className="text-base">Data folder</CardTitle>
+            <CardTitle className="text-base">
+              <MdPrefix marker="##" />
+              Data folder
+            </CardTitle>
             <CardDescription>
               {
                 'Everything the app stores lives in this folder. Stop the app before copying it to another computer.'
@@ -111,9 +120,13 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
         {showDeveloper ? (
-          <Card>
+          <Card variant="mini">
+            <CornerNumeral value={4} size="md" />
             <CardHeader>
-              <CardTitle className="text-base">Developer</CardTitle>
+              <CardTitle className="text-base">
+                <MdPrefix marker="##" />
+                Developer
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <DevJobTrigger />

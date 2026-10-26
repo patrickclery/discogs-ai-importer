@@ -1,4 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
+import { CornerNumeral } from '@/components/corner-numeral';
+import { MdPrefix } from '@/components/md-prefix';
 import { ModelSelect } from '@/components/model-select';
 import { TestClaudeButton } from '@/components/test-claude-button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -123,9 +125,13 @@ export function ClaudeCliCard({
   model: string;
 }) {
   return (
-    <Card>
+    <Card variant="mini">
+      <CornerNumeral value={1} size="md" />
       <CardHeader>
-        <CardTitle className="text-base">Claude CLI</CardTitle>
+        <CardTitle className="text-base">
+          <MdPrefix marker="##" />
+          Claude CLI
+        </CardTitle>
         <CardDescription>
           {
             'Vision runs through your Claude subscription by starting the Claude Code CLI on this computer. No API key is needed.'

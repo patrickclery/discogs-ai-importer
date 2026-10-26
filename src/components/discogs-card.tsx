@@ -6,8 +6,10 @@ import {
   CONNECT_BUTTON_ID,
   ConnectDiscogsButton,
 } from '@/components/connect-discogs-button';
+import { CornerNumeral } from '@/components/corner-numeral';
 import { DiscogsConnectNotice } from '@/components/discogs-connect-notice';
 import { DisconnectDiscogsButton } from '@/components/disconnect-discogs-button';
+import { MdPrefix } from '@/components/md-prefix';
 import { PasteCodeForm } from '@/components/paste-code-form';
 import {
   FallbackCountryField,
@@ -80,7 +82,7 @@ function ConnectedSection({
             {username}
           </a>
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="font-prose text-xs text-muted-foreground">
           {
             'Matches appear on the Spines page as each CD is looked up. Large batches take a few minutes, because Discogs allows about one lookup per second.'
           }
@@ -147,7 +149,7 @@ function AccountSection({
   }
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="font-prose text-sm text-muted-foreground">
         {
           'Connecting opens discogs.com so you can approve this app. The app adds a release to your Discogs collection only when you click Add on a match.'
         }
@@ -180,9 +182,13 @@ export function DiscogsCard({
   fallbackCountry: string;
 }) {
   return (
-    <Card>
+    <Card variant="mini">
+      <CornerNumeral value={2} size="md" />
       <CardHeader>
-        <CardTitle className="text-base">Discogs</CardTitle>
+        <CardTitle className="text-base">
+          <MdPrefix marker="##" />
+          Discogs
+        </CardTitle>
         <CardAction>
           <ConnectionBadge connection={connection} />
         </CardAction>
