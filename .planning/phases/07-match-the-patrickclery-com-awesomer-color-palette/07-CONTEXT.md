@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Restyle the app, and the demo site, which shares its components, with the patrickclery.com/awesomer palette: Catppuccin Mocha, dark only. The change goes through the existing Tailwind v4 / shadcn theme tokens in `src/app/globals.css`, so every screen picks it up. This phase changes colors only. It adds no new features or layouts and changes no fonts.
+Restyle the app, and the demo site, which shares its components, with the patrickclery.com/awesomer palette: Catppuccin Mocha, dark only. The change goes through the existing Tailwind v4 / shadcn theme tokens in `src/app/globals.css`, so every screen picks it up. Originally colors only. After reviewing the first pass, the owner widened the scope (2026-10-25) to awesomer's whole look: gradient cards, corner numbers, its fonts (Geist Mono UI, IBM Plex Sans for prose, an asciiMono wordmark), scanlines, and a terminal/markdown feel. It adds no new features or data.
 
 Reference palette, captured from the live site: `07-PALETTE-REFERENCE.md`.
 
@@ -26,8 +26,17 @@ Reference palette, captured from the live site: `07-PALETTE-REFERENCE.md`.
 - Status colors: success green `#a6e3a1`, warning yellow `#f9e2af`, destructive red `#f38ba8`, plus sky `#89dcfe` where an info or cyan tone is needed. These cover the Imported, Fallback, low-confidence and Failed badges and lines.
 - Small touches like the site: mauve text selection (`#cba6f726`), mauve focus rings and glow (`#cba6f766`), and a translucent, blurred sticky header (`bg-background/80 backdrop-blur-sm`).
 
-### Fonts
-- Colors only. Keep today's Geist Sans and Geist Mono. Do not adopt IBM Plex Sans.
+### Fonts (REVISED 2026-10-25 after the owner reviewed the result: the font migration is now in scope)
+- Match awesomer: Geist Mono is the default font for the whole UI (headings, labels, nav, numbers, badges), and IBM Plex Sans is used only for longer descriptive or prose text, as awesomer's `.description` class does.
+- Use the asciiMono display font (captured in `reference/ascii_mono.woff2`, a 7 KB subset) for an ASCII-art block wordmark of the app name ("DISCOGS AI IMPORTER" or similar), as awesomer does with `<pre class="ascii-art text-accent">`. Hide it on phones (`hidden sm:block`), as awesomer does.
+
+### Terminal / markdown vibe (NEW 2026-10-25, owner: "the overall type of vibe that Awesomer has … terminal slash markdown")
+- Cards get awesomer's gradient treatment. Featured or emphasis surfaces use `.card-featured`: a 180deg surface to 85% surface gradient, a 50% accent border, and a soft accent glow that grows on hover. Regular cards use `.card` or `.card-mini`: a surface tint, an accent border at 40% on hover and a faint glow. Exact rules are in `reference/awesomer-style-rules.css`.
+- Each card shows a large faint number in its bottom-right corner, as awesomer does with `absolute -right-1 -bottom-2 text-4xl font-black font-mono text-accent/[0.07]`. On spine cards it is the spine number (#n). Sizes scale with the card, like awesomer's 10rem numeral on featured cards.
+- Prominent titles, such as page headings and the album title on featured cards, use awesomer's `.gradient-text` (mauve to sky, 135deg). Use it sparingly, as awesomer does.
+- Add awesomer's CRT scanline overlay (`body:before` repeating-linear-gradient at #0000000a). It never blocks pointer events.
+- Use markdown and terminal touches where they fit naturally, as awesomer's `## about` headings and `>` prompts do: section headings can read like `## spines` or `## settings`, and empty or status lines can read like terminal output. Copy must stay clear for a non-technical owner, and no existing wording is changed except adding these prefixes.
+- Keep the accent glow utilities (`.glow`, `.glow-intense` on the logo) as awesomer does. Skip awesomer-specific decorations that don't fit this app (the "HOTTEST" starburst and avatars).
 
 ### Claude's Discretion
 - How each shadcn token (secondary, accent, chart-*, sidebar-*, ring and so on) maps onto the Mocha palette, as long as it stays consistent with the decisions above.
@@ -63,7 +72,6 @@ Reference palette, captured from the live site: `07-PALETTE-REFERENCE.md`.
 <deferred>
 ## Deferred Ideas
 
-- Adopting awesomer's fonts (IBM Plex Sans / Geist Mono body): the owner chose colors only for now.
 - A light mode (Catppuccin Latte) and a theme toggle.
 
 </deferred>

@@ -135,7 +135,7 @@ Plans:
 
 ### Phase 7: Match the patrickclery.com/awesomer color palette
 
-**Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (Catppuccin Mocha, dark only; colors only, fonts unchanged), applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
+**Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (Catppuccin Mocha, dark only) and its overall terminal/markdown look: gradient cards with corner numbers, Geist Mono / IBM Plex Sans / asciiMono fonts, scanlines; applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
 **Requirements**: THEME-01..THEME-07 (proposed in 07-01-PLAN.md from the 07-CONTEXT.md decisions)
 **Depends on:** Phase 6
 **Plans:** 3/3 plans executed

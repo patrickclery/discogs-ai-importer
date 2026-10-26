@@ -54,3 +54,21 @@ skipped: 0
 blocked: 0
 
 ## Gaps
+- gap_id: G-07-style-1
+  truth: "The app has awesomer's overall terminal/markdown look, not just its colors: gradient cards (.card-featured / .card-mini), a large faint number in each card's bottom-right corner, awesomer's fonts (Geist Mono UI, IBM Plex Sans prose, an asciiMono ASCII-art wordmark), CRT scanlines, gradient-text titles and markdown-style section headings"
+  status: failed
+  reason: "User reported: I can already tell that it's not really the same. For instance, you don't use gradients on the cards, whereas if you look at Awesomer, it's using gradients. Awesomer also puts the number in the corner of the card like on the main page you can see agent skills 6, MCP server 7, etc. I also think it should use that same ASCII type of font that is on all the pages. And we might as well make the font migration part of this too. It should use the same fonts. I think it would be cool if it had the overall type of vibe that Awesomer has where it's sort of like a terminal slash markdown."
+  severity: major
+  test: 0
+  root_cause: "Phase 7 was scoped as colors only (07-CONTEXT original decision). Awesomer's look also depends on card gradients and glows, corner numerals, Geist Mono / IBM Plex Sans / asciiMono fonts, scanlines and gradient-text. See reference/awesomer-style-rules.css and reference/awesomer-home.html."
+  artifacts:
+    - path: "src/app/globals.css"
+      issue: "no card gradient, glow, scanline, gradient-text or font utilities"
+    - path: "src/app/layout.tsx"
+      issue: "loads Geist Sans as the body font; no IBM Plex Sans or asciiMono"
+    - path: "src/components/compact-spine-card.tsx"
+      issue: "flat card surface, no corner numeral"
+  missing:
+    - "Card gradient and glow treatment and corner numerals on spine and photo cards"
+    - "Font migration: Geist Mono default, IBM Plex Sans for prose, asciiMono wordmark (local font from reference/ascii_mono.woff2)"
+    - "Scanline overlay, gradient-text titles, markdown-style headings (## …)"

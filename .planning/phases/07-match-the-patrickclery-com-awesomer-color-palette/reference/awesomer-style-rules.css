@@ -1,0 +1,104 @@
+/* Extracted 2026-10-25 from https://patrickclery.com/awesomer/ stylesheet 485522ad1d2d8ce0.css — reference only */
+@font-face{font-family:Geist Mono;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/5ce348bf30bf5439-s.56c1f21e.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:Geist Mono;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/4fa387ec64143e14-s.3b336396.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:Geist Mono;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/6306c77e7c8268e4-s.e3369375.woff2)format("woff2");unicode-range:U+2000-2001,U+2004-2008,U+200A,U+23B8-23BD,U+2500-259F}
+@font-face{font-family:Geist Mono;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/7d817b4c03b0c5f1-s.a40b9a8b.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:Geist Mono;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/bbc41e54d2fcbd21-s.fe42ddf4.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Geist Mono;font-style:normal;font-weight:100 900;font-display:swap;src:url(../media/797e433ab948586e-s.p.29207c2f.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Geist Mono Fallback;src:local(Arial);ascent-override:74.67%;descent-override:21.92%;line-gap-override:0.0%;size-adjust:134.59%}
+@font-face{font-family:asciiMono;src:url(../media/ascii_mono-s.p.972728ba.woff2)format("woff2");font-display:block}
+@font-face{font-family:asciiMono Fallback;src:local(Arial);ascent-override:81.3%;descent-override:22.28%;line-gap-override:0.0%;size-adjust:131.49%}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/952f0fd261157ce3-s.95c89ce6.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/69169fb36b2bd6d2-s.9088d160.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/fce1204c21d111e2-s.cf6d2485.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/7a0633ae85d274ff-s.0cd2b6b8.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/d9e1577adfc6a783-s.a06adfee.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/37a1c0476297a605-s.p.a6734a9c.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/952f0fd261157ce3-s.95c89ce6.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/69169fb36b2bd6d2-s.9088d160.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/fce1204c21d111e2-s.cf6d2485.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/7a0633ae85d274ff-s.0cd2b6b8.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/d9e1577adfc6a783-s.a06adfee.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/37a1c0476297a605-s.p.a6734a9c.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/952f0fd261157ce3-s.95c89ce6.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/69169fb36b2bd6d2-s.9088d160.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/fce1204c21d111e2-s.cf6d2485.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/7a0633ae85d274ff-s.0cd2b6b8.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/d9e1577adfc6a783-s.a06adfee.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:IBM Plex Sans;font-style:italic;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/37a1c0476297a605-s.p.a6734a9c.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/7fea77d1d19108bf-s.c949a514.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/1bcd0e671759a44c-s.a3ed597e.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/e15f58668ad64cb8-s.319fa961.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/90c51ce8fb754fe8-s.323431dc.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/57215795b8570f5c-s.0f2c7ba8.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(../media/03fc1b4a8d284b5e-s.p.af4fcd24.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/7fea77d1d19108bf-s.c949a514.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/1bcd0e671759a44c-s.a3ed597e.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/e15f58668ad64cb8-s.319fa961.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/90c51ce8fb754fe8-s.323431dc.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/57215795b8570f5c-s.0f2c7ba8.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:500;font-stretch:100%;font-display:swap;src:url(../media/03fc1b4a8d284b5e-s.p.af4fcd24.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/7fea77d1d19108bf-s.c949a514.woff2)format("woff2");unicode-range:U+460-52F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/1bcd0e671759a44c-s.a3ed597e.woff2)format("woff2");unicode-range:U+301,U+400-45F,U+490-491,U+4B0-4B1,U+2116}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/e15f58668ad64cb8-s.319fa961.woff2)format("woff2");unicode-range:U+370-377,U+37A-37F,U+384-38A,U+38C,U+38E-3A1,U+3A3-3FF}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/90c51ce8fb754fe8-s.323431dc.woff2)format("woff2");unicode-range:U+102-103,U+110-111,U+128-129,U+168-169,U+1A0-1A1,U+1AF-1B0,U+300-301,U+303-304,U+308-309,U+323,U+329,U+1EA0-1EF9,U+20AB}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/57215795b8570f5c-s.0f2c7ba8.woff2)format("woff2");unicode-range:U+100-2BA,U+2BD-2C5,U+2C7-2CC,U+2CE-2D7,U+2DD-2FF,U+304,U+308,U+329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:IBM Plex Sans;font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(../media/03fc1b4a8d284b5e-s.p.af4fcd24.woff2)format("woff2");unicode-range:U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:IBM Plex Sans Fallback;src:local(Arial);ascent-override:101.32%;descent-override:27.18%;line-gap-override:0.0%;size-adjust:101.17%}
+.cursor-blink{animation:1s step-end infinite blink}
+.glow-pulse{animation:4s ease-in-out infinite glow-pulse}
+.glow{text-shadow:0 0 8px var(--glow-color)}
+.glow-intense{text-shadow:0 0 4px var(--accent),0 0 10px var(--glow-color),0 0 20px var(--glow-color),0 0 40px var(--glow-color)}
+.description{font-family:var(--font-description),"IBM Plex Sans",system-ui,sans-serif}
+.ascii-art{font-family:var(--font-ascii),monospace;white-space:pre;letter-spacing:0;font-size:11px;line-height:1}
+.terminal-box{border:1px solid var(--accent);box-shadow:0 0 6px #00ff414d,inset 0 0 6px #00ff410d}
+body:before{content:"";pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,#0000 0 1px,#0000000a 1px 2px);width:100%;height:100%;position:fixed;top:0;left:0}
+::selection{background:var(--selection-bg);color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--border);transition:border-color .2s,box-shadow .2s}
+.card:hover{border-color:var(--accent)}
+.card:hover{border-color:color-mix(in srgb,var(--accent)40%,transparent)}
+.card:hover{box-shadow:0 0 20px var(--accent)}
+.card:hover{box-shadow:0 0 20px color-mix(in srgb,var(--accent)8%,transparent)}
+.card-featured{background:linear-gradient(180deg,var(--surface)0%,var(--surface)100%)}
+.card-featured{background:linear-gradient(180deg,var(--surface)0%,color-mix(in srgb,var(--surface)85%,var(--background))100%)}
+.card-featured{border:1px solid var(--accent)}
+.card-featured{border:1px solid color-mix(in srgb,var(--accent)50%,transparent)}
+.card-featured{box-shadow:0 4px 24px #0000004d,0 0 15px var(--accent),inset 0 1px 0 var(--accent)}
+.card-featured{box-shadow:0 4px 24px #0000004d,0 0 15px color-mix(in srgb,var(--accent)10%,transparent),inset 0 1px 0 color-mix(in srgb,var(--accent)8%,transparent)}
+.card-featured{transition:border-color .2s ease-out,box-shadow .2s ease-out,transform .15s ease-out}
+.card-featured:hover{border-color:var(--accent);box-shadow:0 8px 32px #00000059,0 0 30px var(--accent),inset 0 1px 0 var(--accent)}
+.card-featured:hover{box-shadow:0 8px 32px #00000059,0 0 30px color-mix(in srgb,var(--accent)20%,transparent),inset 0 1px 0 color-mix(in srgb,var(--accent)12%,transparent)}
+.card-featured:active{transform:scale(.98)}
+.card-mini{background:var(--surface)}
+.card-mini{background:color-mix(in srgb,var(--surface)40%,var(--background))}
+.card-mini{border:1px solid var(--border)}
+.card-mini{border:1px solid color-mix(in srgb,var(--border)60%,transparent)}
+.card-mini{box-shadow:none;transition:background .2s ease-out,border-color .2s ease-out,box-shadow .2s ease-out,transform .15s ease-out}
+.card-mini:hover{background:var(--surface);border-color:var(--accent)}
+.card-mini:hover{border-color:color-mix(in srgb,var(--accent)40%,transparent)}
+.card-mini:hover{box-shadow:0 2px 12px #0003,0 0 10px var(--accent)}
+.card-mini:hover{box-shadow:0 2px 12px #0003,0 0 10px color-mix(in srgb,var(--accent)6%,transparent)}
+.card-mini:active{transform:scale(.98)}
+.card-tiny{border:1px solid var(--border);background:0 0}
+.card-tiny{border:1px solid color-mix(in srgb,var(--border)30%,transparent)}
+.card-tiny{box-shadow:none;border-radius:4px;transition:background .15s ease-out,border-color .15s ease-out}
+.card-tiny:hover{background:var(--surface)}
+.card-tiny:hover{background:color-mix(in srgb,var(--surface)50%,transparent)}
+.card-tiny:hover{border-color:var(--accent)}
+.card-tiny:hover{border-color:color-mix(in srgb,var(--accent)30%,transparent)}
+.card-pulse{animation:4s ease-in-out infinite card-border-pulse}
+.card-pulse{animation:none!important}
+.card:focus-within,.card-featured:focus-within,.card-mini:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.avatar{border:1px solid var(--border);object-fit:cover;border-radius:6px;flex-shrink:0;display:block}
+.avatar-fallback{color:var(--muted);background:var(--surface)}
+.avatar-fallback{background:color-mix(in srgb,var(--surface)50%,transparent)}
+.avatar-fallback{padding:2px}
+.gradient-text{background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-text-fill-color:transparent;-webkit-background-clip:text;background-clip:text}
+.starburst{z-index:10;justify-content:center;align-items:center;width:120px;height:96px;display:flex;position:absolute;top:-20px;right:-20px}
+.starburst{right:-8px}
+.starburst:before{content:"";background:var(--accent);clip-path:polygon(50% 0%,58% 12%,72% 2%,68% 18%,88% 10%,80% 28%,100% 28%,88% 40%,98% 55%,82% 58%,92% 75%,75% 68%,78% 88%,62% 78%,55% 100%,48% 80%,32% 95%,35% 75%,15% 82%,25% 65%,2% 68%,18% 52%,0% 38%,20% 35%,8% 18%,28% 22%,30% 5%,42% 15%);position:absolute;inset:-3px;transform:rotate(-5deg)}
+.starburst:after{content:"";background:linear-gradient(135deg,var(--surface-hover)0%,var(--background)100%);clip-path:polygon(50% 0%,58% 12%,72% 2%,68% 18%,88% 10%,80% 28%,100% 28%,88% 40%,98% 55%,82% 58%,92% 75%,75% 68%,78% 88%,62% 78%,55% 100%,48% 80%,32% 95%,35% 75%,15% 82%,25% 65%,2% 68%,18% 52%,0% 38%,20% 35%,8% 18%,28% 22%,30% 5%,42% 15%);z-index:1;position:absolute;inset:0;transform:rotate(-5deg)}
+.starburst-text{z-index:2;color:var(--success);text-align:center;text-shadow:0 0 8px #a6e3a166;flex-direction:column;align-items:center;font-size:16px;font-weight:800;line-height:1.1;display:flex;position:relative}
+.starburst-sub{color:var(--muted);text-shadow:none;letter-spacing:.5px;text-transform:uppercase;margin-top:1px;font-size:9px;font-weight:600}
+.cursor-blink,.glow-pulse,.animate-fade-in,.stagger>*{animation:none!important}
+.card,.card-featured,.card-mini{transition:none!important}
