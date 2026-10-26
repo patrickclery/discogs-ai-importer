@@ -11,7 +11,7 @@ const NAV = [
 
 export function AppHeader() {
   return (
-    <header className="sticky top-0 z-40 h-14 border-b bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 h-14 border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-full max-w-6xl items-center px-4 sm:px-6">
         <Link
           href="/upload"
