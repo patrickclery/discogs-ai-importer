@@ -763,6 +763,7 @@ describe('awesomer mini card (Phase 7 v2)', () => {
       expect.arrayContaining([
         'row-span-6',
         'grid',
+        'grid-cols-1',
         'grid-rows-subgrid',
         'gap-2',
         'rounded-xl',
@@ -771,6 +772,15 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     );
     expect(html).not.toContain('data-corner-numeral');
     expect(visibleText(html)).not.toContain('#7');
+  });
+
+  it('the compact card column cannot grow past the card (one minmax(0,1fr) column)', () => {
+    const html = render(spine());
+    const t = classTokens(openingTag(html, 'data-slot="card"'));
+    expect(t).toContain('grid-cols-1');
+    expect(t.filter((c) => c.startsWith('grid-cols-'))).toEqual([
+      'grid-cols-1',
+    ]);
   });
 
   it('an orphaned compact card keeps its warning border with card-mini', () => {

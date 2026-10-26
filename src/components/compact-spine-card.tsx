@@ -154,7 +154,9 @@ export function CompactSpineCard({
       data-spine-card={spine.id}
       variant="mini"
       className={cn(
-        'row-span-6 grid grid-rows-subgrid gap-2 rounded-xl p-4',
+        // grid-cols-1 is minmax(0, 1fr): a long unbroken file name or catno
+        // wraps inside the card instead of widening the column past its edge.
+        'row-span-6 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
         orphaned && 'border-warning/60',
       )}
     >
