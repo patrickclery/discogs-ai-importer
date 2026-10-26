@@ -70,6 +70,8 @@ const MOCHA = {
   '--success': '#a6e3a1',
   '--warning': '#f9e2af',
   '--selection': '#cba6f726',
+  '--glow': '#cba6f766',
+  '--cyan': '#89dcfe',
 };
 
 /** WCAG 2.x relative luminance of an opaque #rrggbb color. */
@@ -92,9 +94,9 @@ function contrastRatio(a: string, b: string): number {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 describe('globals.css: Catppuccin Mocha tokens (Phase 7)', () => {
-  it(':root holds exactly the 37 UI-SPEC tokens', () => {
+  it(':root holds exactly the 39 UI-SPEC tokens', () => {
     expect(rootVars()).toEqual(MOCHA);
-    expect(Object.keys(MOCHA)).toHaveLength(37);
+    expect(Object.keys(MOCHA)).toHaveLength(39);
   });
 
   it(':root declares color-scheme: dark', () => {
@@ -127,6 +129,8 @@ describe('globals.css: Catppuccin Mocha tokens (Phase 7)', () => {
     expect(t).toContain('--font-prose: var(--font-ibm-plex-sans);');
     expect(t).not.toContain('--font-geist-sans');
     expect(t).not.toContain('--selection');
+    expect(t).not.toContain('--glow');
+    expect(t).not.toContain('--cyan');
   });
 
   it('keeps the dark custom variant for the shadcn dark: utilities', () => {
@@ -280,5 +284,116 @@ describe('awesomer card rules (Phase 7 v2)', () => {
     ]) {
       expect(ruleBody(sel)).not.toContain('transform');
     }
+  });
+});
+
+/** The body of an at-rule block such as `@media (…)`, nested braces kept. */
+function atBlock(prelude: string): string {
+  const start = css.indexOf(`${prelude} {`);
+  if (start < 0) throw new Error(`${prelude} block not found`);
+  let depth = 0;
+  for (let i = css.indexOf('{', start); i < css.length; i++) {
+    if (css[i] === '{') depth++;
+    if (css[i] === '}' && --depth === 0) {
+      return css.slice(css.indexOf('{', start) + 1, i).replace(/\s+/g, ' ');
+    }
+  }
+  throw new Error(`${prelude} block not closed`);
+}
+
+/** sRGB color-mix(a p%, b) of two opaque #rrggbb colors, as #rrggbb. */
+function mix(a: string, b: string, p: number): string {
+  const ch = (hex: string, i: number) =>
+    Number.parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+  return `#${[0, 1, 2]
+    .map((i) =>
+      Math.round(ch(a, i) * p + ch(b, i) * (1 - p))
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+describe('awesomer terminal look (Phase 7 v2)', () => {
+  it('v2 pairings reach AA, including on the card gradient end', () => {
+    const v = rootVars();
+    const end = mix(v['--card'], v['--background'], 0.85);
+    expect(end).toBe('#2e2f41');
+    expect(
+      contrastRatio(v['--cyan'], v['--background']),
+    ).toBeGreaterThanOrEqual(4.5);
+    for (const fg of [
+      '--foreground',
+      '--muted-foreground',
+      '--destructive',
+      '--primary',
+    ]) {
+      expect(contrastRatio(v[fg], end)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('body::before draws click-through CRT scanlines over every page', () => {
+    const b = ruleBody('body::before');
+    for (const decl of [
+      'content: "";',
+      'position: fixed;',
+      'inset: 0;',
+      'z-index: 9999;',
+      'pointer-events: none;',
+      'repeating-linear-gradient(0deg, #0000 0 1px, #0000000a 1px 2px)',
+    ]) {
+      expect(b).toContain(decl);
+    }
+  });
+
+  it('.gradient-text runs mauve to cyan through the text', () => {
+    const g = ruleBody('.gradient-text');
+    expect(g).toContain('linear-gradient(135deg, var(--primary), var(--cyan))');
+    expect(g).toContain('background-clip: text;');
+    expect(g).toContain('-webkit-text-fill-color: transparent;');
+  });
+
+  it('.glow and .glow-intense are text shadows on the glow tokens', () => {
+    expect(ruleBody('.glow')).toContain('text-shadow: 0 0 8px var(--glow);');
+    expect(ruleBody('.glow-intense')).toMatch(
+      /text-shadow: 0 0 4px var\(--primary\),/,
+    );
+  });
+
+  it('.cursor-blink blinks 5 times, never forever', () => {
+    expect(ruleBody('.cursor-blink')).toContain(
+      'animation: blink 1s step-end 5;',
+    );
+    expect(css).not.toMatch(/blink[^;]*infinite/);
+    expect(atBlock('@keyframes blink')).toMatch(/50% \{ opacity: 0; \}/);
+  });
+
+  it('.ascii-art sets the asciiMono font, unwrapped at 11px', () => {
+    const a = ruleBody('.ascii-art');
+    for (const decl of [
+      'font-family: var(--font-ascii-mono), monospace;',
+      'white-space: pre;',
+      'letter-spacing: 0;',
+      'font-size: 11px;',
+      'line-height: 1;',
+    ]) {
+      expect(a).toContain(decl);
+    }
+  });
+
+  it('reduced motion stops the cursor and the card transitions', () => {
+    const r = atBlock('@media (prefers-reduced-motion: reduce)');
+    expect(r).toMatch(/\.cursor-blink \{ animation: none; \}/);
+    expect(r).toMatch(/\.card-featured,\s*\.card-mini \{ transition: none; \}/);
+  });
+
+  it('print and forced colors hide the scanlines; forced colors flattens gradient text', () => {
+    expect(atBlock('@media print, (forced-colors: active)')).toMatch(
+      /body::before \{ display: none; \}/,
+    );
+    const fc = atBlock('@media (forced-colors: active)');
+    expect(fc).toContain('.gradient-text');
+    expect(fc).toContain('background: none;');
+    expect(fc).toContain('-webkit-text-fill-color: currentColor;');
   });
 });
