@@ -93,7 +93,7 @@ Plans:
 **Goal:** After photographing a shelf, the user can import every disc in bulk as the Canadian pressing of its top match without verifying hundreds one by one. The review list gets a compact card layout (spine crop with the top match directly below it; edit fields hidden until the card is expanded) so many cards fit on one screen, plus multi-select and a bulk action that resolves each selected spine's top match to its Canada release (falling back visibly when none exists) and adds them to the Discogs collection through the existing rate-limited queue.
 **Requirements**: BULK-01..BULK-12 (proposed in 06-RESEARCH.md from the 06-CONTEXT.md decisions)
 **Depends on:** Phase 5
-**Plans:** 18/18 plans executed
+**Plans:** 18/19 plans executed
 
 Plans:
 **Wave 1**
@@ -132,6 +132,10 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 06-18-PLAN.md — Truthful fallback copy on cards, finding line and dialog; read models carry the fallback country; UI-SPEC amendment (G-06-side-1)
+
+**Gap closure (UAT: G-06-side-2)**
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 06-19-PLAN.md — Compact cards line up: six fixed rows on a subgrid card, no numbering, pencil Edit button, status badge on its own row, warnings line, fixed title/details/notes lines; UI-SPEC amendment (G-06-side-2)
 
 ### Phase 7: Match the patrickclery.com/awesomer color palette
 
