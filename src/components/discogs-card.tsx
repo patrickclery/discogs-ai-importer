@@ -164,6 +164,7 @@ function AccountSection({
 }
 
 export function DiscogsCard({
+  step,
   statuses,
   connection,
   secretsError,
@@ -171,6 +172,8 @@ export function DiscogsCard({
   preferredCountry,
   fallbackCountry,
 }: {
+  /** This card's setup-step number. The page owns the order. */
+  step: number;
   statuses: SecretStatus[] | null;
   connection: DiscogsConnection | null;
   secretsError?: string;
@@ -183,7 +186,7 @@ export function DiscogsCard({
 }) {
   return (
     <Card variant="mini">
-      <CornerNumeral value={2} size="md" />
+      <CornerNumeral value={step} size="md" />
       <CardHeader>
         <CardTitle className="text-base">
           <MdPrefix marker="##" />

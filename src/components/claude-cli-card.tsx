@@ -118,15 +118,18 @@ function LoginRow({ auth }: { auth: ClaudeCliStatus['auth'] }) {
 }
 
 export function ClaudeCliCard({
+  step,
   status,
   model,
 }: {
+  /** This card's setup-step number. The page owns the order. */
+  step: number;
   status: ClaudeCliStatus;
   model: string;
 }) {
   return (
     <Card variant="mini">
-      <CornerNumeral value={1} size="md" />
+      <CornerNumeral value={step} size="md" />
       <CardHeader>
         <CardTitle className="text-base">
           <MdPrefix marker="##" />

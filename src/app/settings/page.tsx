@@ -90,8 +90,9 @@ export default async function SettingsPage() {
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-6">
-        <ClaudeCliCard status={claude} model={getVisionModel()} />
+        <ClaudeCliCard step={1} status={claude} model={getVisionModel()} />
         <DiscogsCard
+          step={2}
           statuses={secrets.ok ? secrets.statuses : null}
           connection={secrets.ok ? secrets.connection : null}
           secretsError={secrets.ok ? undefined : secrets.reason}

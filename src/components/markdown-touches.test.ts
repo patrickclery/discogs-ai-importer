@@ -95,7 +95,7 @@ const STATUS: ClaudeCliStatus = {
   checkedAt: 0,
 };
 
-function discogsHtml(connected: boolean): string {
+function discogsHtml(connected: boolean, step = 2): string {
   const connection: DiscogsConnection = {
     connected,
     username: connected ? 'owner' : null,
@@ -105,6 +105,7 @@ function discogsHtml(connected: boolean): string {
   };
   return renderToStaticMarkup(
     h(DiscogsCard, {
+      step,
       statuses: [],
       connection,
       callbackUrl: null,
@@ -125,8 +126,22 @@ function pTagFor(html: string, text: string): string {
 describe('ClaudeCliCard', () => {
   it('is mini card 1 titled ## Claude CLI', () => {
     expectNumberedMiniCard(
-      renderToStaticMarkup(h(ClaudeCliCard, { status: STATUS, model: 'x' })),
+      renderToStaticMarkup(
+        h(ClaudeCliCard, { step: 1, status: STATUS, model: 'x' }),
+      ),
       1,
+      'Claude CLI',
+    );
+  });
+
+  // WR-03: the page owns the step order, so the card numbers itself from
+  // the prop, not from a literal.
+  it('takes its numeral from the step prop', () => {
+    expectNumberedMiniCard(
+      renderToStaticMarkup(
+        h(ClaudeCliCard, { step: 7, status: STATUS, model: 'x' }),
+      ),
+      7,
       'Claude CLI',
     );
   });
@@ -139,6 +154,10 @@ describe('DiscogsCard', () => {
       expectNumberedMiniCard(discogsHtml(connected), 2, 'Discogs');
     },
   );
+
+  it('takes its numeral from the step prop', () => {
+    expectNumberedMiniCard(discogsHtml(true, 7), 7, 'Discogs');
+  });
 
   it('sets the connected explanation in Plex, size and muted kept', () => {
     const tag = pTagFor(
@@ -183,6 +202,18 @@ describe.each([
     );
   });
 
+  // WR-03: the page is the one place that owns the step order, so the
+  // numbers it passes or renders must count 1, 2, 3(, 4) in source order.
+  it('numbers its cards 1..n in render order', () => {
+    const steps = [
+      ...text.matchAll(
+        /<ClaudeCliCard\s+step=\{(\d+)\}|<DiscogsCard\s+step=\{(\d+)\}|<CornerNumeral value=\{(\d+)\}/g,
+      ),
+    ].map((m) => Number(m[1] ?? m[2] ?? m[3]));
+    const n = hasDeveloper ? 4 : 3;
+    expect(steps).toEqual(Array.from({ length: n }, (_, i) => i + 1));
+  });
+
   it(hasDeveloper ? 'numbers the Developer card 4' : 'has no card 4', () => {
     if (hasDeveloper) {
       expect(text).toMatch(
@@ -193,6 +224,16 @@ describe.each([
     }
   });
 });
+
+describe.each(['claude-cli-card.tsx', 'discogs-card.tsx'])(
+  '%s source',
+  (file) => {
+    it('does not hard-code its step number (WR-03)', () => {
+      expect(src(file)).toContain('<CornerNumeral value={step} size="md" />');
+      expect(src(file)).not.toMatch(/<CornerNumeral value=\{\d/);
+    });
+  },
+);
 
 describe('spines-view.tsx source', () => {
   const text = region(src('spines-view.tsx'), '<h1 className=', '{data ? (');

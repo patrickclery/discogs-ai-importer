@@ -134,8 +134,9 @@ export default function DemoSettingsPage() {
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-6">
-        <ClaudeCliCard status={view.claude} model={view.model} />
+        <ClaudeCliCard step={1} status={view.claude} model={view.model} />
         <DiscogsCard
+          step={2}
           statuses={view.statuses}
           connection={view.connection}
           callbackUrl={CALLBACK_URL}
