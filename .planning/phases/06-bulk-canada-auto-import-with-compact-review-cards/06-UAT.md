@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
-updated: 2026-10-26T12:00:00.000Z
+updated: 2026-10-26T22:54:00.817Z
 ---
 
 ## Current Test
 
-number: 14
-name: Open the demo site, select all on the review page, import, and watch it finish.
-expected: |
-  Guttermouth shows Fallback: US. Massive Attack shows Fallback: Hong Kong with No Canadian or US pressing, used Hong Kong.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -72,14 +68,14 @@ result: pass
 
 ### 14. Open the demo site, select all on the review page, import, and watch it finish.
 expected: Guttermouth shows Fallback: US. Massive Attack shows Fallback: Hong Kong with No Canadian or US pressing, used Hong Kong.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 14
-passed: 12
+passed: 13
 issues: 2
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
