@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SECRET_ENV_NAMES } from '@/server/secrets';
 import { buildEnv } from '../../scripts/demo/build-demo.ts';
 import {
+  reportVerify,
   resolveSecretsPath,
   SECRET_ENV_VARS,
   SERVER_ACTION_RE,
@@ -42,7 +43,10 @@ beforeEach(() => {
   nextDir = path.join(root, '.next');
   repoRoot = path.join(root, 'repo');
   fs.mkdirSync(path.join(repoRoot, 'src', 'app'), { recursive: true });
-  write(path.join(outDir, '404.html'), '<html></html>');
+  write(
+    path.join(outDir, '404.html'),
+    '<html lang="en" class="dark h-full"></html>',
+  );
   write(path.join(outDir, '_next', 'app.js'), 'console.log("demo");');
   write(
     path.join(nextDir, 'server', 'middleware-manifest.json'),
@@ -199,5 +203,68 @@ describe('verifyExport rules c and d (server code, WR-04)', () => {
         '[d] out/_next/action.js contains a server action reference',
       ].sort(),
     );
+  });
+});
+
+describe('verifyExport rule i (dark only, Phase 7)', () => {
+  const DARK =
+    '<html lang="en" class="dark h-full antialiased"><body></body></html>';
+
+  function addRoute(route: string, html: string | null) {
+    write(path.join(repoRoot, 'src', 'app', route, 'page.demo.tsx'), 'x');
+    if (html !== null) write(path.join(outDir, route, 'index.html'), html);
+  }
+
+  it('passes when every layout-rendered page carries the dark class', () => {
+    addRoute('upload', DARK);
+    const r = run();
+    expect(r.failures).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it('fails a page whose html class lacks dark, naming the page', () => {
+    write(
+      path.join(outDir, '404.html'),
+      '<html lang="en" class="h-full"></html>',
+    );
+    const r = run();
+    expect(r.failures).toEqual([
+      '[i] export is not dark-only: <html> lacks the dark class (out/404.html)',
+    ]);
+  });
+
+  it('matches the dark token, not a substring', () => {
+    addRoute('upload', '<html lang="en" class="darkmode h-full"></html>');
+    expect(run().failures).toEqual([
+      '[i] export is not dark-only: <html> lacks the dark class (out/upload/index.html)',
+    ]);
+  });
+
+  it('fails an html tag with no class attribute', () => {
+    addRoute('settings', '<html lang="en"><body></body></html>');
+    expect(run().failures).toEqual([
+      '[i] export is not dark-only: <html> lacks the dark class (out/settings/index.html)',
+    ]);
+  });
+
+  it('skips the root redirect shell', () => {
+    write(path.join(repoRoot, 'src', 'app', 'page.demo.tsx'), 'x');
+    write(path.join(outDir, 'index.html'), '<html id="__next_error__"></html>');
+    expect(run().failures).toEqual([]);
+  });
+
+  it('reports rules a-i on PASS', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      expect(reportVerify(run())).toBe(true);
+      expect(log.mock.calls[0]?.[0]).toContain('rules a-i');
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it('leaves a missing page to rule a', () => {
+    addRoute('spines', null);
+    expect(run().failures).toEqual(['[a] missing page out/spines/index.html']);
   });
 });
