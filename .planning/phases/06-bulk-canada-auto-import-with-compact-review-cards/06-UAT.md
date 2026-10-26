@@ -1,14 +1,18 @@
 ---
-status: diagnosed
+status: testing
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
-updated: 2026-10-25T22:56:38.070Z
+updated: 2026-10-26T00:02:04.128Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 11
+name: On Settings, look at the Fallback country box in the Discogs card. Type germany and click away. Then clear the box and click away. Then type canada and click away.
+expected: |
+  It starts as US. germany saves as Germany with a pop-up. An empty box is not saved and says Enter a country, such as US. With canada (same as Preferred country) a note says bulk import goes straight to the top match. Set it back to US when done.
+awaiting: user response
 
 ## Tests
 
@@ -54,12 +58,28 @@ severity: minor
 expected: The same flow plays out with made-up data: Finding pressing, Canada badges, a Fallback card, an 'Already imported from spine' card, the progress line and the finished pop-up. Nothing asks you to sign in to Discogs.
 result: pass
 
+### 11. On Settings, look at the Fallback country box in the Discogs card. Type germany and click away. Then clear the box and click away. Then type canada and click away.
+expected: It starts as US. germany saves as Germany with a pop-up. An empty box is not saved and says Enter a country, such as US. With canada (same as Preferred country) a note says bulk import goes straight to the top match. Set it back to US when done.
+result: [pending]
+
+### 12. At phone width, look at the status tabs at the top of the Spines page, then tap Failed.
+expected: All seven tabs (All, Pending, Matched, Imported, Not found, Not on Discogs, Failed) are visible over two or three lines, none cut off, and tapping Failed shows the failed list.
+result: [pending]
+
+### 13. Select a few spines including Massive Attack and run a bulk import on the real app.
+expected: The dialog mentions the US CD pressing as second choice and cards read Looking for the Canadian or US pressing…. Afterwards a US import shows Fallback: US with No Canadian pressing, used US; a spine with neither says No Canadian or US pressing, used {country}. Massive Attack no longer lands on Hong Kong when Discogs lists a US CD.
+result: [pending]
+
+### 14. Open the demo site, select all on the review page, import, and watch it finish.
+expected: Guttermouth shows Fallback: US. Massive Attack shows Fallback: Hong Kong with No Canadian or US pressing, used Hong Kong.
+result: [pending]
+
 ## Summary
 
-total: 10
+total: 14
 passed: 9
 issues: 1
-pending: 0
+pending: 4
 skipped: 0
 blocked: 0
 
