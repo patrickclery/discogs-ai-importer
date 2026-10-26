@@ -138,12 +138,12 @@ Plans:
 **Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (Catppuccin Mocha, dark only; colors only, fonts unchanged), applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
 **Requirements**: THEME-01..THEME-07 (proposed in 07-01-PLAN.md from the 07-CONTEXT.md decisions)
 **Depends on:** Phase 6
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 **Wave 1**
 - [x] 07-01-PLAN.md — Tracer: Mocha tokens in one :root, forced dark (layouts, provider, toasts), blurred header, verify-export dark rule (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 07-02-PLAN.md — Primitives: lavender primary hover, solid-red destructive fills with base text (C-1, C-2), description link hover (wave 2)
+- [x] 07-02-PLAN.md — Primitives: lavender primary hover, solid-red destructive fills with base text (C-1, C-2), description link hover (wave 2)
 - [ ] 07-03-PLAN.md — Counts readable in pressed toggles (C-3, C-4) and lavender hover on inline links (wave 2)
