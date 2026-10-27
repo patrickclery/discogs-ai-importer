@@ -615,23 +615,16 @@ describe('CompactSpineCard fixed line counts', () => {
     expect(details).toContain('title="1991 · US · DGCD-24425"');
   });
 
-  it('the match row is at least the thumbnail height, with or without a candidate', () => {
-    const tokens = (html: string) =>
-      classTokens(openingTag(html, 'data-compact-row="match"'));
-    expect(tokens(render(spine()))).toContain('min-h-12');
-    const queued = render(
-      spine({
-        discogs: {
-          state: 'queued',
-          candidateCount: 0,
-          topCandidates: [],
-          failure: null,
-          fieldsChanged: false,
-        },
-      }),
+  it('the match cover spans the card width, with the title below it', () => {
+    const html = render(spine());
+    const match = rowSlice(html, 'match');
+    const cover = match.match(/<(img|div)[^>]*aspect-square[^>]*>/)?.[0] ?? '';
+    expect(classTokens(cover)).toEqual(
+      expect.arrayContaining(['aspect-square', 'w-full']),
     );
-    expect(queued).toContain('Looking it up on Discogs…');
-    expect(tokens(queued)).toContain('min-h-12');
+    expect(match.indexOf('aspect-square')).toBeLessThan(
+      match.indexOf('title="Various'),
+    );
   });
 
   it('the fallback and skipped pills are one line with the full text on hover', () => {

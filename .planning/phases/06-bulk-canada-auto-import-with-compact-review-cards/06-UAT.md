@@ -135,6 +135,7 @@ blocked: 0
   followup_7: "Test 15: user reported Fallback: US sat higher than other cards' warning pills, and wanted the No Canadian pressing note as a pill on its own row below the warnings; bottom is now two aligned rows: warnings (all badges on one row) then notes (pill)"
   followup_8: "Test 15: user reported a big gap between Fallback and the note pill and wanted the note on one line, flowing on the line after the warning pills (e.g. beside Edited); bottom is now one row of pills (two lines reserved), the compact note drops ', used {country}' (the Fallback badge names it) and never wraps"
   followup_9: "Test 15: user reported too much space after a one-line artist/title; the title no longer reserves a second line (still clamps at two) and the match row is at least the thumbnail height"
+  followup_10: "During test 16: user asked for the top match cover to span the full card width with the title and details below it"
   reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped. Later: we don't need the numbering on the cards at all. We just need check boxes, and ideally the check box shouldn't take up a whole row. It can have text beside it or whatever."
   severity: cosmetic
   test: side
