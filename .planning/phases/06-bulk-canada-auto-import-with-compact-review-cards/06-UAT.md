@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
-updated: 2026-10-27T03:19:21.000Z
+updated: 2026-10-27T03:41:47.194Z
 ---
 
 ## Current Test
 
-number: 16
-name: Start a bulk import (or a Discogs search) on a few spines. While it runs, open a different card with its pencil, type something in a field, and wait about 10 seconds without clicking away.
-expected: |
-  The card stays open the whole time and your typed text is still there while the cards around it update.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -80,15 +76,16 @@ result: pass
 
 ### 16. Start a bulk import (or a Discogs search) on a few spines. While it runs, open a different card with its pencil, type something in a field, and wait about 10 seconds without clicking away.
 expected: The card stays open the whole time and your typed text is still there while the cards around it update.
-result: [pending]
+result: skipped
+reason: "Owner skipped; to be covered by an automated test that holds a card open through a refresh"
 
 ## Summary
 
 total: 16
 passed: 14
 issues: 1
-pending: 1
-skipped: 0
+pending: 0
+skipped: 1
 blocked: 0
 
 ## Gaps
