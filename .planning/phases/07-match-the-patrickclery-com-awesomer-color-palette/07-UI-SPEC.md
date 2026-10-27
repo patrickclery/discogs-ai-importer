@@ -445,7 +445,7 @@ awesomer's classes, mapped onto this app's surfaces:
 | Dialogs and alert dialogs | `ui/dialog.tsx`, `ui/alert-dialog.tsx` | `card-featured` (fill moves from base to the surface0 gradient) | none | A modal is the focus. Footer buttons would sit on a numeral. |
 | Alerts, Empty, popovers, menus, selects, tooltips, toasts, skeletons, dropzone | n/a | Unchanged | none | Not cards in awesomer's sense |
 
-The compact spine card now has no corner numeral and no visible `#n` (owner, G-06-side-2, 06-19); see the 06-UI-SPEC amendment "gap closure (G-06-side-2, 06-19)" for its layout. The expanded and Detailed cards keep their `lg` numeral.
+No review card has a corner numeral or a visible `#n` any more: not the compact card, not the expanded card and not the Detailed card (owner, G-06-side-2, 06-19 and UAT test 15 followup 1). The three spine-card rows above are kept for history. The spine number appears only in accessible names and the crop's alt text. See the 06-UI-SPEC amendment "gap closure (G-06-side-2, 06-19)" for the compact card's final five-row layout.
 
 `SpineCard` gains `featured?: boolean` (default `false`). `SpineView` passes `featured={trailing !== undefined}`.
 

@@ -52,7 +52,9 @@ export function OrphanFooter({ spine }: { spine: SpineDto }) {
  * `Edited · {n}` when the owner changed n fields. An orphaned spine (D-16)
  * adds the "No longer detected" badge, a warning border and the Re-attach /
  * Dismiss footer. Field values are input values only (T-02-20).
- * Featured (the one card in focus) or mini surface, with an lg corner number.
+ * Featured (the one card in focus) or mini surface. No card numbering on
+ * screen (G-06-side-2): the spine number appears only in accessible names
+ * and the crop's alt text.
  */
 export function SpineCard({
   spine,
@@ -66,9 +68,9 @@ export function SpineCard({
   spine: SpineDto;
   /** The confidence_threshold setting (D-09). */
   threshold: number;
-  /** First in the header, before `#n` (the bulk select checkbox, D-05). */
+  /** First in the header (the bulk select checkbox, D-05). */
   leading?: ReactNode;
-  /** Left of the header, after `#n` and the worst-field badge. */
+  /** Left of the header, after the worst-field badge. */
   badges?: ReactNode;
   statusSlot?: ReactNode;
   footer?: ReactNode;

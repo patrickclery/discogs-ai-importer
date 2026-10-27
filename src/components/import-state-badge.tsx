@@ -27,7 +27,8 @@ function FailedBadge() {
  * 3 search badge shows unchanged. Outline badges only; destructive colors
  * only Import failed. `hideCandidateCount` drops the "N candidates" search
  * badge (the compact card shows the bare count beside its match label);
- * `hideImported` drops Imported (the compact card shows a corner checkmark).
+ * `hideImported` drops Imported (the compact card shows an Imported pill on
+ * its top row instead).
  */
 export function ImportStateBadge({
   spine,

@@ -96,10 +96,11 @@ function RetryImport({ spineId }: { spineId: string }) {
  * fallback (warning icon, foreground text), a skipped duplicate (muted) or
  * the lookup in progress (spinner, muted). `kinds` limits which lines this
  * place shows (Detailed cards split them between the confirmed panel and
- * the Discogs notice line). `clamp` (compact cards) keeps the fallback,
- * skipped and finding text to two lines with the full text on hover; a
- * failed lookup is never clamped, so its explanation, Open Settings and
- * Retry import stay visible and reachable.
+ * the Discogs notice line). `clamp` (compact cards) shows the fallback,
+ * skipped and finding text as an outline pill on one truncated line with
+ * the full text on hover; the fallback pill drops ", used {country}" (the
+ * Fallback badge names it). A failed lookup is never clamped, so its
+ * explanation, Open Settings and Retry import stay visible and reachable.
  */
 export function BulkStatusLine({
   spine,
@@ -108,7 +109,7 @@ export function BulkStatusLine({
 }: {
   spine: SpineDto;
   kinds?: ReadonlyArray<BulkStatusKind>;
-  /** Compact cards keep the line at two lines, with the full text on hover (G-06-side-2). */
+  /** Compact cards show the line as a one-line pill, with the full text on hover (G-06-side-2). */
   clamp?: boolean;
 }) {
   const line = bulkStatusLineOf(spine);

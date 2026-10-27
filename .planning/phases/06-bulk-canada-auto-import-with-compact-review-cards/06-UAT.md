@@ -3,7 +3,7 @@ status: complete
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
-updated: 2026-10-27T03:10:35.746Z
+updated: 2026-10-27T03:19:21.000Z
 ---
 
 ## Current Test
@@ -78,7 +78,7 @@ result: pass
 
 total: 15
 passed: 14
-issues: 2
+issues: 1
 pending: 0
 skipped: 0
 blocked: 0

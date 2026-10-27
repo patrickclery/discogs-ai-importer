@@ -59,19 +59,20 @@ function PlaceholderLine({ text }: { text: string }) {
 
 /**
  * One spine in the compact grid (D-10, D-16, UI-SPEC Compact card, amended
- * by G-06-side-2). Six rows, always rendered in this order so every card has
- * the same shape:
- *   1. status: the state badge alone, never clipped;
- *   2. warnings: the worst-field badge, the bulk country badge, No longer
- *      detected and Edited, always present (empty when there are none) and
- *      wrapping when they don't fit;
- *   3. crop: the spine crop;
- *   4. select: the select checkbox, the Top match / Confirmed match label
- *      and the pencil Edit button at the right end;
- *   5. match: the top or confirmed match (or its placeholder) in a fixed
- *      60px box;
- *   6. bulk: the import notes line, two lines reserved.
- * The card spans six rows of the photo section's grid and shares them
+ * by G-06-side-2). Five rows, always rendered in this order so every card
+ * has the same shape:
+ *   1. select: the select checkbox, then at the right end the Imported pill
+ *      (once imported) and the pencil Edit button;
+ *   2. crop: the spine crop;
+ *   3. label: the Top match / Confirmed match label and, once the search is
+ *      done, the bare candidate count (disc icon and number);
+ *   4. match: the top or confirmed match (or its placeholder), at least the
+ *      48px cover tall; the title clamps at two lines without reserving the
+ *      second, the details take one line;
+ *   5. warnings: one wrapping flow of pills, two lines reserved: the state
+ *      badge, the worst-field badge, the bulk country badge, No longer
+ *      detected, Edited, then the import note pill (BulkStatusLine clamp).
+ * The card spans five rows of the photo section's grid and shares them
  * (CSS subgrid), so the cards in a grid row line up row by row. No card
  * numbering on screen: the spine number appears only in accessible names
  * and the crop's alt text. No field inputs, external link or Add button

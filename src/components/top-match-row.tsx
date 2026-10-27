@@ -5,12 +5,14 @@ import { useState } from 'react';
 
 /**
  * The compact card's match slot (UI-SPEC Top match row, G-06-side-2): a
- * 48px cover, the verbatim Discogs title exactly two lines tall and the
+ * 48px cover, the verbatim Discogs title clamped at two lines (a one-line
+ * title takes one line, nothing is reserved for a second) and the
  * `{year} · {country} · {catno}` details exactly one line, each with the
- * full text on hover. Short text keeps the same height, so the row is always
- * 60px and the cards in a grid row line up. React text only (T-06-19, T-06-36); the cover
- * src comes only from candidateThumbSrc. A missing or failing cover shows
- * the Disc3 placeholder, never a broken-image glyph.
+ * full text on hover. The card's match row is at least the cover height,
+ * and the subgrid lines the cards in a grid row up. React text only
+ * (T-06-19, T-06-36); the cover src comes only from candidateThumbSrc. A
+ * missing or failing cover shows the Disc3 placeholder, never a
+ * broken-image glyph.
  */
 export function TopMatchRow({
   title,
