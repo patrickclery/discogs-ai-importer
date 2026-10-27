@@ -13,6 +13,9 @@ import type { SpineDto } from '@/lib/scan-types';
 
 const ICON = 'mt-px size-4 shrink-0';
 const LINE = 'flex items-start gap-1 text-xs';
+/** Compact cards show the fallback, skipped and finding lines as an outline pill (G-06-side-2). */
+const PILL =
+  'flex w-fit max-w-full items-start gap-1 rounded-xl border border-border px-2 py-0.5 text-xs font-medium [&>svg]:size-3 [&>svg]:mt-0.5';
 const NO_ANSWER = "the app didn't answer";
 
 /**
@@ -109,6 +112,7 @@ export function BulkStatusLine({
   clamp?: boolean;
 }) {
   const line = bulkStatusLineOf(spine);
+  const shape = clamp ? PILL : LINE;
   if (line === null || (kinds && !kinds.includes(line.kind))) return null;
   // React attribute and text only (T-06-36): never HTML.
   const text = clamp ? (
@@ -145,7 +149,7 @@ export function BulkStatusLine({
       );
     case 'fallback':
       return (
-        <p className={`${LINE} text-foreground`}>
+        <p className={`${shape} text-foreground`}>
           <TriangleAlert
             aria-hidden="true"
             className={`${ICON} text-warning`}
@@ -155,14 +159,14 @@ export function BulkStatusLine({
       );
     case 'skipped':
       return (
-        <p className={`${LINE} text-muted-foreground`}>
+        <p className={`${shape} text-muted-foreground`}>
           <Copy aria-hidden="true" className={ICON} />
           {text}
         </p>
       );
     case 'finding':
       return (
-        <p role="status" className={`${LINE} text-muted-foreground`}>
+        <p role="status" className={`${shape} text-muted-foreground`}>
           <Spinner
             aria-hidden="true"
             role="presentation"

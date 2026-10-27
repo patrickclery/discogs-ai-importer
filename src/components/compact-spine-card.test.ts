@@ -115,7 +115,7 @@ function rowNames(html: string): string[] {
   return [...html.matchAll(/data-compact-row="([^"]*)"/g)].map((m) => m[1]);
 }
 
-const ROWS = ['select', 'crop', 'label', 'match', 'warnings'];
+const ROWS = ['select', 'crop', 'label', 'match', 'warnings', 'notes'];
 
 function render(s: SpineDto): string {
   return renderToStaticMarkup(
@@ -485,7 +485,7 @@ describe('CompactSpineCard bulk states', () => {
     expect(html).toContain('Looking for the Canadian pressing…');
   });
 
-  it('a resolved US fallback puts the state badge, Fallback: US and the fallback line together at the bottom', () => {
+  it('a resolved US fallback puts the state badge and Fallback: US on the warnings row and the fallback note pill below', () => {
     const html = renderBulk(
       withBulk(
         bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
@@ -495,7 +495,10 @@ describe('CompactSpineCard bulk states', () => {
     const bottom = rowSlice(html, 'warnings');
     expect(bottom).toContain('Waiting to import');
     expect(bottom).toContain('Fallback: US');
-    expect(bottom).toContain('No Canadian pressing, used US');
+    expect(bottom).not.toContain('No Canadian pressing');
+    const note = rowSlice(html, 'notes');
+    expect(note).toContain('No Canadian pressing, used US');
+    expect(classTokens(openingTag(note, '<p'))).toContain('rounded-xl');
     expect(rowSlice(html, 'select')).not.toContain('Waiting to import');
   });
 
@@ -787,13 +790,13 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     });
   }
 
-  it('the compact card is a five-row subgrid mini card with no numeral', () => {
+  it('the compact card is a six-row subgrid mini card with no numeral', () => {
     const html = render(spine());
     const tag = openingTag(html, 'data-slot="card"');
     expect(tag).toContain('data-variant="mini"');
     expect(classTokens(tag)).toEqual(
       expect.arrayContaining([
-        'row-span-5',
+        'row-span-6',
         'grid',
         'grid-cols-1',
         'grid-rows-subgrid',

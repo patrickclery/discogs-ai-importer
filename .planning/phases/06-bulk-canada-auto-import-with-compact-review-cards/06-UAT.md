@@ -128,6 +128,7 @@ blocked: 0
   followup_4: "Test 15: user asked for the checkbox and the imported checkmark on one row at the very top; rows are now top (checkbox, match label, count, checkmark, pencil), crop, match, bottom (state badge, warnings, import notes)"
   followup_5: "Test 15: user asked for the Top match / Confirmed match label right after the spine photo, before the Discogs item; rows are now top (checkbox, checkmark, pencil), crop, label (label + count), match, bottom"
   followup_6: "Test 15: user asked to go back to the checkmark + Imported pill; it now sits on the top row (checkbox, Imported pill, pencil)"
+  followup_7: "Test 15: user reported Fallback: US sat higher than other cards' warning pills, and wanted the No Canadian pressing note as a pill on its own row below the warnings; bottom is now two aligned rows: warnings (all badges on one row) then notes (pill)"
   reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped. Later: we don't need the numbering on the cards at all. We just need check boxes, and ideally the check box shouldn't take up a whole row. It can have text beside it or whatever."
   severity: cosmetic
   test: side
