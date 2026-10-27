@@ -1,11 +1,11 @@
 ---
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
-verified: 2026-10-27T03:21:36Z
-status: human_needed
-score: 128/129 must-haves verified
-covered_files: [".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-01-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-01-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-02-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-02-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-03-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-03-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-04-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-04-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-05-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-05-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-06-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-06-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-07-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-07-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-08-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-08-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-09-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-09-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-10-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-10-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-11-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-11-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-12-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-12-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-13-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-13-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-14-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-14-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-15-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-15-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-16-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-16-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-17-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-17-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-18-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-18-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-19-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-19-SUMMARY.md","demo/fixtures/pressings.json","drizzle/0004_bulk_import.sql","drizzle/0005_bulk_fallback_country.sql","drizzle/meta/0004_snapshot.json","drizzle/meta/0005_snapshot.json","drizzle/meta/_journal.json","scripts/verify-bulk-import.ts","src/app/api/spines/[id]/retry/route.test.ts","src/app/api/spines/[id]/retry/route.ts","src/app/api/spines/bulk-import/route.test.ts","src/app/api/spines/bulk-import/route.ts","src/app/api/spines/retry-failed/route.test.ts","src/app/api/spines/route.ts","src/app/settings/actions.test.ts","src/app/settings/actions.ts","src/app/settings/page.demo.tsx","src/app/settings/page.tsx","src/app/spines/loading.tsx","src/app/spines/page.demo.tsx","src/app/spines/page.tsx","src/components/bulk-import-bar.tsx","src/components/bulk-import-dialog.test.ts","src/components/bulk-import-dialog.tsx","src/components/bulk-status-line.tsx","src/components/card-layout-toggle.tsx","src/components/compact-spine-card.test.ts","src/components/compact-spine-card.tsx","src/components/confirmed-match.tsx","src/components/country-badge.tsx","src/components/discogs-card.tsx","src/components/discogs-matches.test.ts","src/components/discogs-matches.tsx","src/components/expanded-cards.tsx","src/components/fallback-filter-toggle.tsx","src/components/import-state-badge.tsx","src/components/photo-section.tsx","src/components/preferred-country-field.test.ts","src/components/preferred-country-field.tsx","src/components/review-status-filter.test.ts","src/components/review-status-filter.tsx","src/components/spine-card.tsx","src/components/spine-selection.tsx","src/components/spines-filter-bar.test.ts","src/components/spines-filter-bar.tsx","src/components/spines-view.test.ts","src/components/spines-view.tsx","src/components/top-match-row.tsx","src/components/ui/checkbox.tsx","src/demo/ops/bulk.test.ts","src/demo/ops/bulk.ts","src/demo/ops/imports.ts","src/demo/read-model.test.ts","src/demo/read-model.ts","src/demo/routes.ts","src/demo/routes/bulk.test.ts","src/demo/routes/bulk.ts","src/demo/routes/read.ts","src/demo/seed.ts","src/demo/settings-actions.test.ts","src/demo/settings-actions.ts","src/demo/store.ts","src/lib/bulk-copy.test.ts","src/lib/bulk-copy.ts","src/lib/bulk-eligibility.test.ts","src/lib/bulk-eligibility.ts","src/lib/bulk-selection.test.ts","src/lib/bulk-selection.ts","src/lib/bulk-types.ts","src/lib/bulk-view.test.ts","src/lib/bulk-view.ts","src/lib/discogs-types.ts","src/lib/pressing.test.ts","src/lib/pressing.ts","src/lib/review-status.test.ts","src/lib/review-status.ts","src/lib/scan-types.ts","src/lib/spine-review.test.ts","src/server/bulk/picks.ts","src/server/bulk/queries.test.ts","src/server/bulk/queries.ts","src/server/bulk/recovery.test.ts","src/server/bulk/recovery.ts","src/server/bulk/store.test.ts","src/server/bulk/store.ts","src/server/db/migrations.test.ts","src/server/db/schema.ts","src/server/discogs/client.test.ts","src/server/discogs/queries.test.ts","src/server/discogs/queries.ts","src/server/discogs/status.test.ts","src/server/discogs/status.ts","src/server/discogs/store.ts","src/server/discogs/versions.test.ts","src/server/discogs/versions.ts","src/server/imports/store.test.ts","src/server/imports/store.ts","src/server/jobs/handlers/index.ts","src/server/jobs/handlers/resolve-pressing.test.ts","src/server/jobs/handlers/resolve-pressing.ts","src/server/scan/queries.test.ts","src/server/scan/queries.ts","src/server/settings.test.ts","src/server/settings.ts","test/fixtures/discogs/master-versions-bogus.json","test/fixtures/discogs/master-versions-canada.json","test/fixtures/fake-discogs.mjs","test/helpers/bulk-seed.ts"]
-covered_digest: "v3:sha256:01f794ee1eb5baee4ed47985a92428de55d716e353d9d1d1ddfcc71a19a5dc0a"
-behavior_unverified: 1
+verified: 2026-10-27T03:46:26Z
+status: gaps_found
+score: 130/131 must-haves verified
+covered_files: [".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-01-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-01-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-02-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-02-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-03-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-03-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-04-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-04-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-05-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-05-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-06-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-06-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-07-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-07-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-08-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-08-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-09-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-09-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-10-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-10-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-11-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-11-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-12-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-12-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-13-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-13-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-14-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-14-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-15-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-15-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-16-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-16-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-17-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-17-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-18-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-18-SUMMARY.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-19-PLAN.md",".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-19-SUMMARY.md","demo/fixtures/pressings.json","drizzle/0004_bulk_import.sql","drizzle/0005_bulk_fallback_country.sql","drizzle/meta/0004_snapshot.json","drizzle/meta/0005_snapshot.json","drizzle/meta/_journal.json","package.json","scripts/verify-bulk-import.ts","src/app/api/spines/[id]/retry/route.test.ts","src/app/api/spines/[id]/retry/route.ts","src/app/api/spines/bulk-import/route.test.ts","src/app/api/spines/bulk-import/route.ts","src/app/api/spines/retry-failed/route.test.ts","src/app/api/spines/route.ts","src/app/settings/actions.test.ts","src/app/settings/actions.ts","src/app/settings/page.demo.tsx","src/app/settings/page.tsx","src/app/spines/loading.tsx","src/app/spines/page.demo.tsx","src/app/spines/page.tsx","src/components/bulk-import-bar.tsx","src/components/bulk-import-dialog.test.ts","src/components/bulk-import-dialog.tsx","src/components/bulk-status-line.tsx","src/components/card-layout-toggle.tsx","src/components/compact-spine-card.test.ts","src/components/compact-spine-card.tsx","src/components/confirmed-match.tsx","src/components/country-badge.tsx","src/components/discogs-card.tsx","src/components/discogs-matches.test.ts","src/components/discogs-matches.tsx","src/components/expanded-card-refetch.test.ts","src/components/expanded-cards.tsx","src/components/fallback-filter-toggle.tsx","src/components/import-state-badge.tsx","src/components/photo-section.tsx","src/components/preferred-country-field.test.ts","src/components/preferred-country-field.tsx","src/components/review-status-filter.test.ts","src/components/review-status-filter.tsx","src/components/spine-card.tsx","src/components/spine-selection.tsx","src/components/spines-filter-bar.test.ts","src/components/spines-filter-bar.tsx","src/components/spines-view.test.ts","src/components/spines-view.tsx","src/components/top-match-row.tsx","src/components/ui/checkbox.tsx","src/demo/ops/bulk.test.ts","src/demo/ops/bulk.ts","src/demo/ops/imports.ts","src/demo/read-model.test.ts","src/demo/read-model.ts","src/demo/routes.ts","src/demo/routes/bulk.test.ts","src/demo/routes/bulk.ts","src/demo/routes/read.ts","src/demo/seed.ts","src/demo/settings-actions.test.ts","src/demo/settings-actions.ts","src/demo/store.ts","src/lib/bulk-copy.test.ts","src/lib/bulk-copy.ts","src/lib/bulk-eligibility.test.ts","src/lib/bulk-eligibility.ts","src/lib/bulk-selection.test.ts","src/lib/bulk-selection.ts","src/lib/bulk-types.ts","src/lib/bulk-view.test.ts","src/lib/bulk-view.ts","src/lib/discogs-types.ts","src/lib/pressing.test.ts","src/lib/pressing.ts","src/lib/review-status.test.ts","src/lib/review-status.ts","src/lib/scan-types.ts","src/lib/spine-review.test.ts","src/server/bulk/picks.ts","src/server/bulk/queries.test.ts","src/server/bulk/queries.ts","src/server/bulk/recovery.test.ts","src/server/bulk/recovery.ts","src/server/bulk/store.test.ts","src/server/bulk/store.ts","src/server/db/migrations.test.ts","src/server/db/schema.ts","src/server/discogs/client.test.ts","src/server/discogs/queries.test.ts","src/server/discogs/queries.ts","src/server/discogs/status.test.ts","src/server/discogs/status.ts","src/server/discogs/store.ts","src/server/discogs/versions.test.ts","src/server/discogs/versions.ts","src/server/imports/store.test.ts","src/server/imports/store.ts","src/server/jobs/handlers/index.ts","src/server/jobs/handlers/resolve-pressing.test.ts","src/server/jobs/handlers/resolve-pressing.ts","src/server/scan/queries.test.ts","src/server/scan/queries.ts","src/server/settings.test.ts","src/server/settings.ts","test/fixtures/discogs/master-versions-bogus.json","test/fixtures/discogs/master-versions-canada.json","test/fixtures/fake-discogs.mjs","test/helpers/bulk-seed.ts"]
+covered_digest: "v3:sha256:10ec3d912fbbcd8153efb3ca0d72053819eb2a8cc441b06a3c297581fec976c5"
+behavior_unverified: 0
 overrides_applied: 7
 overrides:
   - must_have: "By default /spines shows compact cards: #n, worst-field, edited and orphan badges, the state badge, the spine crop, and directly below it the top match with a 48px cover, artist – title, and year · country · catno (D-10, D-16)"
@@ -37,92 +37,123 @@ overrides:
     accepted_by: "Patrick Clery (owner, G-06-side-2 followup 1; UAT 15 pass)"
     accepted_at: "2026-10-27T03:10:35Z"
 re_verification:
-  previous_status: gaps_found
-  previous_score: 127/129
+  previous_status: human_needed
+  previous_score: 128/129
   gaps_closed:
-    - "06-UI-SPEC.md records the new compact card layout, and 07-UI-SPEC.md points to it for the dropped compact-card numeral (329b2c9: superseding five-row amendment, 07 pointer fixed, JSDoc in compact-spine-card, top-match-row, import-state-badge, bulk-status-line and spine-card brought in line)"
+    - "An expanded card stays expanded across polls and filter refetches while it stays in the list (06-07): now proven by src/components/expanded-card-refetch.test.ts (5456821)"
   gaps_remaining: []
-  regressions: []
-behavior_unverified_items:
-  - truth: "An expanded card stays expanded across polls and filter refetches while it stays in the list (06-07)"
-    test: "Open a card with the pencil while a bulk import or a Discogs search is running, type something in a field, and wait a few seconds for the page to refresh itself"
-    expected: "The card stays open and the typed text is still there"
-    why_human: "Carried from the prior report. ExpandedCardsProvider sits above the polled list (spines-view.tsx:611) and keepPreviousData (spines-view.tsx:407) keeps the tree mounted, so it should survive. But no test drives a real refetch with a card open, and no UAT step (2, 6 or 15) held a card open during a poll."
-human_verification:
-  - test: "Open a card with the pencil while a bulk import or a Discogs search is running, type something in a field, and wait a few seconds for the page to refresh itself"
-    expected: "The card stays open and the typed text is still there"
-    why_human: "No test or UAT step exercises an open card across a background refetch; presence of the provider above the polled list is not proof."
+  regressions:
+    - "06-19 truth 9 (06-UI-SPEC records the compact card layout): the G-06-side-2 amendment still describes the 48px cover and min-h-12 match row that followup_10 (5024fe4) replaced"
+    - "npx biome check fails: the new test file is not formatted (introduced in 5456821)"
+gaps:
+  - truth: "06-UI-SPEC.md records the new compact card layout, and 07-UI-SPEC.md points to it for the dropped compact-card numeral"
+    status: failed
+    reason: "Followup_10 (5024fe4) made the match cover a full-width square with the title and details below it and dropped min-h-12 from the match row. The 06-UI-SPEC G-06-side-2 amendment (row 4) and the CompactSpineCard JSDoc still describe the old 48px cover layout."
+    artifacts:
+      - path: ".planning/phases/06-bulk-canada-auto-import-with-compact-review-cards/06-UI-SPEC.md"
+        issue: "Line 494: 'Match, at least 48px (min-h-12, the cover height): TopMatchRow, a 48px cover, then the title...'. The code has no min-h-12 on data-compact-row=\"match\", and the cover is aspect-square w-full above the text."
+      - path: "src/components/compact-spine-card.tsx"
+        issue: "Lines 69-71 JSDoc: 'match: ... at least the 48px cover tall'. The row no longer has min-h-12, and the cover is full width."
+    missing:
+      - "Revise 06-UI-SPEC amendment row 4 for followup_10: a full-width square cover (Disc3 placeholder at size-10), then the title (line-clamp-2, nothing reserved) and the details (one line) below it, with no minimum height on the row"
+      - "Update the CompactSpineCard JSDoc row 4 to match"
+  - truth: "The demo's top match follows the same D-10 candidate order as the real app, including the preferred and then fallback country tier (G-06-side-3)"
+    status: partial
+    reason: "src/demo/read-model.ts candidatesOf, whose doc comment says it mirrors orderCandidates, still sorts auto candidates by catno match then Discogs rank only. In the demo a spine with Canada or US candidates can still show another country as its top match."
+    artifacts:
+      - path: "src/demo/read-model.ts"
+        issue: "candidatesOf (lines 262-298) has no country tier, and the doc comments at lines 148 and 263-265 now misdescribe orderCandidates"
+    missing:
+      - "Add the preferred, then fallback, country tier to candidatesOf, using the demo settings, with a demo read-model test"
+  - truth: "The lint gate is clean (npx biome check)"
+    status: partial
+    reason: "5456821 added src/components/expanded-card-refetch.test.ts without formatting it. npx biome check: 700 files, 1 error (format, line 269)."
+    artifacts:
+      - path: "src/components/expanded-card-refetch.test.ts"
+        issue: "The expect(JSON.parse(...)).toEqual({ call at line 269 exceeds the formatter's line width"
+    missing:
+      - "Run npx biome check --write on the file"
 ---
 
 # Phase 6: Bulk Canada auto-import with compact review cards Verification Report
 
-**Phase Goal:** After photographing a shelf, the user can import every disc in bulk as the Canadian pressing of its top match without verifying hundreds one by one. Compact cards, multi-select, and a bulk action that resolves each selected spine's top match to its Canada release (falling back visibly when none exists) and adds them through the existing rate-limited queue.
-**Verified:** 2026-10-27T03:21:36Z
-**Status:** human_needed
-**Re-verification:** Yes. It follows the docs-only gap closure in 329b2c9, after the gaps_found report in 0f87573.
+**Phase Goal:** After photographing a shelf, the user can import every disc in bulk as the Canadian pressing of its top match, without verifying hundreds one by one. It covers compact cards, multi-select, and a bulk action. The bulk action resolves each selected spine's top match to its Canada release (falling back visibly when none exists) and adds them through the existing rate-limited queue.
+**Verified:** 2026-10-27T03:46:26Z
+**Status:** gaps_found
+**Re-verification:** Yes. It follows 9b9c79c, 5024fe4, 6c69638 and 5456821, after the human_needed report in 005fdcc.
 
 ## Goal Achievement
 
-The one failing must-have (documentation drift) is closed. The only change since 0f87573 is 329b2c9, which touched 3 planning docs and JSDoc in 5 components, with no code changes. Every claim in the new docs was checked against the code:
+The bulk import goal still holds in code, and the last human item is now covered by a real test. The phase is held at `gaps_found` because followup_10 changed the compact card's match row and the 06-UI-SPEC amendment and the CompactSpineCard JSDoc were not updated (docs drift, which you asked to report as a gap). There are two smaller gaps: the demo did not get the G-06-side-3 country order, and the new test file fails `biome check`.
 
-| Doc claim (06-UI-SPEC amendment, JSDoc) | Code | Match |
+### What changed since 005fdcc
+
+| Commit | Change | Verified |
 | --- | --- | --- |
-| Five rows on `row-span-5 grid-rows-subgrid` | `compact-spine-card.tsx` Card className | Yes |
-| Top row `h-9`: checkbox, Imported pill (`CircleCheck`), pencil | `data-compact-row="select"` | Yes |
-| Label row `h-5`: label plus `Disc3` and count, sr-only words | `data-compact-row="label"`, `candidatesLabel` | Yes |
-| Match `min-h-12`; title `line-clamp-2` with nothing reserved; details one line | `data-compact-row="match"`; `top-match-row.tsx` has no `h-[2lh]` on the title | Yes |
-| Bottom row `min-h-12`, pill order: state, worst-field, country, orphan, Edited, note | `data-compact-row="warnings"` child order | Yes |
-| Note pill: one truncated line, fallback drops `, used {country}`, full text on hover | `bulk-status-line.tsx` `clamp` branch, `line.short` (`bulk-copy.ts:315`) | Yes |
-| The skipped note names the photo, never a number | `bulk-copy.ts:233-238` | Yes |
-| No numbering on compact, expanded or Detailed cards | No `CornerNumeral` in any spine card; `spine-card.tsx` uses `number` only for the crop alt | Yes |
-| Focus order: checkbox, pencil, crop link, Open Settings / Retry | DOM order of the rows | Yes |
-| 07-UI-SPEC pointer: no review card keeps a numeral | 07-UI-SPEC line 448 | Yes |
+| 9b9c79c (G-06-side-3) | `orderCandidates` now ranks auto candidates by catno match, then the preferred country, then the fallback country, then Discogs rank. The countries are read from `settings` at query time (defaults Canada / US). | Yes. The `queries.test.ts` test "puts the preferred country first, then the fallback country, after catno matches" passes, including when the settings change. `discogsForSpines` and `listCandidates` both pass `countryPrefs(db)`. |
+| 5024fe4 (followup_10) | `TopMatchRow` is now `flex-col`. The cover is `aspect-square w-full` (Disc3 `size-10` placeholder) with the text below it. `min-h-12` is dropped from the match row. | Yes, in code and in the `compact-spine-card.test.ts` "match cover spans the card width". **The docs are not updated** (see Gaps). |
+| 5456821 | `expanded-card-refetch.test.ts` (happy-dom) mounts the real `SpinesView`, opens a card with the pencil, types into the artist field, and forces a real `['spines']` refetch with changed data. It checks that the card stays open, the same input stays connected with the typed text, and blur PATCHes the typed value. | Yes. It passes in the full run. It is substantive: it asserts that a fetch happened and that the new data reached the cache. |
+| 6c69638 | 06-UAT completed: 16 tests, 14 pass, 1 issue (test 9, gap G-06-9, resolved by 06-15), 1 skipped (test 16, reason: "to be covered by an automated test that holds a card open through a refresh"). | The skip reason points at 5456821, which delivers that test. |
 
-Evidence produced on this pass:
-- Full suite, run once (`npx vitest run`): 129 files, 2476 tests passed. `npx tsc --noEmit` exits 0. `npx biome check`: 699 files, no issues.
-- `verify.artifacts` and `verify.key-links` across all 19 plans: 51/51 and 36/36.
-- No server, demo, DB or script file changed, so the live-stack proof (`scripts/verify-bulk-import.ts`, exit 0) and UAT 1-15 carry forward.
+### Doc vs code after followup_10
 
-### Observable Truths (129 total)
+| Doc claim | Code | Match |
+| --- | --- | --- |
+| `top-match-row.tsx` JSDoc: the full-width square cover, the title below it (clamped at two, nothing reserved), the details on one line | `flex flex-col gap-2`, `aspect-square w-full`, `line-clamp-2`, `line-clamp-1 h-[1lh]` | Yes |
+| 06-UI-SPEC amendment row 4: "Match, at least 48px (`min-h-12`, the cover height): `TopMatchRow`, a 48px cover, then the title…" | No `min-h-12` on `data-compact-row="match"`. The cover is full width, above the title. | **No** |
+| `compact-spine-card.tsx` JSDoc row 4: "at least the 48px cover tall" | Same as above | **No** |
+| 06-UI-SPEC lines 91, 126, 133, 139 (48px thumb, `size-12`, 232px content column) | Superseded rows. The amendment says "The earlier rows are left as written for history." | Info (history) |
+| Amendment rows 1-3 and 5, the line-up rule, the edit button, focus order | Unchanged by 5024fe4 | Yes |
+| `queries.ts` JSDoc for the D-10 order with the country tier | Matches `orderCandidates` | Yes |
+| `src/demo/read-model.ts:148, 263-265`: "mirrors orderCandidates: manual, catno, Discogs order" | The server now has a country tier and the demo does not | **No** (gap 2) |
 
-| Plan | Truths | Status | Evidence |
+### Observable Truths (131 total)
+
+| Plan / source | Truths | Status | Evidence |
 | --- | --- | --- | --- |
-| 06-01..06-12 | 89/90 | 87 VERIFIED, 2 PASSED (override), 1 behavior-unverified | The suite plus the live proof. The 8 backstop truths (06-04, 06-06..06-09) count on the owner's direct observation in UAT 1-10. The overrides are the 06-07 compact contents and the 06-08 skipped copy. |
+| 06-01..06-12 | 90/90 | 88 VERIFIED, 2 PASSED (override) | The 06-07 "expanded card stays expanded across polls and filter refetches" truth is now VERIFIED. The poll path is driven by `expanded-card-refetch.test.ts`. For the filter path, expansion is kept in `ExpandedCardsProvider` (keyed by spine id) above the list, which is the structure the test proves survives a refetch. The 8 backstop truths still count on the owner's direct observation in UAT 1-10. |
 | 06-13 pressing fallback tier | 6/6 | VERIFIED | `pressing.ts` untouched |
 | 06-14 Fallback country setting | 6/6 | VERIFIED | UAT 11 |
 | 06-15 status tabs wrap | 3/3 | VERIFIED | UAT 12 |
-| 06-16 job + run snapshot | 5/5 | VERIFIED | Server untouched; the accepted fallback-request deviation is carried |
-| 06-17 demo tier | 4/4 | VERIFIED | UAT 14 |
+| 06-16 job + run snapshot | 5/5 | VERIFIED | Server bulk path untouched |
+| 06-17 demo tier | 4/4 | VERIFIED | UAT 14. The demo's candidate order is not one of its truths (see gap 2). |
 | 06-18 copy and read models | 6/6 | VERIFIED | bulk-copy.test passes; UAT 13, 14 |
-| 06-19 compact card (G-06-side-2) | 9/9 | 4 VERIFIED, 5 PASSED (override) | Truth 9 (06-UI-SPEC records the layout and 07-UI-SPEC points to it) is now VERIFIED, per the table above. Truths 1, 2 and 7 hold as before. Truths 3-6 and 8 are carried as overrides. |
+| 06-19 compact card (G-06-side-2) | 8/9 | 3 VERIFIED, 5 PASSED (override), **1 FAILED** | Truth 9 (06-UI-SPEC records the layout) **FAILED**: the amendment describes the pre-followup_10 match row. Truths 1, 2 and 7 hold. The overrides for truths 3-6 and 8 are carried. |
+| G-06-side-3 (owner, UAT 16) | 1/1 | VERIFIED | The country tier test in `queries.test.ts` |
+| G-06-side-2 followup_10 (owner, UAT 16) | 1/1 | VERIFIED | `compact-spine-card.test.ts` "the match cover spans the card width, with the title below it" |
 
-**Score:** 128/129 verified (121 VERIFIED + 7 PASSED by owner override). 1 truth is present but behavior-unverified. None failed.
+**Score:** 130/131 verified (123 VERIFIED + 7 PASSED by owner override). 1 truth FAILED (docs drift). 0 are behavior-unverified.
 
-**Override note:** All 7 overrides trace to one owner decision, recorded in 06-UAT.md G-06-side-2 followups 1-9 and approved in UAT 15.
+**Override note:** All 7 overrides are carried verbatim. Two of the reasons (compact contents, "48px cover"; six rows, "min-h-12") now trail the code, because followup_10 enlarged the cover and dropped the match row's minimum height. Both changes are owner-directed and logged in 06-UAT.md, so the overrides still hold. Refresh their reasons when gap 1 is closed.
 
 ### Prohibitions (06-02)
 
-All three are still RESOLVED and untouched. The bulk path never passes `allowDuplicate`. `imports/store.ts` is the only `add_to_collection` enqueue site (the guard test passes). Pressing candidates stay hidden.
+All three are still RESOLVED. 9b9c79c touches only the candidate order in the read model. The bulk path still never passes `allowDuplicate`, `imports/store.ts` is still the only `add_to_collection` enqueue site, and pressing candidates stay hidden (`CANDIDATES_SQL` is unchanged).
 
 ### Required Artifacts
 
-51/51 pass `verify.artifacts`, and the wiring is unchanged from the prior report.
+51/51 pass `verify.artifacts` across all 19 plans.
 
 ### Key Link Verification
 
-36/36 pass. The 06-19 `via` text still says row-span-6 and h-15. That is Info only: the plan frontmatter wording is stale history, and the wiring is real.
+36/36 pass `verify.key-links`. The 06-19 `via` text (row-span-6 / h-15) is still stale history (Info).
 
 ### Data-Flow Trace (Level 4)
 
-Unchanged. The candidate count, the note pill (`line.short` / `line.text`) and the fallback country all flow from real read models.
+| Artifact | Data | Source | Real data | Status |
+| --- | --- | --- | --- | --- |
+| Compact card top match | `discogs.topCandidates[0]` | `orderCandidates(rows, countryPrefs(db))` over `discogs_candidates` plus `settings` | Yes | FLOWING |
+| Demo compact card top match | `candidatesOf` | demo store, with no country tier | Yes, but in a different order from the real app | Gap 2 |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 | --- | --- | --- | --- |
-| Full suite (once) | `npx vitest run` | 129 files, 2476 tests | PASS |
+| Full suite (once) | `npx vitest run` | 130 files, 2478 tests passed | PASS |
+| Open card survives a refetch | included in the run above (`expanded-card-refetch.test.ts`) | pass | PASS |
+| Country tier order | included in the run above (`queries.test.ts` G-06-side-3) | pass | PASS |
 | Types | `npx tsc --noEmit` | exit 0 | PASS |
-| Lint | `npx biome check` | 699 files, no issues | PASS |
+| Lint | `npx biome check` | 700 files, 1 format error in `expanded-card-refetch.test.ts:269` | FAIL |
 | Artifacts / links | `verify.artifacts`, `verify.key-links` x19 | 51/51, 36/36 | PASS |
 
 ### Probe Execution
@@ -131,16 +162,23 @@ No probes are declared. Step 7c does not apply.
 
 ### Requirements Coverage
 
-BULK-01 to BULK-12 are all SATISFIED, as in the prior report (BULK-02 poll survival is behavior-unverified; see below). No IDs are orphaned.
+BULK-01 to BULK-12 are SATISFIED. BULK-02 (an open card survives polls) is now backed by a test. No IDs are orphaned.
+
+### UAT Evidence (carried)
+
+06-UAT.md `status: complete`, 16 tests: 14 pass, 1 issue (test 9, resolved by 06-15 and re-tested in UAT 12), 1 skipped (test 16, reason: "Owner skipped; to be covered by an automated test that holds a card open through a refresh"). The skip is satisfied by 5456821. Info: the 6c69638 commit subject says "15 passed, 1 skipped", but the file's summary block says `passed: 14, issues: 1, skipped: 1`. The file is the record.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 | --- | --- | --- | --- | --- |
-| `src/lib/bulk-copy.ts` | 222-223 | The `fallbackLine` `default` case has no exhaustiveness guard (carried, IN-01) | Info | A future outcome would get the generic line |
-| 06-19-PLAN.md | key_links | The `via` text says row-span-6 / h-15 | Info | Historical wording only |
+| `06-UI-SPEC.md` | 494 | Amendment describes a 48px cover and a `min-h-12` match row | Blocker (docs drift, gap 1) | The spec no longer matches the shipped card |
+| `src/components/compact-spine-card.tsx` | 69-71 | JSDoc says "at least the 48px cover tall" | Warning (gap 1) | A stale comment |
+| `src/demo/read-model.ts` | 148, 263-298 | Claims to mirror `orderCandidates` but has no country tier | Warning (gap 2) | The demo and the real app pick different top matches |
+| `src/components/expanded-card-refetch.test.ts` | 269 | Biome format error | Warning (gap 3) | `biome check` is red |
+| `src/lib/bulk-copy.ts` | 222-223 | `fallbackLine` `default` case has no exhaustiveness guard (carried, IN-01) | Info | |
 
-The four JSDoc warnings and the 06-UAT `issues: 2` bookkeeping item are resolved. The files changed in 329b2c9 contain no TBD, FIXME, XXX, TODO or HACK markers.
+No TBD, FIXME, XXX, TODO or HACK markers are in the files changed by the four commits.
 
 ### Advisory (New Scope, Unevidenced)
 
@@ -148,17 +186,17 @@ None.
 
 ### Human Verification Required
 
-#### 1. An open card survives a background refresh
-
-**Test:** Open a card with the pencil while a bulk import or a Discogs search is running, type something in a field, and wait a few seconds for the page to refresh itself.
-**Expected:** The card stays open and the typed text is still there.
-**Why human:** This item was already reported as behavior-unverified and kept out of the score last time. The gap hid it then. With the gap closed, it is the only thing between this phase and `passed`. The code looks right: the provider sits above the polled list and `keepPreviousData` keeps the tree mounted. But no test or UAT step held a card open through a refetch. The fix is one quick check by the owner, or a test that renders the list, opens a card and drives a refetch.
+None. The one carried item (an open card survives a background refresh) is now proven by `src/components/expanded-card-refetch.test.ts`.
 
 ### Gaps Summary
 
-None. The docs-drift gap is closed, and the docs match the shipped card. The phase stays at `human_needed` only for the one carried, behavior-unverified check above.
+1. **Docs drift after followup_10 (Blocker, 06-19 truth 9).** The 06-UI-SPEC G-06-side-2 amendment row 4 and the CompactSpineCard JSDoc still describe the 48px cover and `min-h-12` match row. The code now has a full-width square cover above the text, with no minimum height. `top-match-row.tsx`'s own JSDoc was updated and matches.
+2. **Demo candidate order (Warning).** `src/demo/read-model.ts` `candidatesOf` lacks the G-06-side-3 country tier, and its comment still claims to mirror `orderCandidates`.
+3. **Lint (Warning).** `npx biome check` fails on the new test file's formatting.
+
+All three are small and share one cause: the UAT test 16 changes landed without their companion doc, demo and format updates. Nothing was edited during this verification.
 
 ---
 
-_Verified: 2026-10-27T03:21:36Z_
+_Verified: 2026-10-27T03:46:26Z_
 _Verifier: Claude (gsd-verifier)_
