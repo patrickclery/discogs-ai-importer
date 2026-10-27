@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
-updated: 2026-10-26T22:54:00.817Z
+updated: 2026-10-27T03:10:35.746Z
 ---
 
 ## Current Test
 
-number: 15
-name: On the Spines page in Compact view at 4 cards per row, look over the cards, click a pencil then Show less, then narrow the window down to 1 card per row.
-expected: |
-  No card shows a number. Every card has the same rows: status badge (never cut off), a warnings line, the spine photo, one line with the checkbox, Top match and a pencil, the match (title at most two lines, details one line, full text on hover), then an import-notes line. In each row the photos, checkbox lines and matches line up. The pencil opens the card across the row and Show less closes it. Opened and Detailed cards show no number either.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -76,14 +72,14 @@ result: pass
 
 ### 15. On the Spines page in Compact view at 4 cards per row, look over the cards, click a pencil then Show less, then narrow the window down to 1 card per row.
 expected: No card shows a number. Every card has the same rows: status badge (never cut off), a warnings line, the spine photo, one line with the checkbox, Top match and a pencil, the match (title at most two lines, details one line, full text on hover), then an import-notes line. In each row the photos, checkbox lines and matches line up. The pencil opens the card across the row and Show less closes it. Detailed view is unchanged.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 15
-passed: 13
+passed: 14
 issues: 2
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
