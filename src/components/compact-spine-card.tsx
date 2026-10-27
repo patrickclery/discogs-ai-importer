@@ -2,6 +2,7 @@
 
 import {
   ChevronUp,
+  CircleCheck,
   CircleSlash,
   CircleX,
   Clock,
@@ -165,12 +166,22 @@ export function CompactSpineCard({
         orphaned && 'border-warning/60',
       )}
     >
+      {spine.import?.phase === 'imported' ? (
+        <span
+          data-imported-check
+          title="Imported"
+          className="absolute top-3 right-3 text-success"
+        >
+          <CircleCheck aria-hidden="true" className="size-5" />
+          <span className="sr-only">Imported</span>
+        </span>
+      ) : null}
       {/* A badge that ever outgrows the card wraps its text instead of being cut off. */}
       <div
         data-compact-row="status"
         className="flex min-h-6 items-center [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal"
       >
-        <ImportStateBadge spine={spine} hideCandidateCount />
+        <ImportStateBadge spine={spine} hideCandidateCount hideImported />
       </div>
       <div
         data-compact-row="warnings"

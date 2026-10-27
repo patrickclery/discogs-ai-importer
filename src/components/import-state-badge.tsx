@@ -26,17 +26,21 @@ function FailedBadge() {
  * failed, Phase 6), then the import's phase; with none of these, the Phase
  * 3 search badge shows unchanged. Outline badges only; destructive colors
  * only Import failed. `hideCandidateCount` drops the "N candidates" search
- * badge (the compact card shows the bare count beside its match label).
+ * badge (the compact card shows the bare count beside its match label);
+ * `hideImported` drops Imported (the compact card shows a corner checkmark).
  */
 export function ImportStateBadge({
   spine,
   hideCandidateCount = false,
+  hideImported = false,
 }: {
   spine: Pick<SpineDto, 'import' | 'notOnDiscogs' | 'discogs' | 'bulk'>;
   hideCandidateCount?: boolean;
+  hideImported?: boolean;
 }) {
   const phase = spine.import?.phase ?? null;
   if (phase === 'imported') {
+    if (hideImported) return null;
     return (
       <Badge variant="outline">
         <CircleCheck aria-hidden="true" className="text-success" />

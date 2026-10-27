@@ -696,6 +696,22 @@ describe('ImportStateBadge bulk phases', () => {
   });
 });
 
+describe('CompactSpineCard imported check', () => {
+  it('an imported card shows a corner checkmark instead of the Imported badge', () => {
+    const html = renderInGrid({ ...spine(), import: bulkImport() }, []);
+    expect(html).toContain('data-imported-check');
+    expect(html).toContain('<span class="sr-only">Imported</span>');
+    const status = html.slice(html.indexOf('data-compact-row="status"'));
+    expect(
+      status.slice(0, status.indexOf('data-compact-row="warnings"')),
+    ).not.toContain('Imported');
+  });
+
+  it('a card that is not imported has no checkmark', () => {
+    expect(renderInGrid(spine(), [])).not.toContain('data-imported-check');
+  });
+});
+
 /** The opening tag of the first element carrying `marker`. */
 function openingTag(html: string, marker: string): string {
   const at = html.indexOf(marker);
