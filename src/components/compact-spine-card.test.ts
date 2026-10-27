@@ -115,7 +115,7 @@ function rowNames(html: string): string[] {
   return [...html.matchAll(/data-compact-row="([^"]*)"/g)].map((m) => m[1]);
 }
 
-const ROWS = ['select', 'crop', 'match', 'warnings'];
+const ROWS = ['select', 'crop', 'label', 'match', 'warnings'];
 
 function render(s: SpineDto): string {
   return renderToStaticMarkup(
@@ -217,7 +217,7 @@ describe('CompactSpineCard candidate count', () => {
       [],
     );
     const at = html.indexOf('data-candidate-count');
-    expect(at).toBeGreaterThan(html.indexOf('data-compact-row="select"'));
+    expect(at).toBeGreaterThan(html.indexOf('data-compact-row="label"'));
     expect(at).toBeLessThan(html.indexOf('data-compact-row="match"'));
     expect(html.slice(at)).toMatch(
       /^[^>]*>.*?<span aria-hidden="true">10<\/span>/,
@@ -344,7 +344,8 @@ describe('CompactSpineCard expand toggle', () => {
     );
     const select = rowSlice(html, 'select');
     expect(select).toContain('aria-label="Select spine #7"');
-    expect(select).toContain('Top match');
+    expect(select).not.toContain('Top match');
+    expect(rowSlice(html, 'label')).toContain('Top match');
     const edit = openingTag(select, 'aria-label="Edit spine #7"');
     expect(edit).toContain('aria-expanded="false"');
     expect(edit).toContain('aria-controls="spine-card-sp-1"');
@@ -789,13 +790,13 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     });
   }
 
-  it('the compact card is a four-row subgrid mini card with no numeral', () => {
+  it('the compact card is a five-row subgrid mini card with no numeral', () => {
     const html = render(spine());
     const tag = openingTag(html, 'data-slot="card"');
     expect(tag).toContain('data-variant="mini"');
     expect(classTokens(tag)).toEqual(
       expect.arrayContaining([
-        'row-span-4',
+        'row-span-5',
         'grid',
         'grid-cols-1',
         'grid-rows-subgrid',

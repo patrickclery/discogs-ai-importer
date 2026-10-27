@@ -162,28 +162,13 @@ export function CompactSpineCard({
       className={cn(
         // grid-cols-1 is minmax(0, 1fr): a long unbroken file name or catno
         // wraps inside the card instead of widening the column past its edge.
-        'row-span-4 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
+        'row-span-5 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
         orphaned && 'border-warning/60',
       )}
     >
       <div data-compact-row="select" className="flex h-9 items-center gap-2">
         <SpineSelectCheckbox spine={spine} />
-        <p className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
-          {slot.label}
-        </p>
-        {spine.discogs?.state === 'done' ? (
-          <span
-            data-candidate-count
-            title={candidatesLabel(spine.discogs.candidateCount)}
-            className="flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground tabular-nums"
-          >
-            <Disc3 aria-hidden="true" className="size-3.5" />
-            <span aria-hidden="true">{spine.discogs.candidateCount}</span>
-            <span className="sr-only">
-              {candidatesLabel(spine.discogs.candidateCount)}
-            </span>
-          </span>
-        ) : null}
+        <span className="flex-1" />
         {spine.import?.phase === 'imported' ? (
           <span
             data-imported-check
@@ -214,6 +199,24 @@ export function CompactSpineCard({
       </div>
       <div data-compact-row="crop" className="grid">
         <SpineCrop crop={spine.crop} number={number} rawText={rawText} />
+      </div>
+      <div data-compact-row="label" className="flex h-5 items-center gap-2">
+        <p className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
+          {slot.label}
+        </p>
+        {spine.discogs?.state === 'done' ? (
+          <span
+            data-candidate-count
+            title={candidatesLabel(spine.discogs.candidateCount)}
+            className="flex shrink-0 items-center gap-1 font-mono text-xs text-muted-foreground tabular-nums"
+          >
+            <Disc3 aria-hidden="true" className="size-3.5" />
+            <span aria-hidden="true">{spine.discogs.candidateCount}</span>
+            <span className="sr-only">
+              {candidatesLabel(spine.discogs.candidateCount)}
+            </span>
+          </span>
+        ) : null}
       </div>
       <div data-compact-row="match" className="h-15">
         {match ? (
