@@ -170,14 +170,10 @@ export function CompactSpineCard({
         <SpineSelectCheckbox spine={spine} />
         <span className="flex-1" />
         {spine.import?.phase === 'imported' ? (
-          <span
-            data-imported-check
-            title="Imported"
-            className="shrink-0 text-success"
-          >
-            <CircleCheck aria-hidden="true" className="size-5" />
-            <span className="sr-only">Imported</span>
-          </span>
+          <Badge data-imported-check variant="outline" className="shrink-0">
+            <CircleCheck aria-hidden="true" className="text-success" />
+            Imported
+          </Badge>
         ) : null}
         {renderFull ? (
           <Button
