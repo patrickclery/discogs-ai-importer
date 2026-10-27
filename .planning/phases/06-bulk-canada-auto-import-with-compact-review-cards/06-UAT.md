@@ -125,6 +125,7 @@ blocked: 0
   followup: "Test 15: user reported the opened (expanded) card still showed #3 and the big corner number; removed numbering from SpineView too (opened + Detailed cards)"
   followup_2: "Test 15: user asked for the bare count (10, not '10 candidates') on the Top match / Confirmed match line; compact card now shows a disc icon + number there and drops the N candidates status badge"
   followup_3: "Test 15: user asked for a corner checkmark instead of the Imported badge, and for every warning (field badges, fallback, import notes) to sit together at the very bottom of the card; card rows are now status, crop, select, match, warnings"
+  followup_4: "Test 15: user asked for the checkbox and the imported checkmark on one row at the very top; rows are now top (checkbox, match label, count, checkmark, pencil), crop, match, bottom (state badge, warnings, import notes)"
   reason: "User reported: I don't want it to say '#1' and '1' in the corner - just 1 in the corner. The words 'Edit Spine' are also taking up too much space. I would prefer just to have an edit icon somewhere. The warnings at the top should move to a separate line. Basically, I want the cards to have the exact same number of rows on every match so that it doesn't look like they are oddly word-wrapped. Later: we don't need the numbering on the cards at all. We just need check boxes, and ideally the check box shouldn't take up a whole row. It can have text beside it or whatever."
   severity: cosmetic
   test: side

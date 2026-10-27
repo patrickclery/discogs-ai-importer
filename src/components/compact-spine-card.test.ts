@@ -115,7 +115,7 @@ function rowNames(html: string): string[] {
   return [...html.matchAll(/data-compact-row="([^"]*)"/g)].map((m) => m[1]);
 }
 
-const ROWS = ['status', 'crop', 'select', 'match', 'warnings'];
+const ROWS = ['select', 'crop', 'match', 'warnings'];
 
 function render(s: SpineDto): string {
   return renderToStaticMarkup(
@@ -484,34 +484,32 @@ describe('CompactSpineCard bulk states', () => {
     expect(html).toContain('Looking for the Canadian pressing…');
   });
 
-  it('a resolved US fallback shows the state badge on its own row, Fallback: US on the warnings line, and the fallback line', () => {
+  it('a resolved US fallback puts the state badge, Fallback: US and the fallback line together at the bottom', () => {
     const html = renderBulk(
       withBulk(
         bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
         bulkImport({ phase: 'waiting' }),
       ),
     );
-    const state = html.indexOf('Waiting to import');
-    expect(state).toBeGreaterThan(-1);
-    expect(state).toBeLessThan(html.indexOf('Fallback: US'));
-    const status = rowSlice(html, 'status');
-    expect(status).toContain('Waiting to import');
-    expect(status).not.toContain('Fallback: US');
-    expect(rowSlice(html, 'warnings')).toContain('Fallback: US');
-    expect(html).toContain('No Canadian pressing, used US');
+    const bottom = rowSlice(html, 'warnings');
+    expect(bottom).toContain('Waiting to import');
+    expect(bottom).toContain('Fallback: US');
+    expect(bottom).toContain('No Canadian pressing, used US');
+    expect(rowSlice(html, 'select')).not.toContain('Waiting to import');
   });
 
-  it('the status row is one badge line and never clips the badge', () => {
+  it('the top row holds the checkbox and never clips a badge', () => {
     const html = renderBulk(
       withBulk(
         bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
         bulkImport({ phase: 'waiting' }),
       ),
     );
-    const t = classTokens(openingTag(html, 'data-compact-row="status"'));
-    expect(t).toContain('min-h-6');
-    for (const gone of ['min-w-0', 'max-w-full', 'overflow-hidden']) {
-      expect(t).not.toContain(gone);
+    expect(rowNames(html)[0]).toBe('select');
+    for (const gone of ['overflow-hidden']) {
+      expect(
+        classTokens(openingTag(html, 'data-compact-row="warnings"')),
+      ).not.toContain(gone);
     }
   });
 
@@ -791,13 +789,13 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     });
   }
 
-  it('the compact card is a five-row subgrid mini card with no numeral', () => {
+  it('the compact card is a four-row subgrid mini card with no numeral', () => {
     const html = render(spine());
     const tag = openingTag(html, 'data-slot="card"');
     expect(tag).toContain('data-variant="mini"');
     expect(classTokens(tag)).toEqual(
       expect.arrayContaining([
-        'row-span-5',
+        'row-span-4',
         'grid',
         'grid-cols-1',
         'grid-rows-subgrid',

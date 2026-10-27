@@ -162,30 +162,10 @@ export function CompactSpineCard({
       className={cn(
         // grid-cols-1 is minmax(0, 1fr): a long unbroken file name or catno
         // wraps inside the card instead of widening the column past its edge.
-        'row-span-5 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
+        'row-span-4 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
         orphaned && 'border-warning/60',
       )}
     >
-      {spine.import?.phase === 'imported' ? (
-        <span
-          data-imported-check
-          title="Imported"
-          className="absolute top-3 right-3 text-success"
-        >
-          <CircleCheck aria-hidden="true" className="size-5" />
-          <span className="sr-only">Imported</span>
-        </span>
-      ) : null}
-      {/* A badge that ever outgrows the card wraps its text instead of being cut off. */}
-      <div
-        data-compact-row="status"
-        className="flex min-h-6 items-center [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal"
-      >
-        <ImportStateBadge spine={spine} hideCandidateCount hideImported />
-      </div>
-      <div data-compact-row="crop" className="grid">
-        <SpineCrop crop={spine.crop} number={number} rawText={rawText} />
-      </div>
       <div data-compact-row="select" className="flex h-9 items-center gap-2">
         <SpineSelectCheckbox spine={spine} />
         <p className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
@@ -202,6 +182,16 @@ export function CompactSpineCard({
             <span className="sr-only">
               {candidatesLabel(spine.discogs.candidateCount)}
             </span>
+          </span>
+        ) : null}
+        {spine.import?.phase === 'imported' ? (
+          <span
+            data-imported-check
+            title="Imported"
+            className="shrink-0 text-success"
+          >
+            <CircleCheck aria-hidden="true" className="size-5" />
+            <span className="sr-only">Imported</span>
           </span>
         ) : null}
         {renderFull ? (
@@ -222,6 +212,9 @@ export function CompactSpineCard({
           </Button>
         ) : null}
       </div>
+      <div data-compact-row="crop" className="grid">
+        <SpineCrop crop={spine.crop} number={number} rawText={rawText} />
+      </div>
       <div data-compact-row="match" className="h-15">
         {match ? (
           <TopMatchRow
@@ -233,12 +226,14 @@ export function CompactSpineCard({
           <PlaceholderLine text={slot.placeholder ?? ''} />
         )}
       </div>
-      {/* Every warning sits at the bottom: field and fallback badges, then the import notes. */}
+      {/* Every status and warning sits at the bottom: badges, then the import notes. */}
       <div
         data-compact-row="warnings"
         className="flex min-h-8 flex-col justify-end gap-1"
       >
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 empty:hidden">
+        {/* A badge that ever outgrows the card wraps its text instead of being cut off. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 empty:hidden [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal">
+          <ImportStateBadge spine={spine} hideCandidateCount hideImported />
           <WorstFieldBadge spine={spine} threshold={threshold} />
           <CountryBadge spine={spine} />
           {orphaned ? (
