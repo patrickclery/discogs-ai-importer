@@ -214,7 +214,7 @@ export function CompactSpineCard({
           </span>
         ) : null}
       </div>
-      <div data-compact-row="match" className="h-15">
+      <div data-compact-row="match" className="min-h-12">
         {match ? (
           <TopMatchRow
             title={match.title}

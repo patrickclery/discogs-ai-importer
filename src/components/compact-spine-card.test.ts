@@ -603,12 +603,11 @@ const US_FALLBACK = () =>
 const tagOfText = (html: string, text: string) => openingTag(html, `>${text}`);
 
 describe('CompactSpineCard fixed line counts', () => {
-  it('the title is exactly two lines and the details exactly one, each with the full text', () => {
+  it('the title wraps to at most two lines with no reserved space, the details exactly one', () => {
     const html = render(spine());
     const title = openingTag(html, 'title="Various');
-    expect(classTokens(title)).toEqual(
-      expect.arrayContaining(['line-clamp-2', 'h-[2lh]']),
-    );
+    expect(classTokens(title)).toContain('line-clamp-2');
+    expect(classTokens(title)).not.toContain('h-[2lh]');
     const details = tagOfText(html, '1991 · US · DGCD-24425');
     expect(classTokens(details)).toEqual(
       expect.arrayContaining(['line-clamp-1', 'h-[1lh]']),
@@ -616,10 +615,10 @@ describe('CompactSpineCard fixed line counts', () => {
     expect(details).toContain('title="1991 · US · DGCD-24425"');
   });
 
-  it('the match row is a fixed 60px box, with or without a candidate', () => {
+  it('the match row is at least the thumbnail height, with or without a candidate', () => {
     const tokens = (html: string) =>
       classTokens(openingTag(html, 'data-compact-row="match"'));
-    expect(tokens(render(spine()))).toContain('h-15');
+    expect(tokens(render(spine()))).toContain('min-h-12');
     const queued = render(
       spine({
         discogs: {
@@ -632,7 +631,7 @@ describe('CompactSpineCard fixed line counts', () => {
       }),
     );
     expect(queued).toContain('Looking it up on Discogs…');
-    expect(tokens(queued)).toContain('h-15');
+    expect(tokens(queued)).toContain('min-h-12');
   });
 
   it('the fallback and skipped pills are one line with the full text on hover', () => {

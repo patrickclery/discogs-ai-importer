@@ -44,7 +44,7 @@ export function TopMatchRow({
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p
-          className="line-clamp-2 h-[2lh] text-sm font-medium break-words"
+          className="line-clamp-2 text-sm font-medium break-words"
           title={title}
         >
           {title}
