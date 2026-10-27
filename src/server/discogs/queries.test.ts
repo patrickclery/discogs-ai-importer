@@ -113,15 +113,17 @@ describe('discogsForSpines and listCandidates (D-10)', () => {
       source?: 'auto' | 'manual';
       catnoMatch?: boolean;
       createdAt?: number;
+      country?: string | null;
     },
   ): void {
     getDb()
       .$client.prepare(
         `INSERT INTO discogs_candidates (id, spine_id, search_id, source,
-           release_id, rank, title, labels_json, formats_json, thumb_url,
-           catno_match, created_at)
+           release_id, rank, title, country, labels_json, formats_json,
+           thumb_url, catno_match, created_at)
          VALUES (@id, 's1', @searchId, @source, @releaseId, @rank, @title,
-           '["L"]', '[{"name":"CD","qty":"2","descriptions":["Album"]}]',
+           @country, '["L"]',
+           '[{"name":"CD","qty":"2","descriptions":["Album"]}]',
            NULL, @catnoMatch, @createdAt)`,
       )
       .run({
@@ -133,8 +135,45 @@ describe('discogsForSpines and listCandidates (D-10)', () => {
         title: `Artist (2) - Title ${c.releaseId}`,
         catnoMatch: c.catnoMatch ? 1 : 0,
         createdAt: c.createdAt ?? 1,
+        country: c.country ?? null,
       });
   }
+
+  it('puts the preferred country first, then the fallback country, after catno matches (G-06-side-3)', () => {
+    seed();
+    const db = getDb().$client;
+    const auto = createSearch(db, {
+      spineId: 's1',
+      kind: 'auto',
+      inputs: searchInputs({ artist: 'A' }),
+      inputHash: 'h',
+    });
+    finishSearch(db, auto, { status: 'done', resultCount: 4 });
+    addCandidate(auto, { releaseId: 1, rank: 0, country: 'Australia' });
+    addCandidate(auto, { releaseId: 2, rank: 1, country: 'US' });
+    addCandidate(auto, { releaseId: 3, rank: 2, country: 'Canada' });
+    addCandidate(auto, {
+      releaseId: 4,
+      rank: 3,
+      country: 'Germany',
+      catnoMatch: true,
+    });
+    expect(listCandidates(db, 's1').map((c) => c.releaseId)).toEqual([
+      4, 3, 2, 1,
+    ]);
+
+    db.prepare(
+      `INSERT INTO settings (key, value, updated_at) VALUES
+         ('preferred_country', '"US"', 1), ('fallback_country', '"Australia"', 1)`,
+    ).run();
+    expect(listCandidates(db, 's1').map((c) => c.releaseId)).toEqual([
+      4, 2, 1, 3,
+    ]);
+    expect(
+      discogsForSpines(db, [{ id: 's1' }]).get('s1')?.topCandidates[0]
+        ?.releaseId,
+    ).toBe(4);
+  });
 
   it('orders manual newest first, then catno matches, then rank; dedupes', () => {
     seed();

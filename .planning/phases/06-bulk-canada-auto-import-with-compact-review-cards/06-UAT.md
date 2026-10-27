@@ -1,5 +1,5 @@
 ---
-status: complete
+status: testing
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
@@ -8,7 +8,11 @@ updated: 2026-10-27T03:19:21.000Z
 
 ## Current Test
 
-[testing complete]
+number: 16
+name: Start a bulk import (or a Discogs search) on a few spines. While it runs, open a different card with its pencil, type something in a field, and wait about 10 seconds without clicking away.
+expected: |
+  The card stays open the whole time and your typed text is still there while the cards around it update.
+awaiting: user response
 
 ## Tests
 
@@ -74,12 +78,16 @@ result: pass
 expected: No card shows a number. Every card has the same rows: status badge (never cut off), a warnings line, the spine photo, one line with the checkbox, Top match and a pencil, the match (title at most two lines, details one line, full text on hover), then an import-notes line. In each row the photos, checkbox lines and matches line up. The pencil opens the card across the row and Show less closes it. Detailed view is unchanged.
 result: pass
 
+### 16. Start a bulk import (or a Discogs search) on a few spines. While it runs, open a different card with its pencil, type something in a field, and wait about 10 seconds without clicking away.
+expected: The card stays open the whole time and your typed text is still there while the cards around it update.
+result: [pending]
+
 ## Summary
 
-total: 15
+total: 16
 passed: 14
 issues: 1
-pending: 0
+pending: 1
 skipped: 0
 blocked: 0
 
@@ -138,3 +146,17 @@ blocked: 0
       issue: "title and details wrap to a varying number of lines"
   missing:
     - "Status badges (Imported, Waiting to import) are cut off at the card's right edge when they share a row with Fallback or warning badges (seen in test 13 screenshot)"
+- gap_id: G-06-side-3
+  truth: "When a spine's Discogs candidates include a release from the preferred country (or else the fallback country), that release is the top match, unless a catalog-number match or a manual pick outranks it"
+  status: resolved
+  resolved_by: "inline fix (orderCandidates country tier)"
+  resolved_at: "2026-10-26"
+  reason: "User reported: I did a rescan of the image and it still is matching this Adam Sandler to Australia, even though it has a Canada and US one."
+  severity: major
+  test: 16
+  root_cause: "orderCandidates (src/server/discogs/queries.ts) ordered auto candidates by catno match then Discogs rank only, so Discogs' first result (Australia) stayed the top match even with Canada and US releases in the list"
+  artifacts:
+    - path: "src/server/discogs/queries.ts"
+      issue: "no country preference in D-10 candidate order"
+  missing:
+    - "Rank preferred-country, then fallback-country candidates ahead of the rest (after catno matches), read from settings at query time so existing searches reorder without a rescan"

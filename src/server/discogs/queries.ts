@@ -13,6 +13,7 @@ import {
   type SearchStatus,
   type SpineDiscogsDto,
 } from '@/lib/discogs-types';
+import { countryMatch } from '@/lib/pressing';
 import { getDiscogsAuth, isAuthInvalid } from './auth';
 import { discogsGate } from './gate';
 import {
@@ -307,12 +308,49 @@ function toCandidateDto(r: CandidateRowRaw): CandidateDto {
   };
 }
 
+/** The preferred and fallback countries, read from the same database. */
+type CountryPrefs = { preferred: string; fallback: string };
+
+const COUNTRY_PREFS_SQL = `
+SELECT key, value FROM settings
+WHERE key IN ('preferred_country', 'fallback_country')`;
+
+function countryPrefs(db: Database.Database): CountryPrefs {
+  const prefs: CountryPrefs = { preferred: 'Canada', fallback: 'US' };
+  for (const r of db.prepare(COUNTRY_PREFS_SQL).all() as {
+    key: string;
+    value: string;
+  }[]) {
+    let v: unknown;
+    try {
+      v = JSON.parse(r.value);
+    } catch {
+      continue;
+    }
+    if (typeof v !== 'string' || !v.trim()) continue;
+    if (r.key === 'preferred_country') prefs.preferred = v;
+    else prefs.fallback = v;
+  }
+  return prefs;
+}
+
+/** 0: the preferred country, 1: the fallback country, 2: any other. */
+function countryTier(country: string | null, prefs: CountryPrefs): number {
+  if (countryMatch(country, prefs.preferred) !== 'none') return 0;
+  if (countryMatch(country, prefs.fallback) !== 'none') return 1;
+  return 2;
+}
+
 /**
  * D-10 order: manual candidates newest first, then exact-catno matches,
- * then Discogs order. Deduped by release id; a manual row wins, so a
- * release both added manually and found automatically shows once.
+ * then the preferred country's releases, then the fallback country's
+ * (G-06-side-3), then Discogs order. Deduped by release id; a manual row
+ * wins, so a release both added manually and found automatically shows once.
  */
-function orderCandidates(rows: readonly CandidateRowRaw[]): CandidateDto[] {
+function orderCandidates(
+  rows: readonly CandidateRowRaw[],
+  prefs: CountryPrefs,
+): CandidateDto[] {
   const manual = rows
     .filter((r) => r.source === 'manual')
     .sort((a, b) => b.created_at - a.created_at || (a.id < b.id ? 1 : -1));
@@ -321,6 +359,7 @@ function orderCandidates(rows: readonly CandidateRowRaw[]): CandidateDto[] {
     .sort(
       (a, b) =>
         b.catno_match - a.catno_match ||
+        countryTier(a.country, prefs) - countryTier(b.country, prefs) ||
         a.rank - b.rank ||
         (a.id < b.id ? -1 : 1),
     );
@@ -352,6 +391,7 @@ export function discogsForSpines(
   })[]) {
     latest.set(r.spine_id, r);
   }
+  const prefs = countryPrefs(db);
   const bySpine = new Map<string, CandidateRowRaw[]>();
   for (const r of db
     .prepare(CANDIDATES_SQL)
@@ -371,7 +411,7 @@ export function discogsForSpines(
     fields.set(r.spine_id, f);
   }
   for (const { id } of spines) {
-    const candidates = orderCandidates(bySpine.get(id) ?? []);
+    const candidates = orderCandidates(bySpine.get(id) ?? [], prefs);
     const last = latest.get(id) ?? null;
     const spineFields = fields.get(id) ?? {};
     const { state, failure } = searchStateOf(
@@ -396,6 +436,7 @@ export function listCandidates(
 ): CandidateDto[] {
   return orderCandidates(
     db.prepare(SPINE_CANDIDATES_SQL).all({ spineId }) as CandidateRowRaw[],
+    countryPrefs(db),
   );
 }
 
