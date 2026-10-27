@@ -266,7 +266,9 @@ describe('expanded compact card across a background ["spines"] refetch', () => {
       (c) => (c[1] as RequestInit | undefined)?.method === 'PATCH',
     );
     expect(patch).toBeDefined();
-    expect(JSON.parse(String((patch?.[1] as RequestInit | undefined)?.body))).toEqual({
+    expect(
+      JSON.parse(String((patch?.[1] as RequestInit | undefined)?.body)),
+    ).toEqual({
       field: 'artist',
       value: 'Nirvana (my edit)',
     });

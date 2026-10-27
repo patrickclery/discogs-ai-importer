@@ -66,9 +66,9 @@ function PlaceholderLine({ text }: { text: string }) {
  *   2. crop: the spine crop;
  *   3. label: the Top match / Confirmed match label and, once the search is
  *      done, the bare candidate count (disc icon and number);
- *   4. match: the top or confirmed match (or its placeholder), at least the
- *      48px cover tall; the title clamps at two lines without reserving the
- *      second, the details take one line;
+ *   4. match: the top or confirmed match (or its placeholder): the cover
+ *      across the card's width, then the title clamped at two lines without
+ *      reserving the second, then the details on one line;
  *   5. warnings: one wrapping flow of pills, two lines reserved: the state
  *      badge, the worst-field badge, the bulk country badge, No longer
  *      detected, Edited, then the import note pill (BulkStatusLine clamp).

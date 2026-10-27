@@ -262,7 +262,10 @@ function toCandidateDto(c: DemoCandidate): CandidateDto {
 /**
  * A spine's stored candidates at `now` in D-10 order (orderCandidates):
  * manual newest first, then exact-catno matches, then Discogs order;
- * deduped by release id, a manual row winning.
+ * deduped by release id, a manual row winning. Unlike the real app, the
+ * demo skips the preferred/fallback country step (G-06-side-3): its canned
+ * bulk scenarios (Canadian swap, Fallback: US, Fallback: Hong Kong) need
+ * the fixtures' own top matches.
  */
 export function candidatesOf(
   state: DemoState,
