@@ -15,7 +15,7 @@ const ICON = 'mt-px size-4 shrink-0';
 const LINE = 'flex items-start gap-1 text-xs';
 /** Compact cards show the fallback, skipped and finding lines as an outline pill (G-06-side-2). */
 const PILL =
-  'flex w-fit max-w-full items-start gap-1 rounded-xl border border-border px-2 py-0.5 text-xs font-medium [&>svg]:size-3 [&>svg]:mt-0.5';
+  'flex w-fit max-w-full items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs font-medium [&>svg]:size-3 [&>svg]:mt-0';
 const NO_ANSWER = "the app didn't answer";
 
 /**
@@ -115,9 +115,10 @@ export function BulkStatusLine({
   const shape = clamp ? PILL : LINE;
   if (line === null || (kinds && !kinds.includes(line.kind))) return null;
   // React attribute and text only (T-06-36): never HTML.
+  const shown = clamp && line.kind === 'fallback' ? line.short : line.text;
   const text = clamp ? (
-    <span className="line-clamp-2 min-w-0 break-words" title={line.text}>
-      {line.text}
+    <span className="min-w-0 truncate" title={line.text}>
+      {shown}
     </span>
   ) : (
     <span className="min-w-0 break-words">{line.text}</span>
@@ -125,7 +126,7 @@ export function BulkStatusLine({
   switch (line.kind) {
     case 'failed':
       return (
-        <div className="flex flex-col gap-2">
+        <div className="flex basis-full flex-col gap-2">
           <p className={`${LINE} text-destructive`}>
             <CircleX aria-hidden="true" className={ICON} />
             <span className="min-w-0 break-words">

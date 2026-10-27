@@ -162,7 +162,7 @@ export function CompactSpineCard({
       className={cn(
         // grid-cols-1 is minmax(0, 1fr): a long unbroken file name or catno
         // wraps inside the card instead of widening the column past its edge.
-        'row-span-6 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
+        'row-span-5 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
         orphaned && 'border-warning/60',
       )}
     >
@@ -225,11 +225,11 @@ export function CompactSpineCard({
           <PlaceholderLine text={slot.placeholder ?? ''} />
         )}
       </div>
-      {/* Every status and warning sits at the bottom: one row of badges, then the import note as a pill. */}
+      {/* Every status and warning sits at the bottom: the badges, then the import note pill, two lines reserved. */}
       {/* A badge that ever outgrows the card wraps its text instead of being cut off. */}
       <div
         data-compact-row="warnings"
-        className="flex min-h-6 flex-wrap content-start items-center gap-x-2 gap-y-1 [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal"
+        className="flex min-h-12 flex-wrap content-start items-center gap-x-2 gap-y-1 [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal"
       >
         <ImportStateBadge spine={spine} hideCandidateCount hideImported />
         <WorstFieldBadge spine={spine} threshold={threshold} />
@@ -243,8 +243,6 @@ export function CompactSpineCard({
         {edited > 0 ? (
           <Badge variant="secondary">{`Edited · ${edited}`}</Badge>
         ) : null}
-      </div>
-      <div data-compact-row="notes" className="min-h-6">
         <BulkStatusLine spine={spine} clamp />
       </div>
     </Card>

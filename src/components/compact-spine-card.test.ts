@@ -115,7 +115,7 @@ function rowNames(html: string): string[] {
   return [...html.matchAll(/data-compact-row="([^"]*)"/g)].map((m) => m[1]);
 }
 
-const ROWS = ['select', 'crop', 'label', 'match', 'warnings', 'notes'];
+const ROWS = ['select', 'crop', 'label', 'match', 'warnings'];
 
 function render(s: SpineDto): string {
   return renderToStaticMarkup(
@@ -485,7 +485,7 @@ describe('CompactSpineCard bulk states', () => {
     expect(html).toContain('Looking for the Canadian pressing…');
   });
 
-  it('a resolved US fallback puts the state badge and Fallback: US on the warnings row and the fallback note pill below', () => {
+  it('a resolved US fallback puts the state badge and Fallback: US on the warnings row and the fallback note pill after them', () => {
     const html = renderBulk(
       withBulk(
         bulkItem({ outcome: 'fallback_no_version', country: 'US' }),
@@ -495,10 +495,11 @@ describe('CompactSpineCard bulk states', () => {
     const bottom = rowSlice(html, 'warnings');
     expect(bottom).toContain('Waiting to import');
     expect(bottom).toContain('Fallback: US');
-    expect(bottom).not.toContain('No Canadian pressing');
-    const note = rowSlice(html, 'notes');
-    expect(note).toContain('No Canadian pressing, used US');
-    expect(classTokens(openingTag(note, '<p'))).toContain('rounded-xl');
+    // The note pill follows the badges in the same row, without ", used US".
+    expect(bottom.indexOf('>No Canadian pressing<')).toBeGreaterThan(
+      bottom.indexOf('Fallback: US'),
+    );
+    expect(visibleText(bottom)).not.toContain('used US');
     expect(rowSlice(html, 'select')).not.toContain('Waiting to import');
   });
 
@@ -634,18 +635,18 @@ describe('CompactSpineCard fixed line counts', () => {
     expect(tokens(queued)).toContain('h-15');
   });
 
-  it('the fallback and skipped lines clamp to two lines with the full text on hover', () => {
+  it('the fallback and skipped pills are one line with the full text on hover', () => {
     const fallback = tagOfText(
       renderBulk(US_FALLBACK()),
-      'No Canadian pressing, used US',
+      'No Canadian pressing',
     );
-    expect(classTokens(fallback)).toContain('line-clamp-2');
+    expect(classTokens(fallback)).toContain('truncate');
     expect(fallback).toContain('title="No Canadian pressing, used US"');
     const skipped = tagOfText(
       renderBulk(withBulk(SKIP_ITEM, null)),
       'Already imported from another spine in IMG_1.jpg',
     );
-    expect(classTokens(skipped)).toContain('line-clamp-2');
+    expect(classTokens(skipped)).toContain('truncate');
     expect(skipped).toContain(
       'title="Already imported from another spine in IMG_1.jpg"',
     );
@@ -790,13 +791,13 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     });
   }
 
-  it('the compact card is a six-row subgrid mini card with no numeral', () => {
+  it('the compact card is a five-row subgrid mini card with no numeral', () => {
     const html = render(spine());
     const tag = openingTag(html, 'data-slot="card"');
     expect(tag).toContain('data-variant="mini"');
     expect(classTokens(tag)).toEqual(
       expect.arrayContaining([
-        'row-span-6',
+        'row-span-5',
         'grid',
         'grid-cols-1',
         'grid-rows-subgrid',

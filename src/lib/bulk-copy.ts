@@ -292,7 +292,8 @@ export type BulkStatusKind = 'failed' | 'fallback' | 'skipped' | 'finding';
 /** The one bulk status line a card shows. */
 export type BulkStatusLine =
   | { kind: 'failed'; text: string; link: SettingsLink | null }
-  | { kind: 'fallback' | 'skipped' | 'finding'; text: string };
+  | { kind: 'fallback'; text: string; short: string }
+  | { kind: 'skipped' | 'finding'; text: string };
 
 /**
  * At most one bulk status line, in the UI-SPEC priority: a failed lookup,
@@ -309,7 +310,9 @@ export function bulkStatusLineOf(
     return { kind: 'failed', ...lookupFailureLine(item.failure) };
   }
   if (countryBadgeOf(spine)?.kind === 'fallback') {
-    return { kind: 'fallback', text: fallbackLine(item) };
+    const text = fallbackLine(item);
+    // Compact cards drop ", used {country}": their Fallback badge names it.
+    return { kind: 'fallback', text, short: text.replace(/, used .*$/, '') };
   }
   if (item.phase === 'skipped' && item.skip?.reason === 'duplicate') {
     return { kind: 'skipped', text: skippedLine(item.skip) };
