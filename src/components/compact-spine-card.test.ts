@@ -115,7 +115,7 @@ function rowNames(html: string): string[] {
   return [...html.matchAll(/data-compact-row="([^"]*)"/g)].map((m) => m[1]);
 }
 
-const ROWS = ['status', 'warnings', 'crop', 'select', 'match', 'bulk'];
+const ROWS = ['status', 'crop', 'select', 'match', 'warnings'];
 
 function render(s: SpineDto): string {
   return renderToStaticMarkup(
@@ -791,13 +791,13 @@ describe('awesomer mini card (Phase 7 v2)', () => {
     });
   }
 
-  it('the compact card is a six-row subgrid mini card with no numeral', () => {
+  it('the compact card is a five-row subgrid mini card with no numeral', () => {
     const html = render(spine());
     const tag = openingTag(html, 'data-slot="card"');
     expect(tag).toContain('data-variant="mini"');
     expect(classTokens(tag)).toEqual(
       expect.arrayContaining([
-        'row-span-6',
+        'row-span-5',
         'grid',
         'grid-cols-1',
         'grid-rows-subgrid',

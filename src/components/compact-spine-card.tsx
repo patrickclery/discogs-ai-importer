@@ -162,7 +162,7 @@ export function CompactSpineCard({
       className={cn(
         // grid-cols-1 is minmax(0, 1fr): a long unbroken file name or catno
         // wraps inside the card instead of widening the column past its edge.
-        'row-span-6 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
+        'row-span-5 grid grid-cols-1 grid-rows-subgrid gap-2 rounded-xl p-4',
         orphaned && 'border-warning/60',
       )}
     >
@@ -182,22 +182,6 @@ export function CompactSpineCard({
         className="flex min-h-6 items-center [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:whitespace-normal"
       >
         <ImportStateBadge spine={spine} hideCandidateCount hideImported />
-      </div>
-      <div
-        data-compact-row="warnings"
-        className="flex min-h-6 flex-wrap content-start items-center gap-x-2 gap-y-1"
-      >
-        <WorstFieldBadge spine={spine} threshold={threshold} />
-        <CountryBadge spine={spine} />
-        {orphaned ? (
-          <Badge variant="outline">
-            <TriangleAlert aria-hidden="true" className="text-warning" />
-            No longer detected
-          </Badge>
-        ) : null}
-        {edited > 0 ? (
-          <Badge variant="secondary">{`Edited · ${edited}`}</Badge>
-        ) : null}
       </div>
       <div data-compact-row="crop" className="grid">
         <SpineCrop crop={spine.crop} number={number} rawText={rawText} />
@@ -249,7 +233,24 @@ export function CompactSpineCard({
           <PlaceholderLine text={slot.placeholder ?? ''} />
         )}
       </div>
-      <div data-compact-row="bulk" className="min-h-8">
+      {/* Every warning sits at the bottom: field and fallback badges, then the import notes. */}
+      <div
+        data-compact-row="warnings"
+        className="flex min-h-8 flex-col justify-end gap-1"
+      >
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 empty:hidden">
+          <WorstFieldBadge spine={spine} threshold={threshold} />
+          <CountryBadge spine={spine} />
+          {orphaned ? (
+            <Badge variant="outline">
+              <TriangleAlert aria-hidden="true" className="text-warning" />
+              No longer detected
+            </Badge>
+          ) : null}
+          {edited > 0 ? (
+            <Badge variant="secondary">{`Edited · ${edited}`}</Badge>
+          ) : null}
+        </div>
         <BulkStatusLine spine={spine} clamp />
       </div>
     </Card>
