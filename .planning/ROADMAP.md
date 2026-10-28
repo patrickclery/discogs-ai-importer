@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1 MVP** — Phases 1-4 (shipped 2026-10-23)
-- ✅ **Next** — Phase 5 (demo site, completed 2026-10-23)
+- 🚧 **v1.1 Demo & Polish** — Phases 5-7 (demo site, bulk import, awesomer look)
 
 ## Phases
 
@@ -19,9 +19,11 @@ Full details: [milestones/v1-ROADMAP.md](milestones/v1-ROADMAP.md)
 
 </details>
 
-### ✅ Next (Phase 5)
+### 🚧 v1.1 Demo & Polish (Phases 5-7)
 
 - [x] **Phase 5: Stubbed Demo Site** - A public demo anyone can try, with Claude and Discogs fully stubbed (completed 2026-10-23)
+- [x] **Phase 6: Bulk Canada auto-import with compact review cards** - Bulk-import selected spines as Canadian (else US) CD pressings, with compact review cards (completed 2026-10-28)
+- [x] **Phase 7: Match the patrickclery.com/awesomer color palette** - App and demo match awesomer's dark terminal/markdown look (completed 2026-10-28)
 
 ## Phase Details
 
