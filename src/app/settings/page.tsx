@@ -1,7 +1,6 @@
 import { headers } from 'next/headers';
 import { connection } from 'next/server';
 import { ClaudeCliCard } from '@/components/claude-cli-card';
-import { CornerNumeral } from '@/components/corner-numeral';
 import { DevJobTrigger } from '@/components/dev-job-trigger';
 import { DiscogsCard } from '@/components/discogs-card';
 import { MdPrefix } from '@/components/md-prefix';
@@ -90,9 +89,8 @@ export default async function SettingsPage() {
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-6">
-        <ClaudeCliCard step={1} status={claude} model={getVisionModel()} />
+        <ClaudeCliCard status={claude} model={getVisionModel()} />
         <DiscogsCard
-          step={2}
           statuses={secrets.ok ? secrets.statuses : null}
           connection={secrets.ok ? secrets.connection : null}
           secretsError={secrets.ok ? undefined : secrets.reason}
@@ -101,7 +99,6 @@ export default async function SettingsPage() {
           fallbackCountry={getFallbackCountry()}
         />
         <Card variant="mini">
-          <CornerNumeral value={3} size="md" />
           <CardHeader>
             <CardTitle className="text-base">
               <MdPrefix marker="##" />
@@ -122,7 +119,6 @@ export default async function SettingsPage() {
         </Card>
         {showDeveloper ? (
           <Card variant="mini">
-            <CornerNumeral value={4} size="md" />
             <CardHeader>
               <CardTitle className="text-base">
                 <MdPrefix marker="##" />

@@ -3,15 +3,15 @@ status: testing
 phase: 07-match-the-patrickclery-com-awesomer-color-palette
 source: [07-VERIFICATION.md]
 started: 2026-10-26T02:57:31.802Z
-updated: 2026-10-28T17:42:02.448Z
+updated: 2026-10-28T17:53:46.580Z
 ---
 
 ## Current Test
 
-number: 5
-name: Switch the Spines page to Detailed view. Look at the page title, the line under it, each photo's heading and the cards, and move the mouse over a few cards.
+number: 6
+name: Open Settings. Look at each card, and read the explanations. Hover the underlined purple links in the Discogs card. Then drag to select the title 'Discogs', copy it, and paste it somewhere.
 expected: |
-  The Spines title fades from purple to light blue, and the line under it starts with a purple '>'. Each photo's heading reads '## ' followed by the file name, with no number in its corner. Every card has the same top-to-bottom fade and shows no number: no '#' label and no big faint number in the corner. Only the card under the mouse glows, so the long list does not glow all at once.
+  The Settings title fades purple to light blue, and the line under it starts with a purple '>'. No card has a number in its corner. Card titles read '## Claude CLI', '## Discogs', '## Data folder' (and '## Developer') with a purple '##'. The explanation sentences and small helper text use a different, rounder font where letters are not all the same width; buttons, including any inside a warning box, stay in the typewriter font. Links are light purple and turn bluish lavender under the mouse, staying underlined. The pasted text is just 'Discogs', without the '##'.
 awaiting: user response
 
 ## Tests
@@ -34,10 +34,10 @@ result: pass
 
 ### 5. Switch the Spines page to Detailed view. Look at the page title, the line under it, each photo's heading and the cards, and move the mouse over a few cards.
 expected: The Spines title fades from purple to light blue, and the line under it starts with a purple '>'. Each photo's heading reads '## ' followed by the file name, with no number in its corner. Every card has the same top-to-bottom fade and shows no number: no '#' label and no big faint number in the corner. Only the card under the mouse glows, so the long list does not glow all at once.
-result: [pending]
+result: pass
 
-### 6. Open Settings. Look at each card and its corner, and read the explanations. Hover the underlined purple links in the Discogs card. Then drag to select the title 'Discogs', copy it, and paste it somewhere.
-expected: The Settings title fades purple to light blue, and the line under it starts with a purple '>'. Each card has a big faint number in its corner: 1 Claude CLI, 2 Discogs, 3 Data folder, and 4 Developer if that card shows. Card titles read '## Claude CLI', '## Discogs', '## Data folder' (and '## Developer') with a purple '##'. The explanation sentences and small helper text use a different, rounder font where letters are not all the same width; buttons, including any inside a warning box, stay in the typewriter font. Links are light purple and turn bluish lavender under the mouse, staying underlined. The pasted text is just 'Discogs', without the '##'.
+### 6. Open Settings. Look at each card, and read the explanations. Hover the underlined purple links in the Discogs card. Then drag to select the title 'Discogs', copy it, and paste it somewhere.
+expected: The Settings title fades purple to light blue, and the line under it starts with a purple '>'. No card has a number in its corner. Card titles read '## Claude CLI', '## Discogs', '## Data folder' (and '## Developer') with a purple '##'. The explanation sentences and small helper text use a different, rounder font where letters are not all the same width; buttons, including any inside a warning box, stay in the typewriter font. Links are light purple and turn bluish lavender under the mouse, staying underlined. The pasted text is just 'Discogs', without the '##'.
 result: [pending]
 
 ### 7. On the Spines page, look at the row of status tabs (All is selected when the page opens). Move the mouse over other tabs. If a spine has failed, look at the Failed tab, then click it. Also hover and click Needs review and Fallback if they show.
@@ -57,15 +57,15 @@ expected: Selected text gets a faint purple highlight and keeps its own color, b
 result: [pending]
 
 ### 11. Open the published demo site (or a fresh demo build) and visit its first page, Upload, Spines and Settings.
-expected: The demo looks the same as the app: dark navy-purple with the faint lines, the typewriter font, the block-letter sign on Upload, gradient titles, '##' headings, and cards with a slight top-to-bottom fade. Only the Settings cards have faint corner numbers (1, 2 and 3; there is no Developer card in the demo); the spine cards show no number at all. There is no white flash or white page anywhere, including the very first page you land on.
+expected: The demo looks the same as the app: dark navy-purple with the faint lines, the typewriter font, the block-letter sign on Upload, gradient titles, '##' headings, and cards with a slight top-to-bottom fade. No card shows a number anywhere, on Settings or Spines. There is no white flash or white page anywhere, including the very first page you land on.
 result: [pending]
 
 ## Summary
 
 total: 11
-passed: 4
+passed: 5
 issues: 0
-pending: 7
+pending: 6
 skipped: 0
 blocked: 0
 
@@ -97,3 +97,12 @@ blocked: 0
   root_cause: "The .card-mini / .card-featured fade ended at 85% card + 15% background (awesomer's value), a ~3% change that is invisible on tall spine cards."
   fix: "Inline followup: the fade now ends at 45% card + 55% background in src/app/globals.css (both card classes); the dev server cache had to be cleared before it showed. Owner re-tested: pass."
   artifacts: [src/app/globals.css]
+- gap_id: G-07-side-2
+  truth: "Settings cards show a big faint corner number (1 Claude CLI, 2 Discogs, 3 Data folder, 4 Developer)"
+  status: resolved
+  reason: "User reported: Those numbers are actually completely unnecessary. You can remove the enumeration on that page."
+  severity: cosmetic
+  test: 6
+  root_cause: "Owner decision: corner numbering adds nothing on Settings (spine cards already dropped theirs under G-06-side-2)."
+  fix: "Inline followup: removed CornerNumeral from all Settings cards (app and demo), dropped the cards' step prop, deleted the now-unused corner-numeral component, and rewrote the tests to assert no numbering. Tests 6 and 11 reworded."
+  artifacts: [src/app/settings/page.tsx, src/app/settings/page.demo.tsx, src/components/claude-cli-card.tsx, src/components/discogs-card.tsx]

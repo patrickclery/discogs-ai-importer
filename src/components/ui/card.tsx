@@ -7,7 +7,6 @@ type CardVariant = 'default' | 'mini' | 'featured';
  * `mini` and `featured` are awesomer's gradient cards (07-UI-SPEC v2 Card
  * treatments): the `.card-mini` / `.card-featured` component classes draw the
  * fill, border and glow, so the default's border, bg-card and shadow-sm go.
- * `relative isolate overflow-hidden` hosts a CornerNumeral behind the content.
  */
 function Card({
   className,

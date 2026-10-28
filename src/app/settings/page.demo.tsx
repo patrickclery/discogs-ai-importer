@@ -1,7 +1,6 @@
 'use client';
 
 import { ClaudeCliCard } from '@/components/claude-cli-card';
-import { CornerNumeral } from '@/components/corner-numeral';
 import { DiscogsCard } from '@/components/discogs-card';
 import { MdPrefix } from '@/components/md-prefix';
 import { StoragePaths } from '@/components/storage-paths';
@@ -134,9 +133,8 @@ export default function DemoSettingsPage() {
         </p>
       </div>
       <div className="mt-8 flex flex-col gap-6">
-        <ClaudeCliCard step={1} status={view.claude} model={view.model} />
+        <ClaudeCliCard status={view.claude} model={view.model} />
         <DiscogsCard
-          step={2}
           statuses={view.statuses}
           connection={view.connection}
           callbackUrl={CALLBACK_URL}
@@ -144,7 +142,6 @@ export default function DemoSettingsPage() {
           fallbackCountry={view.fallbackCountry}
         />
         <Card variant="mini">
-          <CornerNumeral value={3} size="md" />
           <CardHeader>
             <CardTitle className="text-base">
               <MdPrefix marker="##" />

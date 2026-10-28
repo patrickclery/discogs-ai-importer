@@ -1,5 +1,4 @@
 import { TriangleAlert } from 'lucide-react';
-import { CornerNumeral } from '@/components/corner-numeral';
 import { MdPrefix } from '@/components/md-prefix';
 import { ModelSelect } from '@/components/model-select';
 import { TestClaudeButton } from '@/components/test-claude-button';
@@ -118,18 +117,14 @@ function LoginRow({ auth }: { auth: ClaudeCliStatus['auth'] }) {
 }
 
 export function ClaudeCliCard({
-  step,
   status,
   model,
 }: {
-  /** This card's setup-step number. The page owns the order. */
-  step: number;
   status: ClaudeCliStatus;
   model: string;
 }) {
   return (
     <Card variant="mini">
-      <CornerNumeral value={step} size="md" />
       <CardHeader>
         <CardTitle className="text-base">
           <MdPrefix marker="##" />

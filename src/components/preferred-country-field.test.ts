@@ -199,7 +199,6 @@ describe('DiscogsCard country fields', () => {
     const html = decode(
       renderToStaticMarkup(
         h(DiscogsCard, {
-          step: 2,
           statuses: [],
           connection: {
             connected: true,
@@ -228,7 +227,6 @@ describe('DiscogsCard country fields', () => {
     const html = decode(
       renderToStaticMarkup(
         h(DiscogsCard, {
-          step: 2,
           statuses: [],
           connection: {
             connected: true,

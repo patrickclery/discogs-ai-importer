@@ -10,7 +10,6 @@ import type { ImportDto } from '@/lib/import-types';
 import type { SpineDto } from '@/lib/scan-types';
 import { layoutOf, layoutParamOf, useCardLayout } from './card-layout-toggle';
 import { CompactSpineCard } from './compact-spine-card';
-import { CornerNumeral } from './corner-numeral';
 import {
   ExpandedCardsProvider,
   layoutReset,
@@ -718,23 +717,6 @@ function classTokens(tag: string): string[] {
   return (m?.[1] ?? '').split(/\s+/).filter(Boolean);
 }
 
-const NUMERAL_BASE = [
-  'pointer-events-none',
-  'absolute',
-  '-z-10',
-  'select-none',
-  'font-mono',
-  'font-black',
-  'leading-none',
-  'text-primary/[0.07]',
-];
-
-const NUMERAL_SIZES = {
-  sm: ['-right-1', '-bottom-2', 'text-4xl'],
-  md: ['-right-1', '-bottom-3', 'text-7xl'],
-  lg: ['-right-2', '-bottom-6', 'text-[10rem]'],
-} as const;
-
 describe('awesomer mini card (Phase 7 v2)', () => {
   const cardTag = (variant?: 'default' | 'mini' | 'featured') =>
     openingTag(
@@ -766,20 +748,6 @@ describe('awesomer mini card (Phase 7 v2)', () => {
       for (const gone of ['bg-card', 'shadow-sm', 'border']) {
         expect(t).not.toContain(gone);
       }
-    });
-  }
-
-  for (const size of ['sm', 'md', 'lg'] as const) {
-    it(`CornerNumeral ${size} is decorative with exactly its size tokens`, () => {
-      const html = renderToStaticMarkup(h(CornerNumeral, { value: 42, size }));
-      const tag = openingTag(html, 'data-corner-numeral');
-      expect(tag).toContain('aria-hidden="true"');
-      expect(tag).toContain('data-corner-numeral=""');
-      expect(classTokens(tag).sort()).toEqual(
-        [...NUMERAL_BASE, ...NUMERAL_SIZES[size]].sort(),
-      );
-      expect(html).toMatch(/>42<\/span>$/);
-      expect(html).not.toContain('#');
     });
   }
 

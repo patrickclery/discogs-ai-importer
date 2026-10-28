@@ -56,7 +56,6 @@ const tokensOf = (tag: string): string[] =>
 const H1 = 'gradient-text w-fit text-2xl font-medium tracking-tight';
 const PREFIX_HH =
   '<span aria-hidden="true" class="select-none text-primary">## </span>';
-const MD_NUMERAL = ['-right-1', '-bottom-3', 'text-7xl'];
 
 /** The card's opening tag and its first child's opening tag. */
 function cardHead(html: string): { card: string; first: string } {
@@ -66,14 +65,11 @@ function cardHead(html: string): { card: string; first: string } {
   return { card, first: m?.[1] ?? '' };
 }
 
-function expectNumberedMiniCard(html: string, n: number, title: string) {
-  const { card, first } = cardHead(html);
+function expectMiniCard(html: string, title: string) {
+  const { card } = cardHead(html);
   expect(card).toContain('data-variant="mini"');
-  expect(first).toContain('data-corner-numeral=""');
-  expect(tokensOf(first)).toEqual(expect.arrayContaining(MD_NUMERAL));
-  expect(html).toMatch(
-    new RegExp(`<span[^>]*data-corner-numeral=""[^>]*>${n}</span>`),
-  );
+  // G-07-side-2: Settings cards carry no corner number.
+  expect(html).not.toContain('data-corner-numeral');
   expect(html).toMatch(
     new RegExp(
       `<div data-slot="card-title"[^>]*>${PREFIX_HH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}${title}</div>`,
@@ -95,7 +91,7 @@ const STATUS: ClaudeCliStatus = {
   checkedAt: 0,
 };
 
-function discogsHtml(connected: boolean, step = 2): string {
+function discogsHtml(connected: boolean): string {
   const connection: DiscogsConnection = {
     connected,
     username: connected ? 'owner' : null,
@@ -105,7 +101,6 @@ function discogsHtml(connected: boolean, step = 2): string {
   };
   return renderToStaticMarkup(
     h(DiscogsCard, {
-      step,
       statuses: [],
       connection,
       callbackUrl: null,
@@ -124,24 +119,9 @@ function pTagFor(html: string, text: string): string {
 }
 
 describe('ClaudeCliCard', () => {
-  it('is mini card 1 titled ## Claude CLI', () => {
-    expectNumberedMiniCard(
-      renderToStaticMarkup(
-        h(ClaudeCliCard, { step: 1, status: STATUS, model: 'x' }),
-      ),
-      1,
-      'Claude CLI',
-    );
-  });
-
-  // WR-03: the page owns the step order, so the card numbers itself from
-  // the prop, not from a literal.
-  it('takes its numeral from the step prop', () => {
-    expectNumberedMiniCard(
-      renderToStaticMarkup(
-        h(ClaudeCliCard, { step: 7, status: STATUS, model: 'x' }),
-      ),
-      7,
+  it('is a mini card titled ## Claude CLI with no corner number', () => {
+    expectMiniCard(
+      renderToStaticMarkup(h(ClaudeCliCard, { status: STATUS, model: 'x' })),
       'Claude CLI',
     );
   });
@@ -149,15 +129,11 @@ describe('ClaudeCliCard', () => {
 
 describe('DiscogsCard', () => {
   it.each([true, false])(
-    'is mini card 2 titled ## Discogs (connected=%s)',
+    'is a mini card titled ## Discogs with no corner number (connected=%s)',
     (connected) => {
-      expectNumberedMiniCard(discogsHtml(connected), 2, 'Discogs');
+      expectMiniCard(discogsHtml(connected), 'Discogs');
     },
   );
-
-  it('takes its numeral from the step prop', () => {
-    expectNumberedMiniCard(discogsHtml(true, 7), 7, 'Discogs');
-  });
 
   it('sets the connected explanation in Plex, size and muted kept', () => {
     const tag = pTagFor(
@@ -196,41 +172,39 @@ describe.each([
     );
   });
 
-  it('numbers the Data folder card 3 with a ## title', () => {
+  it('titles the Data folder card ## Data folder', () => {
     expect(text).toMatch(
-      /<Card variant="mini">\s*<CornerNumeral value=\{3\} size="md" \/>\s*<CardHeader>\s*<CardTitle className="text-base">\s*<MdPrefix marker="##" \/>\s*Data folder\s*<\/CardTitle>/,
+      /<Card variant="mini">\s*<CardHeader>\s*<CardTitle className="text-base">\s*<MdPrefix marker="##" \/>\s*Data folder\s*<\/CardTitle>/,
     );
   });
 
-  // WR-03: the page is the one place that owns the step order, so the
-  // numbers it passes or renders must count 1, 2, 3(, 4) in source order.
-  it('numbers its cards 1..n in render order', () => {
-    const steps = [
-      ...text.matchAll(
-        /<ClaudeCliCard\s+step=\{(\d+)\}|<DiscogsCard\s+step=\{(\d+)\}|<CornerNumeral value=\{(\d+)\}/g,
-      ),
-    ].map((m) => Number(m[1] ?? m[2] ?? m[3]));
-    const n = hasDeveloper ? 4 : 3;
-    expect(steps).toEqual(Array.from({ length: n }, (_, i) => i + 1));
+  // G-07-side-2: the owner dropped the Settings card numbering.
+  it('numbers none of its cards', () => {
+    expect(text).not.toContain('CornerNumeral');
+    expect(text).not.toMatch(/\bstep=\{/);
   });
 
-  it(hasDeveloper ? 'numbers the Developer card 4' : 'has no card 4', () => {
-    if (hasDeveloper) {
-      expect(text).toMatch(
-        /<Card variant="mini">\s*<CornerNumeral value=\{4\} size="md" \/>\s*<CardHeader>\s*<CardTitle className="text-base">\s*<MdPrefix marker="##" \/>\s*Developer\s*<\/CardTitle>/,
-      );
-    } else {
-      expect(text).not.toContain('value={4}');
-    }
-  });
+  it(
+    hasDeveloper
+      ? 'titles the Developer card ## Developer'
+      : 'has no Developer card',
+    () => {
+      if (hasDeveloper) {
+        expect(text).toMatch(
+          /<Card variant="mini">\s*<CardHeader>\s*<CardTitle className="text-base">\s*<MdPrefix marker="##" \/>\s*Developer\s*<\/CardTitle>/,
+        );
+      } else {
+        expect(text).not.toContain('Developer');
+      }
+    },
+  );
 });
 
 describe.each(['claude-cli-card.tsx', 'discogs-card.tsx'])(
   '%s source',
   (file) => {
-    it('does not hard-code its step number (WR-03)', () => {
-      expect(src(file)).toContain('<CornerNumeral value={step} size="md" />');
-      expect(src(file)).not.toMatch(/<CornerNumeral value=\{\d/);
+    it('has no corner number (G-07-side-2)', () => {
+      expect(src(file)).not.toContain('CornerNumeral');
     });
   },
 );

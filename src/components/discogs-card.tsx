@@ -6,7 +6,6 @@ import {
   CONNECT_BUTTON_ID,
   ConnectDiscogsButton,
 } from '@/components/connect-discogs-button';
-import { CornerNumeral } from '@/components/corner-numeral';
 import { DiscogsConnectNotice } from '@/components/discogs-connect-notice';
 import { DisconnectDiscogsButton } from '@/components/disconnect-discogs-button';
 import { MdPrefix } from '@/components/md-prefix';
@@ -164,7 +163,6 @@ function AccountSection({
 }
 
 export function DiscogsCard({
-  step,
   statuses,
   connection,
   secretsError,
@@ -172,8 +170,6 @@ export function DiscogsCard({
   preferredCountry,
   fallbackCountry,
 }: {
-  /** This card's setup-step number. The page owns the order. */
-  step: number;
   statuses: SecretStatus[] | null;
   connection: DiscogsConnection | null;
   secretsError?: string;
@@ -186,7 +182,6 @@ export function DiscogsCard({
 }) {
   return (
     <Card variant="mini">
-      <CornerNumeral value={step} size="md" />
       <CardHeader>
         <CardTitle className="text-base">
           <MdPrefix marker="##" />
