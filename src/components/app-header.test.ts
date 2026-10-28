@@ -69,3 +69,23 @@ describe('AppHeader logo (Phase 7 v2)', () => {
     expect(svg).toMatch(/class="[^"]*\bsize-5\b/);
   });
 });
+
+describe('AppHeader GitHub link', () => {
+  const html = renderToStaticMarkup(h(AppHeader));
+  const link =
+    html.match(/<a[^>]*aria-label="View source on GitHub"[^>]*>/)?.[0] ?? '';
+
+  it('links to the repo in a new tab', () => {
+    expect(link).toContain(
+      'href="https://github.com/patrickclery/discogs-ai-importer"',
+    );
+    expect(link).toContain('target="_blank"');
+    expect(link).toContain('rel="noopener noreferrer"');
+  });
+
+  it('is muted, purple on hover, with the focus ring', () => {
+    expect(link).toContain('text-muted-foreground');
+    expect(link).toContain('hover:text-primary');
+    expect(link).toContain('focus-visible:ring-ring/50');
+  });
+});
