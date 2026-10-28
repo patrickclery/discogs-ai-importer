@@ -31,6 +31,7 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 - ✓ User is warned when a release is already in their collection or already imported from another spine — v1 (Phase 4)
 - ✓ User can select many spines and bulk-import them, each swapped for its Canadian CD pressing, else the fallback country's (default US), else the top match, with compact review cards and per-card fallback notes — Phase 6
 - ✓ The top match prefers a release from the preferred country, then the fallback country (after catalog-number matches) — Phase 6
+- ✓ App and demo site match patrickclery.com/awesomer: Catppuccin Mocha dark theme, gradient cards, Geist Mono / IBM Plex Sans fonts, block-letter wordmark, scanlines, gradient titles and markdown-style headings — Phase 7
 
 ### Active
 

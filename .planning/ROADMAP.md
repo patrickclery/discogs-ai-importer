@@ -142,7 +142,7 @@ Plans:
 **Goal:** Restyle the app to use the same color palette as https://patrickclery.com/awesomer (Catppuccin Mocha, dark only) and its overall terminal/markdown look: gradient cards with corner numbers, Geist Mono / IBM Plex Sans / asciiMono fonts, scanlines; applied through the existing Tailwind/shadcn theme tokens so every screen picks it up.
 **Requirements**: THEME-01..THEME-10 (THEME-01..07 proposed in 07-01-PLAN.md; THEME-08..10 proposed in 07-04-PLAN.md for gap G-07-style-1)
 **Depends on:** Phase 6
-**Plans:** 8/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1**

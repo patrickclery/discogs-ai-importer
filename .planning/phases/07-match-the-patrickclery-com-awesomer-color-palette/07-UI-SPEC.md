@@ -19,6 +19,7 @@ created: "2026-10-25"
 **Version history**
 - v1 (approved 2026-10-25): colors only. Mocha tokens, forced dark, contrast fixes C-1 to C-4. Shipped in plans 07-01 to 07-03, plus review fixes WR-01 and IN-01 to IN-03.
 - **v2 (this draft, 2026-10-25):** the owner reviewed v1 (UAT G-07-style-1) and widened the scope to awesomer's whole look. **Everything v1 shipped stays exactly as it is.** v2 adds the card treatments, corner numerals, fonts, terminal/markdown touches, and contrast fixes C-5 and C-6. Sections marked **(v2)** are new or rewritten. Sections marked **(v1, unchanged)** are the shipped contract, restated so this file stays the single source of truth.
+- **Amendment (2026-10-28, owner UAT):** this supersedes anything below that conflicts with it. (1) The card fade now ends at **45%** card with base (`#272839`), not 85% (G-07-side-1). (2) **No corner numerals anywhere.** Spine cards dropped them under G-06-side-2, and the Settings cards dropped them under G-07-side-2. `corner-numeral.tsx` was deleted.
 
 **Phase in one line:** make the app and the demo site look like patrickclery.com/awesomer: Catppuccin Mocha, dark only (shipped), plus gradient cards with faint corner numerals, Geist Mono as the UI font, IBM Plex Sans for prose, an asciiMono block wordmark, CRT scanlines, gradient page titles and markdown-style prefixes. It adds no features, data or new wording.
 
