@@ -5,6 +5,9 @@ area: ui
 severity: cosmetic
 files:
   - src/components/app-header.tsx
+audit_acknowledged:
+  milestone: v1.1
+  at: 2026-10-28
 ---
 
 ## Problem

@@ -3,6 +3,10 @@ status: awaiting_human_verify
 trigger: "when I search for \"Vision just short of living\" on discogs, it's matching [the master/CD releases] but when i search on the app it's completely wrong. it appears to be searching just the catalog number \"kori\". even when i try to click \"Search Discogs\" it's not matching, it only works on the discogs.com ui"
 created: 2026-10-23
 updated: 2026-10-23
+audit_acknowledged:
+  milestone: v1.1
+  at: 2026-10-28
+  status: awaiting_human_verify
 ---
 
 ## Symptoms

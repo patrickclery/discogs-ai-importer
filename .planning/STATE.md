@@ -1,35 +1,37 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 7
-status: completed
+milestone: v1.1
+milestone_name: Demo & Polish
+status: Awaiting next milestone
 stopped_at: Phase 7 complete — all phases complete
-last_updated: "2026-10-28T19:31:32.539Z"
+last_updated: "2026-10-28T19:39:16.279Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 7 complete
-state_head: fd2c96314daec0dc4f029c523d224938d896193e
+last_activity_desc: Milestone v1.1 completed and archived
+state_head: ce194d88a7d575f755b3348a221b6d7f779eecdf
 progress:
   total_phases: 3
   completed_phases: 4
   total_plans: 36
   completed_plans: 50
   percent: 100
+current_phase: 7
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-23)
+See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** Photograph a shelf once and get every disc on it reliably into Discogs — with the spine image always visible next to what the AI read, so mistakes are easy to see and fix.
-**Current focus:** Phase 07 — Match the patrickclery.com/awesomer color palette
+**Current focus:** Planning next milestone (v1.1 shipped 2026-10-28)
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-28 — Phase 7 complete
+Phase: Milestone v1.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-28 — Milestone v1.1 completed and archived
 
 ## Performance Metrics
 
@@ -331,6 +333,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| debug_session | search-uses-only-catno | awaiting_human_verify (re-record demo spines 01, 02, 07, 22, 59) | 2026-10-28 | v1.1 |
+| todo | 2026-10-28-add-github-repo-link-icon-to-top-bar.md | pending | 2026-10-28 | v1.1 |
 | debug_session | wrong-match-import-recovery | diagnosed | 2026-10-23 | v1 |
 | debug_session | long-photo-name-overflow (fixed by 04-15) | diagnosed | 2026-10-23 | v1 |
 | debug_session | escape-saves-draft-on-first-edit | diagnosed | 2026-10-23 | v1 |

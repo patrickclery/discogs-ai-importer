@@ -29,14 +29,16 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 - ✓ User sees every spine with a status (pending, matched, imported, not found, not on Discogs, failed), filters by it with counts, and retries failures — v1 (Phase 4)
 - ✓ Items with no Discogs match can be flagged "not on Discogs" — v1 (Phase 4)
 - ✓ User is warned when a release is already in their collection or already imported from another spine — v1 (Phase 4)
-- ✓ User can select many spines and bulk-import them, each swapped for its Canadian CD pressing, else the fallback country's (default US), else the top match, with compact review cards and per-card fallback notes — Phase 6
-- ✓ The top match prefers a release from the preferred country, then the fallback country (after catalog-number matches) — Phase 6
-- ✓ App and demo site match patrickclery.com/awesomer: Catppuccin Mocha dark theme, gradient cards, Geist Mono / IBM Plex Sans fonts, block-letter wordmark, scanlines, gradient titles and markdown-style headings — Phase 7
+- ✓ User can select many spines and bulk-import them, each swapped for its Canadian CD pressing, else the fallback country's (default US), else the top match, with compact review cards and per-card fallback notes — v1.1 (Phase 6)
+- ✓ The top match prefers a release from the preferred country, then the fallback country (after catalog-number matches) — v1.1 (Phase 6)
+- ✓ App and demo site match patrickclery.com/awesomer: Catppuccin Mocha dark theme, gradient cards, Geist Mono / IBM Plex Sans fonts, block-letter wordmark, scanlines, gradient titles and markdown-style headings — v1.1 (Phase 7)
 
 ### Active
 
 - [ ] Undo an import / change the match after a wrong add succeeded (remove the copy from Discogs and free the card) — deferred from v1 (D-02, DATA-01)
 - [ ] Rank artist + title + catalog-number matches above catalog-number-only matches
+- [ ] GitHub repo link icon in the top bar (todo, deferred at v1.1 close)
+- [ ] Re-record demo spines 01, 02, 07, 22, 59 against live Discogs after the catno-corroboration search fix, then rebuild and push the demo
 - [ ] Phase 2 follow-ups (backlog 999.1–999.4): straighten tilted spine crops; reach the photo filter without scrolling up; browser checks of orphan re-attach/dismiss and failed-row re-scan
 
 ### Out of Scope
@@ -49,7 +51,9 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 
 ## Context
 
-**Current state (v1 shipped 2026-10-23):** about 25k lines of TypeScript app code plus 23k lines of tests (1606 Vitest tests) on Next.js 16, SQLite/Drizzle, sharp and the Claude Code CLI. The owner has run real imports against their Discogs account. Known debt is listed in `.planning/milestones/v1-MILESTONE-AUDIT.md`. Notable ops lesson: migrations run only at server boot, so a long-running dev server must be restarted after a schema change.
+**Current state (v1.1 shipped 2026-10-28):** v1.1 added a public, fully stubbed demo site (GitHub Pages, static export with an in-browser fetch shim), bulk import that swaps each pick for its Canadian CD pressing (else the fallback country, then the top match) with compact review cards, and a dark Catppuccin Mocha restyle matching patrickclery.com/awesomer. Tests: 2473 Vitest. Master is not yet pushed, so the live demo still shows the phase 5 build. Debt: `.planning/milestones/v1.1-MILESTONE-AUDIT.md`.
+
+**v1 (shipped 2026-10-23):** about 25k lines of TypeScript app code plus 23k lines of tests (1606 Vitest tests) on Next.js 16, SQLite/Drizzle, sharp and the Claude Code CLI. The owner has run real imports against their Discogs account. Known debt is listed in `.planning/milestones/v1-MILESTONE-AUDIT.md`. Notable ops lesson: migrations run only at server boot, so a long-running dev server must be restarted after a schema change.
 
 - Physical CD collection, photographed as spines on shelves (many spines per photo).
 - Discogs API: search (`/database/search`) requires authentication; adding to collection is `POST /users/{username}/collection/folders/{folder_id}/releases/{release_id}`. Rate limit 60/min authenticated.
@@ -83,6 +87,10 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 | Write an import intent before the Discogs POST and adopt a copy that already landed on retry | Exactly-once adds across crashes, timeouts and 5xx | ✓ Good (v1, UAT kill-mid-import passed) |
 | Undo after a successful import deferred (D-02) | Keep v1 scope; wrong adds are rare and fixable on discogs.com | ⚠️ Revisit (owner hit it in UAT) |
 | Failed import's Change match runs a check-only job instead of locking the card (CR-01) | Frees the card without risking a second copy | ✓ Good (v1) |
+| Static-export demo with an in-browser fetch shim and recorded Discogs fixtures | Public demo with no server, keys or live API calls | ✓ Good (v1.1) |
+| Bulk import swaps each pick for its preferred-country (Canada) CD pressing, then the fallback country (US), then the top match | Owner's collection is Canadian pressings; avoid manual version picking | ✓ Good (v1.1) |
+| Top match ordering prefers preferred, then fallback, country after catalog-number matches (demo keeps fixture order) | Make the default pick match the bulk rule | ✓ Good (v1.1) |
+| Dark-only Catppuccin Mocha + awesomer look; no card numbering anywhere | Match the owner's site; numbers added noise (owner UAT) | ✓ Good (v1.1) |
 
 ## Evolution
 
@@ -102,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-23 after v1 milestone*
+*Last updated: 2026-10-28 after v1.1 milestone*

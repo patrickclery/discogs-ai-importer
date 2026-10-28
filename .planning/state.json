@@ -1,18 +1,28 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": null,
+  "milestone": "v1.1 — Demo & Polish",
   "phases": [
     {
       "number": "5",
       "name": "Stubbed Demo Site",
       "status": "complete"
+    },
+    {
+      "number": "6",
+      "name": "Bulk Canada auto-import with compact review cards",
+      "status": "complete"
+    },
+    {
+      "number": "7",
+      "name": "Match the patrickclery.com/awesomer color palette",
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd-new-milestone",
-    "label": "Start a new milestone",
-    "reason": "All phases complete — start a new milestone"
+    "command": "/gsd-progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
   },
-  "updated_at": "2026-10-28T19:31:32.549Z"
+  "updated_at": "2026-10-28T19:39:16.290Z"
 }
