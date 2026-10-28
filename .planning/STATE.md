@@ -319,7 +319,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- [2026-10-28] [ui] Add GitHub repo link icon to top bar — [todo file](.planning/todos/pending/2026-10-28-add-github-repo-link-icon-to-top-bar.md)
 
 ### Blockers/Concerns
 
