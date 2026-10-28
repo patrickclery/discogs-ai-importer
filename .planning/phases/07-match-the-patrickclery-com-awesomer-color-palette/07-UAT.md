@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 07-match-the-patrickclery-com-awesomer-color-palette
 source: [07-VERIFICATION.md]
 started: 2026-10-26T02:57:31.802Z
-updated: 2026-10-28T17:53:46.580Z
+updated: 2026-10-28T19:28:02.085Z
 ---
 
 ## Current Test
 
-number: 6
-name: Open Settings. Look at each card, and read the explanations. Hover the underlined purple links in the Discogs card. Then drag to select the title 'Discogs', copy it, and paste it somewhere.
-expected: |
-  The Settings title fades purple to light blue, and the line under it starts with a purple '>'. No card has a number in its corner. Card titles read '## Claude CLI', '## Discogs', '## Data folder' (and '## Developer') with a purple '##'. The explanation sentences and small helper text use a different, rounder font where letters are not all the same width; buttons, including any inside a warning box, stay in the typewriter font. Links are light purple and turn bluish lavender under the mouse, staying underlined. The pasted text is just 'Discogs', without the '##'.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -38,41 +34,43 @@ result: pass
 
 ### 6. Open Settings. Look at each card, and read the explanations. Hover the underlined purple links in the Discogs card. Then drag to select the title 'Discogs', copy it, and paste it somewhere.
 expected: The Settings title fades purple to light blue, and the line under it starts with a purple '>'. No card has a number in its corner. Card titles read '## Claude CLI', '## Discogs', '## Data folder' (and '## Developer') with a purple '##'. The explanation sentences and small helper text use a different, rounder font where letters are not all the same width; buttons, including any inside a warning box, stay in the typewriter font. Links are light purple and turn bluish lavender under the mouse, staying underlined. The pasted text is just 'Discogs', without the '##'.
-result: [pending]
+result: pass
 
 ### 7. On the Spines page, look at the row of status tabs (All is selected when the page opens). Move the mouse over other tabs. If a spine has failed, look at the Failed tab, then click it. Also hover and click Needs review and Fallback if they show.
 expected: On the selected tab the number is bright off-white and easy to read, not faded grey. Hovering a tab brightens its number the same way. The Failed number is red when the tab is not selected and turns off-white once you hover or select it. Filtering works as before.
-result: [pending]
+result: pass
 
 ### 8. On the Spines page, tick a couple of cards so the bottom bar appears and hover its Import button. Then open each warning window without confirming: Dismiss on a card (then Keep spine), Disconnect Discogs in Settings (then Stay connected), and Clear value next to a saved Discogs key (then Keep value). Hover the red button in each.
 expected: The bottom bar and every warning window have a purple edge with a soft glow and a subtle top-to-bottom fade, with no corner number. In each window the explanation text uses the rounder font, while the title and buttons stay in the typewriter font. The Import button is light purple with dark text and turns bluish lavender under the mouse. The confirm button in each window is solid pink-red with dark text and gets slightly deeper red under the mouse; its text is never white, and Clear value is never purple. Nothing is actually dismissed, disconnected or cleared.
-result: [pending]
+result: pass
+note: "Dismiss window not reachable: Dismiss only shows on orphaned ('No longer detected') spines and none exist now; the shared confirm-window styling was checked via Disconnect and Clear value."
 
 ### 9. In Settings, change Preferred country and save, then change it back and save again.
 expected: The confirmation pop-up in the bottom-right corner is dark slate with light text and a thin border, never white.
-result: [pending]
+result: pass
 
 ### 10. Select some text on any page with the mouse, and also select some text you typed into a box (for example the search box on the Spines page or a field in Settings). Then press Tab a few times to move between buttons and fields.
 expected: Selected text gets a faint purple highlight and keeps its own color, both on the page and inside a typing box, never a solid purple block. The outline that shows which button or field you are on is purple.
-result: [pending]
+result: pass
 
 ### 11. Open the published demo site (or a fresh demo build) and visit its first page, Upload, Spines and Settings.
 expected: The demo looks the same as the app: dark navy-purple with the faint lines, the typewriter font, the block-letter sign on Upload, gradient titles, '##' headings, and cards with a slight top-to-bottom fade. No card shows a number anywhere, on Settings or Spines. There is no white flash or white page anywhere, including the very first page you land on.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 11
-passed: 5
+passed: 11
 issues: 0
-pending: 6
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 - gap_id: G-07-style-1
   truth: "The app has awesomer's overall terminal/markdown look, not just its colors: gradient cards (.card-featured / .card-mini), a large faint number in each card's bottom-right corner, awesomer's fonts (Geist Mono UI, IBM Plex Sans prose, an asciiMono ASCII-art wordmark), CRT scanlines, gradient-text titles and markdown-style section headings"
-  status: failed
+  status: resolved
+  resolution: "Closed by the 07 v2 plans (awesomer look: gradient cards, fonts, scanlines, gradient titles, ## headings); confirmed by owner UAT tests 1-11 on 2026-10-28. Corner numerals were later dropped by owner decision (G-06-side-2, G-07-side-2)."
   reason: "User reported: I can already tell that it's not really the same. For instance, you don't use gradients on the cards, whereas if you look at Awesomer, it's using gradients. Awesomer also puts the number in the corner of the card like on the main page you can see agent skills 6, MCP server 7, etc. I also think it should use that same ASCII type of font that is on all the pages. And we might as well make the font migration part of this too. It should use the same fonts. I think it would be cool if it had the overall type of vibe that Awesomer has where it's sort of like a terminal slash markdown."
   severity: major
   test: 0
