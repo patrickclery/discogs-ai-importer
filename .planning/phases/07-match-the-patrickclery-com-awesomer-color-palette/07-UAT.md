@@ -3,34 +3,34 @@ status: testing
 phase: 07-match-the-patrickclery-com-awesomer-color-palette
 source: [07-VERIFICATION.md]
 started: 2026-10-26T02:57:31.802Z
-updated: 2026-10-28T06:20:44.000Z
+updated: 2026-10-28T17:42:02.448Z
 ---
 
 ## Current Test
 
-number: 1
-name: Open the app at http://127.0.0.1:3001 and visit Upload, Spines and Settings. Reload each page a few times. Then look closely at a plain part of the page.
+number: 5
+name: Switch the Spines page to Detailed view. Look at the page title, the line under it, each photo's heading and the cards, and move the mouse over a few cards.
 expected: |
-  Every page has a dark navy-purple background with soft off-white text. Cards are a slightly lighter slate-purple. Reloading never flashes white, and there is no light/dark switch anywhere. All titles, labels, buttons and numbers use a typewriter-style font where every letter is the same width. Very faint horizontal lines cover the whole page, like an old computer monitor. Clicking, typing and dragging still work normally through them.
+  The Spines title fades from purple to light blue, and the line under it starts with a purple '>'. Each photo's heading reads '## ' followed by the file name, with no number in its corner. Every card has the same top-to-bottom fade and shows no number: no '#' label and no big faint number in the corner. Only the card under the mouse glows, so the long list does not glow all at once.
 awaiting: user response
 
 ## Tests
 
 ### 1. Open the app at http://127.0.0.1:3001 and visit Upload, Spines and Settings. Reload each page a few times. Then look closely at a plain part of the page.
 expected: Every page has a dark navy-purple background with soft off-white text. Cards are a slightly lighter slate-purple. Reloading never flashes white, and there is no light/dark switch anywhere. All titles, labels, buttons and numbers use a typewriter-style font where every letter is the same width. Very faint horizontal lines cover the whole page, like an old computer monitor. Clicking, typing and dragging still work normally through them.
-result: [pending]
+result: pass
 
 ### 2. Look at the top-left logo right after a page loads. Then make the window narrower than a laptop screen. Finally, on the Spines page in Detailed view, scroll so a bright spine photo slides under the top bar.
 expected: The logo text 'Discogs AI Importer' is purple with a soft glow and ends in an underscore that blinks 5 times, then stays on. In a narrow window only the disc icon shows. The top bar is slightly see-through, the photo shows through it softly blurred, and Upload, Spines and Settings stay easy to read. (Optional: if you turn on 'reduce motion' in your computer's settings, the underscore does not blink at all.)
-result: [pending]
+result: pass
 
 ### 3. Open the Upload page in a wide window, then narrow it to phone width and widen it again. Drag a photo onto the drop area.
 expected: Above the Upload title is a big block-letter sign reading DISCOGS over AI IMPORTER in glowing purple, with the blocks lined up cleanly. At phone width the sign disappears. The Upload title fades from purple to light blue. The line under it starts with a purple '>'. The panel below is titled '## Photos' with a purple '##'; with no photos it reads '> No photos yet. Photos you drop appear here with their progress.' Dropping a photo works as before.
-result: [pending]
+result: pass
 
 ### 4. On the Spines page in Compact view, look at the spine cards and move the mouse over a few. If any card has an orphaned (warning) badge, hover that one too. Then click the pencil button at the top of one card, hover the opened card, and click Show less.
 expected: Each card is slightly darker at the bottom than the top. No card shows a number anywhere: there is no '#1' label and no big faint number in the corner. Under the mouse a card gets a purple edge and a soft glow. An orphaned card keeps its warning-colored edge even under the mouse. The opened card has a purple edge and glow all the time and also shows no number; under the mouse its edge gets brighter and its glow stronger. Show less returns to the small card.
-result: [pending]
+result: pass
 
 ### 5. Switch the Spines page to Detailed view. Look at the page title, the line under it, each photo's heading and the cards, and move the mouse over a few cards.
 expected: The Spines title fades from purple to light blue, and the line under it starts with a purple '>'. Each photo's heading reads '## ' followed by the file name, with no number in its corner. Every card has the same top-to-bottom fade and shows no number: no '#' label and no big faint number in the corner. Only the card under the mouse glows, so the long list does not glow all at once.
@@ -63,9 +63,9 @@ result: [pending]
 ## Summary
 
 total: 11
-passed: 0
+passed: 4
 issues: 0
-pending: 11
+pending: 7
 skipped: 0
 blocked: 0
 
@@ -88,3 +88,12 @@ blocked: 0
     - "Card gradient and glow treatment and corner numerals on spine and photo cards"
     - "Font migration: Geist Mono default, IBM Plex Sans for prose, asciiMono wordmark (local font from reference/ascii_mono.woff2)"
     - "Scanline overlay, gradient-text titles, markdown-style headings (## …)"
+- gap_id: G-07-side-1
+  truth: "Each card is slightly darker at the bottom than the top"
+  status: resolved
+  reason: "User reported: It doesn't look slightly darker at the bottom."
+  severity: cosmetic
+  test: 4
+  root_cause: "The .card-mini / .card-featured fade ended at 85% card + 15% background (awesomer's value), a ~3% change that is invisible on tall spine cards."
+  fix: "Inline followup: the fade now ends at 45% card + 55% background in src/app/globals.css (both card classes); the dev server cache had to be cleared before it showed. Owner re-tested: pass."
+  artifacts: [src/app/globals.css]

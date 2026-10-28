@@ -127,7 +127,7 @@
     background: linear-gradient(
       180deg,
       var(--card) 0%,
-      color-mix(in srgb, var(--card) 85%, var(--background)) 100%
+      color-mix(in srgb, var(--card) 45%, var(--background)) 100%
     );
     border: 1px solid color-mix(in srgb, var(--primary) 50%, transparent);
     box-shadow:
@@ -149,7 +149,7 @@
     background: linear-gradient(
       180deg,
       var(--card) 0%,
-      color-mix(in srgb, var(--card) 85%, var(--background)) 100%
+      color-mix(in srgb, var(--card) 45%, var(--background)) 100%
     );
     border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
     box-shadow: none;

@@ -277,7 +277,7 @@ describe('asciiMono font file and license (Phase 7 v2)', () => {
 
 describe('awesomer card rules (Phase 7 v2)', () => {
   const GRADIENT =
-    'linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 85%, var(--background)) 100%)';
+    'linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 45%, var(--background)) 100%)';
 
   it('.card-mini is the gradient with a faint border, mauve on hover', () => {
     const mini = ruleBody('.card-mini');
