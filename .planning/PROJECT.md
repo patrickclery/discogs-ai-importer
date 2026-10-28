@@ -29,6 +29,8 @@ Photograph a shelf once and get every disc on it reliably into Discogs — with 
 - ✓ User sees every spine with a status (pending, matched, imported, not found, not on Discogs, failed), filters by it with counts, and retries failures — v1 (Phase 4)
 - ✓ Items with no Discogs match can be flagged "not on Discogs" — v1 (Phase 4)
 - ✓ User is warned when a release is already in their collection or already imported from another spine — v1 (Phase 4)
+- ✓ User can select many spines and bulk-import them, each swapped for its Canadian CD pressing, else the fallback country's (default US), else the top match, with compact review cards and per-card fallback notes — Phase 6
+- ✓ The top match prefers a release from the preferred country, then the fallback country (after catalog-number matches) — Phase 6
 
 ### Active
 
