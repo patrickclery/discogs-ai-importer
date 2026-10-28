@@ -3,7 +3,7 @@ status: testing
 phase: 07-match-the-patrickclery-com-awesomer-color-palette
 source: [07-VERIFICATION.md]
 started: 2026-10-26T02:57:31.802Z
-updated: 2026-10-26T08:58:48.549Z
+updated: 2026-10-28T06:20:44.000Z
 ---
 
 ## Current Test
@@ -28,12 +28,12 @@ result: [pending]
 expected: Above the Upload title is a big block-letter sign reading DISCOGS over AI IMPORTER in glowing purple, with the blocks lined up cleanly. At phone width the sign disappears. The Upload title fades from purple to light blue. The line under it starts with a purple '>'. The panel below is titled '## Photos' with a purple '##'; with no photos it reads '> No photos yet. Photos you drop appear here with their progress.' Dropping a photo works as before.
 result: [pending]
 
-### 4. On the Spines page in Compact view, look at the spine cards and move the mouse over a few. If any card has an orphaned (warning) badge, hover that one too. Then click Edit spine on one card, hover the opened card, and click Show less.
-expected: Each card is slightly darker at the bottom than the top, and has a big faint purple number in its bottom-right corner that matches the spine's number. Under the mouse a card gets a purple edge and a soft glow. An orphaned card keeps its warning-colored edge even under the mouse. The opened card has a purple edge and glow all the time, a much bigger faint number, and a brighter edge and stronger glow under the mouse. Show less returns to the small card.
+### 4. On the Spines page in Compact view, look at the spine cards and move the mouse over a few. If any card has an orphaned (warning) badge, hover that one too. Then click the pencil button at the top of one card, hover the opened card, and click Show less.
+expected: Each card is slightly darker at the bottom than the top. No card shows a number anywhere: there is no '#1' label and no big faint number in the corner. Under the mouse a card gets a purple edge and a soft glow. An orphaned card keeps its warning-colored edge even under the mouse. The opened card has a purple edge and glow all the time and also shows no number; under the mouse its edge gets brighter and its glow stronger. Show less returns to the small card.
 result: [pending]
 
 ### 5. Switch the Spines page to Detailed view. Look at the page title, the line under it, each photo's heading and the cards, and move the mouse over a few cards.
-expected: The Spines title fades from purple to light blue, and the line under it starts with a purple '>'. Each photo's heading reads '## ' followed by the file name, with no number in its corner. Every card has the same top-to-bottom fade and a very big faint number in its bottom-right corner. Only the card under the mouse glows, so the long list does not glow all at once.
+expected: The Spines title fades from purple to light blue, and the line under it starts with a purple '>'. Each photo's heading reads '## ' followed by the file name, with no number in its corner. Every card has the same top-to-bottom fade and shows no number: no '#' label and no big faint number in the corner. Only the card under the mouse glows, so the long list does not glow all at once.
 result: [pending]
 
 ### 6. Open Settings. Look at each card and its corner, and read the explanations. Hover the underlined purple links in the Discogs card. Then drag to select the title 'Discogs', copy it, and paste it somewhere.
@@ -57,7 +57,7 @@ expected: Selected text gets a faint purple highlight and keeps its own color, b
 result: [pending]
 
 ### 11. Open the published demo site (or a fresh demo build) and visit its first page, Upload, Spines and Settings.
-expected: The demo looks the same as the app: dark navy-purple with the faint lines, the typewriter font, the block-letter sign on Upload, gradient titles, '##' headings, cards with faint corner numbers (Settings shows 1, 2 and 3; there is no Developer card in the demo), and no white flash or white page anywhere, including the very first page you land on.
+expected: The demo looks the same as the app: dark navy-purple with the faint lines, the typewriter font, the block-letter sign on Upload, gradient titles, '##' headings, and cards with a slight top-to-bottom fade. Only the Settings cards have faint corner numbers (1, 2 and 3; there is no Developer card in the demo); the spine cards show no number at all. There is no white flash or white page anywhere, including the very first page you land on.
 result: [pending]
 
 ## Summary
