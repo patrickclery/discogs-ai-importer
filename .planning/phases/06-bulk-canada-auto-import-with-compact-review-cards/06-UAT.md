@@ -3,7 +3,7 @@ status: complete
 phase: 06-bulk-canada-auto-import-with-compact-review-cards
 source: [06-VERIFICATION.md]
 started: 2026-10-25T09:05:13.323Z
-updated: 2026-10-27T03:41:47.194Z
+updated: 2026-10-28T06:16:44.559Z
 ---
 
 ## Current Test
@@ -77,7 +77,7 @@ result: pass
 ### 16. Start a bulk import (or a Discogs search) on a few spines. While it runs, open a different card with its pencil, type something in a field, and wait about 10 seconds without clicking away.
 expected: The card stays open the whole time and your typed text is still there while the cards around it update.
 result: skipped
-reason: "Owner skipped; to be covered by an automated test that holds a card open through a refresh"
+reason: "Deferred follow-up: you can record it as deferred (covered by src/components/expanded-card-refetch.test.ts)"
 
 ## Summary
 
@@ -158,3 +158,9 @@ blocked: 0
       issue: "no country preference in D-10 candidate order"
   missing:
     - "Rank preferred-country, then fallback-country candidates ahead of the rest (after catno matches), read from settings at query time so existing searches reorder without a rescan"
+
+## Deferred Follow-Ups
+
+- test: 16
+  idea: "Owner hand-check that an opened card stays open with typed text through a background refresh (already covered by src/components/expanded-card-refetch.test.ts)"
+  deferred_at: "2026-10-28"
